@@ -151,12 +151,17 @@ body{
 /* ============================================================
    상태
 ============================================================ */
-let peer      = null;
-let myPeerId  = null;
-let peerReady = false;
-let hostConn  = null;   // 호스트가 받은 연결
-let guestConn = null;   // 게스트가 보낸 연결
+let peer        = null;
+let peerReady   = false;
+let roomCode    = null;
 let cancelTimer = null;
+let guestConn   = null;
+
+/* 6자리 영숫자 코드 생성 */
+function makeCode() {
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  return Array.from({length:6}, () => chars[Math.floor(Math.random()*chars.length)]).join('');
+}
 
 /* ============================================================
    탭 전환
@@ -177,40 +182,55 @@ function startLocal() {
 }
 
 /* ============================================================
-   PeerJS 초기화
+   PeerJS 초기화 — 익명 Peer로 서버 연결 확인용
 ============================================================ */
 function initPeer() {
-  setOnlineMsg('서버에 연결 중...', 'wait');
-  peer = new Peer(undefined, {
-    debug: 0
-  });
+  setPeerStatus('spin', '서버 연결 중...');
+  _spawnPeer(undefined);
+}
 
-  peer.on('open', id => {
-    myPeerId = id;
+/* 내부: 지정 ID로 Peer 생성 */
+function _spawnPeer(id) {
+  if (peer) { try { peer.destroy(); } catch(e) {} peer = null; }
+  peerReady = false;
+
+  peer = new Peer(id, { debug: 0 });
+
+  peer.on('open', assignedId => {
     peerReady = true;
-    setPeerStatus('ok', '연결됨');
-    document.getElementById('btn-create').disabled = false;
-    document.getElementById('btn-join').disabled = false;
-    setOnlineMsg('방을 만들거나 코드를 입력하세요.', '');
-  });
-
-  peer.on('error', err => {
-    setPeerStatus('err', '연결 실패');
-    // unavailable-id: 잘못된 코드로 연결 시도 시
-    if (err.type === 'peer-unavailable') {
-      setOnlineMsg('❌ 방을 찾을 수 없습니다. 코드를 확인하세요.', 'error');
-      showScreen('online');
+    if (id !== undefined) {
+      // 방 코드 확정
+      roomCode = assignedId;
+      _showWaiting(roomCode);
     } else {
-      setOnlineMsg('❌ 오류: ' + (err.message || err.type), 'error');
+      setPeerStatus('ok', '연결됨');
+      document.getElementById('btn-create').disabled = false;
+      document.getElementById('btn-join').disabled   = false;
+      setOnlineMsg('방을 만들거나 코드를 입력하세요.', '');
     }
   });
 
-  // 호스트: 게스트가 연결해옴
+  peer.on('error', err => {
+    if (err.type === 'unavailable-id') {
+      // 코드 충돌 → 새 코드로 재시도
+      roomCode = makeCode();
+      setTimeout(() => _spawnPeer(roomCode), 200);
+      return;
+    }
+    if (err.type === 'peer-unavailable') {
+      setOnlineMsg('❌ 방을 찾을 수 없습니다. 코드를 확인하세요.', 'error');
+      showScreen('online');
+      return;
+    }
+    setPeerStatus('err', '연결 오류');
+    setOnlineMsg('❌ ' + (err.type || err.message), 'error');
+  });
+
+  // 호스트: 게스트 연결 수락
   peer.on('connection', conn => {
-    // 대기 화면에 있을 때만 수락
-    if (!document.getElementById('screen-waiting').classList.contains('active')) return;
-    hostConn = conn;
-    setupHostConn(conn);
+    if (document.getElementById('screen-waiting').classList.contains('active')) {
+      _handleGuestConn(conn);
+    }
   });
 }
 
@@ -218,45 +238,40 @@ function initPeer() {
    방 만들기 (호스트)
 ============================================================ */
 function createRoom() {
-  if (!peerReady) { setOnlineMsg('아직 서버에 연결 중입니다.', 'wait'); return; }
+  if (!peerReady) { setOnlineMsg('서버에 연결 중입니다. 잠시 후 시도해주세요.', 'wait'); return; }
+  roomCode = makeCode();
+  _spawnPeer(roomCode);   // 6자리 코드를 PeerID로 직접 등록
+}
 
-  // 방 코드 = PeerID 앞 8자리 (대문자)
-  const code = myPeerId.replace(/-/g,'').substring(0,8).toUpperCase();
+/* 대기 화면 표시 */
+function _showWaiting(code) {
   document.getElementById('display-code').textContent = code;
   document.getElementById('wait-msg').textContent = '상대방을 기다리는 중...';
   document.getElementById('wait-spinner').style.display = 'block';
   showScreen('waiting');
-
-  // 10분 타임아웃
+  clearTimeout(cancelTimer);
   cancelTimer = setTimeout(() => {
-    document.getElementById('wait-msg').textContent = '⏰ 시간 초과. 다시 시도하세요.';
+    document.getElementById('wait-msg').textContent = '⏰ 10분 초과. 취소 후 다시 시도하세요.';
     document.getElementById('wait-spinner').style.display = 'none';
   }, 10 * 60 * 1000);
 }
 
-/* ============================================================
-   호스트: 게스트 연결 수락
-============================================================ */
-function setupHostConn(conn) {
+/* 게스트 연결 처리 */
+function _handleGuestConn(conn) {
   conn.on('open', () => {
     clearTimeout(cancelTimer);
-    document.getElementById('wait-msg').textContent = '게스트 입장! 잠시 후 게임 시작...';
+    document.getElementById('wait-msg').textContent = '게스트 입장! 게임 시작...';
     document.getElementById('wait-spinner').style.display = 'none';
-
-    // HELLO 교환
     conn.send({ type: 'HELLO', role: 'host' });
   });
-
   conn.on('data', data => {
     if (data && data.type === 'HELLO' && data.role === 'guest') {
-      // 연결 확인 완료 → 게임으로 이동
       setTimeout(() => {
-        window.location.href = `omokgay.html?role=host&room=${myPeerId}`;
+        window.location.href = `omokgay.html?role=host&room=${roomCode}`;
       }, 400);
     }
   });
-
-  conn.on('error', err => {
+  conn.on('error', () => {
     document.getElementById('wait-msg').textContent = '❌ 연결 오류. 다시 시도하세요.';
     document.getElementById('wait-spinner').style.display = 'none';
   });
@@ -266,68 +281,41 @@ function setupHostConn(conn) {
    방 입장 (게스트)
 ============================================================ */
 function joinRoom() {
-  if (!peerReady) { setOnlineMsg('아직 서버에 연결 중입니다.', 'wait'); return; }
+  if (!peerReady) { setOnlineMsg('서버에 연결 중입니다. 잠시 후 시도해주세요.', 'wait'); return; }
+  const code = document.getElementById('join-input').value.trim().toUpperCase();
+  if (code.length < 6) { setOnlineMsg('6자리 방 코드를 입력해주세요.', 'error'); return; }
 
-  const raw = document.getElementById('join-input').value.trim().toUpperCase();
-  if (!raw) { setOnlineMsg('방 코드를 입력해주세요.', 'error'); return; }
-
-  // 코드 → 호스트 PeerID 변환 시도
-  // 호스트 코드는 UUID에서 하이픈 제거 후 앞 8자리
-  // 실제 PeerID는 UUID 형식이므로, 코드를 그대로 전달하고 omokgay.html에서 연결
   showScreen('connecting');
-  document.getElementById('connecting-msg').textContent = `[${raw}] 방에 연결 중...`;
+  document.getElementById('connecting-msg').textContent = `[${code}] 방에 연결 중...`;
 
-  // 게스트가 직접 연결 시도
-  // PeerID는 UUID 형식이라 코드만으론 모름 → 방 코드를 PeerID로 직접 사용
-  // (호스트가 코드 = myPeerId 전체를 공유하는 방식으로 전환)
-  const conn = peer.connect(raw, { reliable: true });
+  const conn = peer.connect(code, { reliable: true });
   guestConn = conn;
 
   const timeout = setTimeout(() => {
     setOnlineMsg('❌ 시간 초과. 코드를 확인하거나 다시 시도하세요.', 'error');
     showScreen('online');
     try { conn.close(); } catch(e) {}
+    guestConn = null;
   }, 10000);
 
   conn.on('open', () => {
     clearTimeout(timeout);
-    document.getElementById('connecting-msg').textContent = '연결됨! 잠시 후 게임 시작...';
+    document.getElementById('connecting-msg').textContent = '연결됨! 잠시 후 시작...';
     conn.send({ type: 'HELLO', role: 'guest' });
   });
-
   conn.on('data', data => {
     if (data && data.type === 'HELLO' && data.role === 'host') {
-      // 호스트 확인 완료 → 게임으로
       setTimeout(() => {
-        window.location.href = `omokgay.html?role=guest&room=${raw}`;
+        window.location.href = `omokgay.html?role=guest&room=${code}`;
       }, 400);
     }
   });
-
   conn.on('error', err => {
     clearTimeout(timeout);
     setOnlineMsg('❌ 연결 실패. 코드를 확인하세요.', 'error');
     showScreen('online');
+    guestConn = null;
   });
-}
-
-/* ============================================================
-   방 코드 = 호스트 PeerID 전체 사용 방식으로 변경
-   displayCode에 전체 PeerID 표시 (복사 편의)
-============================================================ */
-// createRoom override: 코드 = 전체 PeerID
-function createRoom() {
-  if (!peerReady) { setOnlineMsg('아직 서버에 연결 중입니다.', 'wait'); return; }
-  document.getElementById('display-code').textContent = myPeerId;
-  document.getElementById('display-code').style.fontSize = '0.85rem';
-  document.getElementById('display-code').style.letterSpacing = '1px';
-  document.getElementById('wait-msg').textContent = '상대방을 기다리는 중...';
-  document.getElementById('wait-spinner').style.display = 'block';
-  showScreen('waiting');
-  cancelTimer = setTimeout(() => {
-    document.getElementById('wait-msg').textContent = '⏰ 10분 초과. 다시 시도해주세요.';
-    document.getElementById('wait-spinner').style.display = 'none';
-  }, 10 * 60 * 1000);
 }
 
 /* ============================================================
@@ -335,6 +323,8 @@ function createRoom() {
 ============================================================ */
 function cancelWait() {
   clearTimeout(cancelTimer);
+  // 방 코드 Peer 파괴 후 익명 Peer 재생성
+  _spawnPeer(undefined);
   showScreen('online');
 }
 function cancelConnect() {
@@ -350,19 +340,18 @@ function copyCode() {
   navigator.clipboard.writeText(code).then(() => {
     const m = document.getElementById('wait-msg');
     const prev = m.textContent;
-    m.textContent = '✓ 코드 복사됨!';
+    m.textContent = '✓ 복사됨!';
     setTimeout(() => m.textContent = prev, 1500);
   }).catch(() => {
-    // 클립보드 API 실패 시 select
     const el = document.getElementById('display-code');
-    const range = document.createRange(); range.selectNodeContents(el);
+    const r = document.createRange(); r.selectNodeContents(el);
     window.getSelection().removeAllRanges();
-    window.getSelection().addRange(range);
+    window.getSelection().addRange(r);
   });
 }
 
 /* ============================================================
-   화면 전환
+   화면 전환 / 메시지
 ============================================================ */
 function showScreen(name) {
   ['local','online','waiting','connecting'].forEach(s => {
@@ -375,14 +364,11 @@ function setOnlineMsg(msg, type='') {
   el.className = 'msg' + (type ? ' '+type : '');
 }
 function setPeerStatus(state, text) {
-  const dot = document.getElementById('peer-dot');
-  dot.className = 'peer-dot ' + state;
+  document.getElementById('peer-dot').className = 'peer-dot ' + state;
   document.getElementById('peer-status-text').textContent = text;
 }
 
-/* ============================================================
-   Enter 키
-============================================================ */
+/* Enter 키 */
 document.getElementById('join-input').addEventListener('keydown', e => {
   if (e.key === 'Enter') joinRoom();
 });
