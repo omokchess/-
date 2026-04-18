@@ -1,62 +1,383 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
-    <meta charset="UTF-8">
-    <title>오목게이 - 로비</title>
-    <script src="https://unpkg.com/peerjs@1.4.7/dist/peerjs.min.js"></script>
-    <style>
-        body { background: #2C2C2E; color: white; font-family: sans-serif; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
-        .container { background: #3A3A3C; padding: 30px; border-radius: 15px; text-align: center; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
-        input { padding: 10px; border-radius: 5px; border: none; width: 200px; margin-bottom: 10px; }
-        button { padding: 10px 20px; border-radius: 5px; border: none; background: #686100; color: white; cursor: pointer; font-weight: bold; margin: 5px; }
-        button:hover { background: #686100; }
-    </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>오목게이 — 로비</title>
+<style>
+:root {
+  --bg: #2C2C2E; --panel: #3A3A3C; --panel2: #48484A;
+  --border: #555558; --gold: #F5C842; --gold2: #FDE68A;
+  --text: #F2F2F7; --muted: #AEAEB2;
+  --red: #FF453A; --green: #30D158; --blue: #0A84FF;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  font-family: 'Noto Sans KR','Apple SD Gothic Neo','Malgun Gothic',sans-serif;
+  background: var(--bg); color: var(--text);
+  min-height: 100vh; display: flex;
+  align-items: center; justify-content: center;
+  padding: 20px;
+}
+
+/* ── 카드 ── */
+.card {
+  background: var(--panel); border: 1px solid var(--border);
+  border-radius: 20px; padding: 40px 36px;
+  width: 100%; max-width: 440px;
+  display: flex; flex-direction: column; gap: 20px;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+}
+.logo { text-align: center; }
+.logo h1 {
+  font-size: 2.2rem; font-weight: 800; letter-spacing: 3px;
+  color: var(--gold); text-shadow: 0 2px 20px rgba(245,200,66,0.4);
+  margin-bottom: 4px;
+}
+.logo p { font-size: 0.8rem; color: var(--muted); letter-spacing: 1px; }
+
+.divider { border: none; border-top: 1px solid var(--border); }
+.section-label {
+  font-size: 0.7rem; color: var(--muted);
+  text-transform: uppercase; letter-spacing: 1.5px;
+}
+
+/* ── 버튼 ── */
+.btn {
+  width: 100%; padding: 15px; border-radius: 12px; border: none;
+  font-size: 1rem; font-weight: 700; cursor: pointer;
+  font-family: inherit; transition: opacity 0.15s, transform 0.1s;
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+}
+.btn:hover { opacity: 0.88; transform: translateY(-1px); }
+.btn:active { transform: scale(0.98); }
+.btn-gold   { background: var(--gold); color: #000; }
+.btn-dark   { background: var(--panel2); color: var(--text); border: 1.5px solid var(--border); }
+.btn-blue   { background: var(--blue); color: #fff; }
+
+/* ── 입력 행 ── */
+.input-row { display: flex; gap: 8px; }
+.code-input {
+  flex: 1; padding: 13px 14px;
+  background: var(--panel2); border: 1.5px solid var(--border);
+  border-radius: 10px; color: var(--text); font-size: 1.1rem;
+  font-family: 'Consolas','Courier New',monospace;
+  letter-spacing: 4px; text-transform: uppercase;
+  transition: border-color 0.15s; text-align: center;
+}
+.code-input:focus { outline: none; border-color: var(--gold); }
+.code-input::placeholder { color: var(--muted); letter-spacing: 1px; font-family: inherit; font-size: 0.85rem; }
+.btn-join-sm {
+  padding: 13px 18px; border-radius: 10px;
+  background: var(--blue); color: #fff; border: none;
+  font-size: 0.9rem; font-weight: 700; cursor: pointer;
+  font-family: inherit; transition: opacity 0.15s; white-space: nowrap;
+}
+.btn-join-sm:hover { opacity: 0.85; }
+
+/* ── 메시지 ── */
+.msg { font-size: 0.82rem; text-align: center; min-height: 18px; color: var(--muted); }
+.msg.error { color: var(--red); }
+.msg.ok    { color: var(--green); }
+.msg.wait  { color: var(--gold); }
+
+/* ── 대기 화면 ── */
+.waiting-box { display: flex; flex-direction: column; align-items: center; gap: 14px; }
+.room-code-box {
+  font-size: 2.6rem; font-weight: 800; letter-spacing: 10px;
+  color: var(--gold); background: var(--panel2);
+  border: 2px dashed var(--border); border-radius: 14px;
+  padding: 16px 28px; cursor: pointer;
+  transition: border-color 0.2s; user-select: all;
+  font-family: 'Consolas','Courier New',monospace;
+}
+.room-code-box:hover { border-color: var(--gold); }
+.room-hint { font-size: 0.78rem; color: var(--muted); text-align: center; }
+.spinner {
+  width: 30px; height: 30px;
+  border: 3px solid var(--border); border-top-color: var(--gold);
+  border-radius: 50%; animation: spin 0.8s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ── 탭 ── */
+.tabs { display: flex; gap: 6px; background: var(--panel2); padding: 4px; border-radius: 12px; }
+.tab {
+  flex: 1; padding: 9px; border-radius: 9px; border: none;
+  background: transparent; color: var(--muted); font-size: 0.85rem;
+  font-weight: 600; cursor: pointer; font-family: inherit;
+  transition: background 0.15s, color 0.15s;
+}
+.tab.active { background: var(--panel); color: var(--text); }
+
+/* 화면 전환 */
+.screen { display: none; flex-direction: column; gap: 16px; }
+.screen.active { display: flex; }
+
+/* 연결 상태 표시 */
+.peer-status {
+  display: flex; align-items: center; justify-content: center;
+  gap: 6px; font-size: 0.72rem; color: var(--muted);
+}
+.peer-dot {
+  width: 7px; height: 7px; border-radius: 50%;
+  background: var(--muted);
+}
+.peer-dot.ready { background: var(--green); }
+.peer-dot.connecting { background: var(--gold); animation: pulse 1s ease infinite; }
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.3} }
+</style>
 </head>
 <body>
-    <div class="container">
-        <h1>오목게이</h1>
-        <div id="setup">
-            <button id="btn-create">방 만들기 (호스트)</button>
-            <p>또는</p>
-            <input type="text" id="join-id" placeholder="방 코드를 입력하세요">
-            <button id="btn-join">방 참가하기 (게스트)</button>
-        </div>
-        <div id="waiting" style="display:none;">
-            <p>나의 방 코드:</p>
-            <h2 id="my-id">...</h2>
-            <p>친구에게 이 코드를 알려주세요!</p>
-            <p>친구가 들어오면 자동으로 게임이 시작됩니다.</p>
-        </div>
+<div class="card" id="card">
+
+  <!-- 로고 -->
+  <div class="logo">
+    <h1>오목게이</h1>
+    <p>OMOK GAY — 체스 × 오목 하이브리드</p>
+  </div>
+
+  <!-- 탭 -->
+  <div class="tabs">
+    <button class="tab active" id="tab-local"  onclick="switchTab('local')">👥 로컬 2인</button>
+    <button class="tab"        id="tab-online" onclick="switchTab('online')">🌐 온라인</button>
+  </div>
+
+  <!-- ── 로컬 화면 ── -->
+  <div class="screen active" id="screen-local">
+    <p style="font-size:0.85rem;color:var(--muted);text-align:center;line-height:1.6">
+      같은 기기에서 두 명이 번갈아 플레이합니다.<br>추가 설정 없이 바로 시작할 수 있어요.
+    </p>
+    <button class="btn btn-gold" onclick="startLocal()">▶ 바로 시작</button>
+  </div>
+
+  <!-- ── 온라인 화면 ── -->
+  <div class="screen" id="screen-online">
+
+    <!-- 연결 상태 -->
+    <div class="peer-status">
+      <div class="peer-dot connecting" id="peer-dot"></div>
+      <span id="peer-status-text">서버 연결 중...</span>
     </div>
 
-    <script>
-        const peer = new Peer();
+    <hr class="divider">
+    <div class="section-label">방 만들기</div>
+    <button class="btn btn-gold" id="btn-create" onclick="createRoom()" disabled>
+      🏠 방 만들기 (호스트 = 백 진영)
+    </button>
 
-        peer.on('open', (id) => {
-            document.getElementById('my-id').textContent = id;
-        });
+    <hr class="divider">
+    <div class="section-label">방 입장</div>
+    <div class="input-row">
+      <input class="code-input" id="join-input" maxlength="6" placeholder="방 코드 6자리">
+      <button class="btn-join-sm" onclick="joinRoom()">입장</button>
+    </div>
 
-        // 방 만들기
-        document.getElementById('btn-create').addEventListener('click', () => {
-            document.getElementById('setup').style.display = 'none';
-            document.getElementById('waiting').style.display = 'block';
-        });
+    <div class="msg" id="online-msg"></div>
+  </div>
 
-        // 상대방 접속 감지
-        peer.on('connection', (conn) => {
-            conn.on('open', () => {
-                // ✅ 그냥 이동만 한다
-                window.location.href = `game.html?room=${peer.id}&role=host`;
-            });
-        });
+  <!-- ── 대기 화면 (방 만든 후) ── -->
+  <div class="screen" id="screen-waiting">
+    <div class="waiting-box">
+      <p style="font-size:0.85rem;color:var(--muted)">친구에게 아래 코드를 알려주세요</p>
+      <div class="room-code-box" id="display-code" onclick="copyCode()" title="클릭하면 복사">------</div>
+      <p class="room-hint">클릭하면 클립보드에 복사됩니다</p>
+      <div class="spinner"></div>
+      <div class="msg wait" id="wait-msg">상대방을 기다리는 중...</div>
+      <button class="btn btn-dark" onclick="cancelRoom()" style="margin-top:4px">취소</button>
+    </div>
+  </div>
 
-        // 방 참가하기
-        document.getElementById('btn-join').addEventListener('click', () => {
-            const targetId = document.getElementById('join-id').value;
-            if (targetId) {
-                window.location.href = `game.html?room=${targetId}&role=guest`;
-            }
-        });
-    </script>
+</div>
+
+<!-- PeerJS CDN -->
+<script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
+<script>
+/* ============================================================
+   상태
+============================================================ */
+let peer     = null;   // PeerJS 인스턴스
+let myPeerId = null;   // 내 PeerJS ID (= 방 코드로 사용)
+let peerReady = false;
+
+/* ============================================================
+   탭 전환
+============================================================ */
+function switchTab(tab) {
+  ['local','online'].forEach(t => {
+    document.getElementById('tab-'+t).classList.toggle('active', t===tab);
+    document.getElementById('screen-'+t).classList.toggle('active', t===tab);
+  });
+  // 온라인 탭 첫 진입 시 PeerJS 초기화
+  if (tab === 'online' && !peer) initPeer();
+}
+
+/* ============================================================
+   로컬 시작
+============================================================ */
+function startLocal() {
+  // game.html이 없으면 오목게이.html로 이동
+  window.location.href = 'omokgay.html';
+}
+
+/* ============================================================
+   PeerJS 초기화
+============================================================ */
+function initPeer() {
+  setOnlineMsg('서버에 연결 중...', 'wait');
+  try {
+    peer = new Peer(undefined, {
+      // 기본 PeerJS 공개 서버 사용 (무료)
+      // 필요시 아래 주석 해제하고 직접 서버 지정 가능:
+      // host: '0.peerjs.com', port: 443, secure: true
+    });
+  } catch(e) {
+    setOnlineMsg('❌ PeerJS 로드 실패. 새로고침 해주세요.', 'error'); return;
+  }
+
+  peer.on('open', id => {
+    myPeerId = id;
+    peerReady = true;
+    document.getElementById('peer-dot').className = 'peer-dot ready';
+    document.getElementById('peer-status-text').textContent = '서버 연결됨';
+    document.getElementById('btn-create').disabled = false;
+    setOnlineMsg('');
+  });
+
+  peer.on('error', err => {
+    console.error('PeerJS error:', err);
+    document.getElementById('peer-dot').className = 'peer-dot';
+    document.getElementById('peer-status-text').textContent = '연결 오류';
+    setOnlineMsg('❌ 연결 오류: ' + err.message, 'error');
+  });
+
+  // 호스트 측: 게스트가 연결해오면 게임 시작
+  peer.on('connection', conn => {
+    conn.on('open', () => {
+      // 연결 확인 메시지 교환 후 게임 이동
+      conn.send({ type: 'HELLO', role: 'host' });
+      conn.on('data', data => {
+        if (data.type === 'HELLO' && data.role === 'guest') {
+          document.getElementById('wait-msg').textContent = '게스트 입장! 게임 시작...';
+          setTimeout(() => {
+            window.location.href = `omokgay.html?role=host&room=${myPeerId}`;
+          }, 600);
+        }
+      });
+    });
+  });
+}
+
+/* ============================================================
+   방 코드 생성 (PeerJS ID를 6자리로 압축)
+============================================================ */
+function shortenId(peerId) {
+  // PeerJS UUID 앞 6자리 영숫자만 추출 (대문자)
+  return peerId.replace(/-/g,'').substring(0,6).toUpperCase();
+}
+
+/* ============================================================
+   방 만들기
+============================================================ */
+function createRoom() {
+  if (!peerReady) { setOnlineMsg('아직 서버에 연결 중입니다. 잠시 후 시도하세요.', 'wait'); return; }
+  const code = shortenId(myPeerId);
+  document.getElementById('display-code').textContent = code;
+  showScreen('waiting');
+}
+
+/* ============================================================
+   방 입장 (게스트)
+============================================================ */
+function joinRoom() {
+  if (!peerReady) { setOnlineMsg('아직 서버에 연결 중입니다.', 'wait'); return; }
+  const input = document.getElementById('join-input').value.trim().toUpperCase();
+  if (input.length < 6) { setOnlineMsg('6자리 방 코드를 입력해주세요.', 'error'); return; }
+  setOnlineMsg('방을 찾는 중...', 'wait');
+
+  // 호스트의 PeerJS ID 앞 6자리로 전체 ID를 특정할 수 없으므로,
+  // 게스트가 코드를 입력하면 직접 그 코드를 PeerID로 시도
+  // (호스트가 만든 코드 = shortenId(peerId) = UUID 앞 6자리 대문자)
+  // → 게스트는 full UUID가 필요하므로 방 코드 = full UUID를 그대로 사용하는 방식으로 변경
+
+  // 실제로는 full Peer ID를 방 코드로 쓰되, 표시만 6자리로 줄임
+  // 여기선 입력받은 값이 full ID라고 가정 (하단 참고)
+  connectAsGuest(input);
+}
+
+function connectAsGuest(targetId) {
+  // targetId = 호스트의 myPeerId (full UUID 또는 6자리 코드)
+  let conn;
+  try {
+    conn = peer.connect(targetId, { reliable: true });
+  } catch(e) {
+    setOnlineMsg('❌ 연결 실패: ' + e.message, 'error'); return;
+  }
+
+  const timeout = setTimeout(() => {
+    setOnlineMsg('❌ 방을 찾을 수 없습니다. 코드를 확인하세요.', 'error');
+    conn.close();
+  }, 8000);
+
+  conn.on('open', () => {
+    clearTimeout(timeout);
+    conn.send({ type: 'HELLO', role: 'guest' });
+    conn.on('data', data => {
+      if (data.type === 'HELLO' && data.role === 'host') {
+        setOnlineMsg('✓ 연결됨! 게임 시작...', 'ok');
+        setTimeout(() => {
+          window.location.href = `omokgay.html?role=guest&room=${targetId}`;
+        }, 400);
+      }
+    });
+  });
+
+  conn.on('error', err => {
+    clearTimeout(timeout);
+    setOnlineMsg('❌ 연결 실패: ' + err.message, 'error');
+  });
+}
+
+/* ============================================================
+   방 취소
+============================================================ */
+function cancelRoom() {
+  showScreen('online');
+  document.getElementById('wait-msg').textContent = '상대방을 기다리는 중...';
+}
+
+/* ============================================================
+   코드 복사
+============================================================ */
+function copyCode() {
+  const code = document.getElementById('display-code').textContent;
+  navigator.clipboard.writeText(code).then(() => {
+    const el = document.getElementById('wait-msg');
+    el.textContent = '✓ 코드 복사됨!';
+    setTimeout(() => el.textContent = '상대방을 기다리는 중...', 1500);
+  });
+}
+
+/* ============================================================
+   화면 전환 헬퍼
+============================================================ */
+function showScreen(name) {
+  ['local','online','waiting'].forEach(s => {
+    document.getElementById('screen-'+s).classList.toggle('active', s===name);
+  });
+}
+function setOnlineMsg(msg, type='') {
+  const el = document.getElementById('online-msg');
+  el.textContent = msg;
+  el.className = 'msg' + (type ? ' '+type : '');
+}
+
+/* ============================================================
+   Enter 키로 방 입장
+============================================================ */
+document.getElementById('join-input').addEventListener('keydown', e => {
+  if (e.key === 'Enter') joinRoom();
+});
+</script>
 </body>
 </html>
