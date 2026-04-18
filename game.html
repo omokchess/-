@@ -4,9 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>오목게이</title>
-
-<script src="https://unpkg.com/peerjs@1.4.7/dist/peerjs.min.js"></script>
-
+<script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
 <style>
 /* ── 기본 리셋 & 변수 ── */
 :root {
@@ -609,6 +607,7 @@ h1 {
   <h1>오목게이</h1>
   <p class="header-sub">OMOK GAY — 체스 × 오목 하이브리드</p>
   <div class="header-btns">
+    <button class="hdr-btn" id="btn-lobby" onclick="goLobby()">← 로비</button>
     <button class="hdr-btn primary" id="restart-side-btn">⟳ 새 게임</button>
     <button class="hdr-btn" id="toggle-rules-btn">규칙 보기</button>
   </div>
@@ -703,6 +702,17 @@ h1 {
   </div>
 </div>
 
+<!-- 온라인 배지 -->
+<div id="online-badge" style="display:none;position:fixed;top:12px;right:12px;z-index:50;background:var(--panel);border:1px solid var(--border);border-radius:20px;padding:5px 14px;font-size:0.75rem;color:var(--muted);gap:7px;align-items:center;">
+  <span id="ob-dot" style="width:8px;height:8px;border-radius:50%;background:var(--green);display:inline-block;animation:obpulse 1.5s ease infinite;"></span>
+  <span id="ob-label">온라인</span>
+  <span id="ob-color" style="color:var(--text);font-weight:700;margin-left:2px"></span>
+</div>
+<style>
+@keyframes obpulse{0%,100%{opacity:1}50%{opacity:0.3}}
+#online-badge.show{display:flex!important;}
+</style>
+
 <!-- 게임 종료 오버레이 -->
 <div id="end-overlay">
   <div id="end-box">
@@ -714,6 +724,27 @@ h1 {
 </div>
 
 <script>
+/* ============================================================
+   온라인 모드 — URL 파라미터 파싱 & PeerJS 설정
+   ?role=host&room=PEERID  또는  ?role=guest&room=PEERID
+   파라미터 없으면 → 로컬 모드
+============================================================ */
+const _urlParams = new URLSearchParams(window.location.search);
+const NET_ROLE   = _urlParams.get('role');   // 'host' | 'guest' | null
+const NET_ROOM   = _urlParams.get('room');   // 호스트의 Peer ID
+const IS_ONLINE  = !!NET_ROLE;
+
+/* 온라인 모드에서 내 진영 */
+let myColor = IS_ONLINE ? (NET_ROLE === 'host' ? 'w' : 'b') : null;
+
+/* PeerJS 연결 객체 */
+let netConn   = null;   // DataConnection
+let netPeer   = null;   // 내 Peer 인스턴스
+let netReady  = false;  // 연결 확립 여부
+
+/* 원격 상태 적용 중 루프 방지 플래그 */
+let applyingRemote = false;
+
 /* ============================================================
    상수
 ============================================================ */
@@ -1036,14 +1067,20 @@ function finishTurn() {
   highlights=[];
 
   const kingNeeded = findKing(board,turn)===null;
-  let statusMsg = (turn==='w'?'백':'흑')+' 턴';
-  if(kingNeeded) statusMsg += ' — 킹 배치';
-  else if(isInCheck(board,turn)) statusMsg += ' ⚠ 체크!';
+  let statusMsg;
+  if (IS_ONLINE) {
+    statusMsg = (turn === myColor) ? '내 턴!' : '상대방 턴 대기 중...';
+    if (turn === myColor && kingNeeded)         statusMsg = '내 턴 — 킹 배치';
+    if (turn === myColor && isInCheck(board,turn)) statusMsg = '내 턴 ⚠ 체크!';
+    // 내 행동이 끝났으면 상대에게 상태 전송
+    netSend({ type: 'STATE', payload: serializeGameState() });
+  } else {
+    statusMsg = (turn==='w'?'백':'흑')+' 턴';
+    if(kingNeeded) statusMsg += ' — 킹 배치';
+    else if(isInCheck(board,turn)) statusMsg += ' ⚠ 체크!';
+  }
   setStatus(statusMsg);
   renderAll();
-
-  if (isHost) sendFullState();
-
 }
 
 function endGame(emoji, title, desc) {
@@ -1052,8 +1089,9 @@ function endGame(emoji, title, desc) {
   document.getElementById('end-title').textContent=title;
   document.getElementById('end-desc').textContent=desc;
   document.getElementById('end-overlay').classList.add('show');
+  // 온라인: 결과도 상대에게 전송
+  netSend({ type: 'STATE', payload: serializeGameState() });
   renderAll();
-
 }
 
 /* ============================================================
@@ -1088,10 +1126,10 @@ function showPromoModal(color) {
    클릭 핸들러
 ============================================================ */
 function onCellClick(row, col) {
-    if (!isHost) {
-        sendInput({ action: 'click', row, col });
-        return;
-    }
+  if(gameOver||pendingPromo) return;
+  // 온라인: 내 턴이 아니면 차단
+  if(IS_ONLINE && turn !== myColor) { setStatus('상대방 턴 대기 중...'); return; }
+  const kingPlaced = findKing(board,turn)!==null;
 
   if(!kingPlaced) {
     if(selectedHandPiece!=='K') { setStatus('첫 번째 턴: 킹을 먼저 배치해야 합니다!'); return; }
@@ -1143,12 +1181,8 @@ function onCellClick(row, col) {
 }
 
 function onHandClick(color, type) {
-    if (!isHost) {
-        sendInput({ action: 'hand', type });
-        return;
-    }
-
-    // 기존 코드 그대로 ↓
+  if(gameOver||color!==turn||hand[color][type]<=0) return;
+  if(IS_ONLINE && turn !== myColor) { setStatus('상대방 턴 대기 중...'); return; }
   const kingPlaced=findKing(board,turn)!==null;
   if(!kingPlaced&&type!=='K') { setStatus('첫 번째 턴: 킹을 먼저 배치해야 합니다!'); return; }
 
@@ -1348,8 +1382,14 @@ function initGame() {
   prevBoard=null; prevHand=null; prevTurn=null; prevLastMove=null;
   document.getElementById('history-list').innerHTML='';
   renderAll();
-  setStatus('백 턴 — 킹 배치');
-  if (isHost) sendFullState();
+  if (IS_ONLINE) {
+    const msg = netReady
+      ? (turn === myColor ? '내 턴 — 킹 배치' : '상대방 턴 대기 중...')
+      : '상대방 연결 대기 중...';
+    setStatus(msg);
+  } else {
+    setStatus('백 턴 — 킹 배치');
+  }
 }
 
 /* ============================================================
@@ -1357,10 +1397,12 @@ function initGame() {
 ============================================================ */
 document.getElementById('restart-btn').addEventListener('click',()=>{
   document.getElementById('end-overlay').classList.remove('show');
+  if (IS_ONLINE) netSend({ type: 'RESTART' });
   initGame();
 });
 document.getElementById('restart-side-btn').addEventListener('click',()=>{
   document.getElementById('end-overlay').classList.remove('show');
+  if (IS_ONLINE) netSend({ type: 'RESTART' });
   initGame();
 });
 document.getElementById('toggle-rules-btn').addEventListener('click',()=>{
@@ -1370,126 +1412,184 @@ document.getElementById('toggle-rules-btn').addEventListener('click',()=>{
 });
 
 /* ============================================================
+   로비로 돌아가기
+============================================================ */
+function goLobby() {
+  if (netConn)  { netConn.close();  netConn = null; }
+  if (netPeer)  { netPeer.destroy(); netPeer = null; }
+  window.location.href = 'index.html';
+}
+
+/* ============================================================
    시작
 ============================================================ */
 buildBoardDOM();
 initGame();
 
-/* --- 온라인 통신 추가 코드 --- */
-const urlParams = new URLSearchParams(window.location.search);
-const roomID = urlParams.get('room');
-const role = urlParams.get('role');
+/* ============================================================
+   온라인 시스템 (로컬 모드면 아무것도 하지 않음)
+============================================================ */
+if (IS_ONLINE) {
+  // 온라인 배지 표시
+  const badge = document.getElementById('online-badge');
+  badge.classList.add('show');
+  document.getElementById('ob-color').textContent = myColor === 'w' ? '(백)' : '(흑)';
 
-let peer;
-let conn;
+  // PeerJS 초기화
+  netPeer = new Peer();
 
-// 역할 판별
-const isHost = role === 'host';
-
-// Peer 생성
-peer = isHost ? new Peer(roomID) : new Peer();
-
-peer.on('open', () => {
-    if (isHost) {
-        peer.on('connection', (c) => {
-            conn = c;
-            setupConnection();
-
-            // 최초 상태 전송
-            sendFullState();
-        });
+  netPeer.on('open', peerId => {
+    if (NET_ROLE === 'host') {
+      // 호스트: 게스트가 연결해오길 기다림 (이미 index.html에서 연결 확인됨)
+      // → peer.on('connection') 이 자동으로 트리거
+      setStatus('게스트 연결 대기 중...');
     } else {
-        conn = peer.connect(roomID);
-        conn.on('open', () => {
-            setupConnection();
-        });
+      // 게스트: 호스트에게 연결
+      setStatus('호스트에 연결 중...');
+      const conn = netPeer.connect(NET_ROOM, { reliable: true });
+      setupConn(conn);
     }
-});
+  });
 
-// 연결 설정
-function setupConnection() {
-    conn.on('data', (data) => {
+  // 호스트 측 연결 수신
+  netPeer.on('connection', conn => {
+    if (NET_ROLE === 'host') setupConn(conn);
+  });
 
-        // 🔵 호스트는 입력 받음
-        if (isHost) {
-            if (data.type === 'input') {
-                handleRemoteInput(data);
-            }
-        }
+  netPeer.on('error', err => {
+    setStatus('❌ 연결 오류: ' + err.message);
+  });
+}
 
-        // 🟢 게스트는 상태만 받음
-        else {
-            if (data.type === 'sync') {
-                applyState(data.state);
-            }
-        }
+/* ============================================================
+   DataConnection 공통 설정
+============================================================ */
+function setupConn(conn) {
+  netConn = conn;
+  conn.on('open', () => {
+    netReady = true;
+    document.getElementById('ob-dot').style.background = 'var(--green)';
+    document.getElementById('ob-label').textContent = '연결됨';
+    setStatus(turn === myColor ? '내 턴 — 킹 배치' : '상대방 턴 대기 중...');
+    // 호스트가 초기 상태 전송
+    if (NET_ROLE === 'host') {
+      netSend({ type: 'STATE', payload: serializeGameState() });
+    }
+  });
+
+  conn.on('data', data => {
+    if (!data || !data.type) return;
+    switch (data.type) {
+      case 'STATE':
+        applyRemoteGameState(data.payload);
+        break;
+      case 'RESTART':
+        document.getElementById('end-overlay').classList.remove('show');
+        initGame();
+        break;
+    }
+  });
+
+  conn.on('close', () => {
+    netReady = false;
+    document.getElementById('ob-dot').style.background = 'var(--red)';
+    document.getElementById('ob-label').textContent = '연결 끊김';
+    setStatus('⚠ 상대방 연결이 끊겼습니다.');
+  });
+
+  conn.on('error', err => {
+    setStatus('❌ 연결 오류: ' + err.message);
+  });
+}
+
+/* ============================================================
+   데이터 전송 (연결 없으면 무시)
+============================================================ */
+function netSend(data) {
+  if (netConn && netConn.open) {
+    try { netConn.send(data); } catch(e) { console.warn('netSend 실패:', e); }
+  }
+}
+
+/* ============================================================
+   게임 상태 직렬화 (전송용)
+============================================================ */
+function serializeGameState() {
+  const list = document.getElementById('history-list');
+  const log = [];
+  if (list) list.querySelectorAll('.move-entry').forEach(el =>
+    log.push({ cls: el.className, txt: el.textContent })
+  );
+  return {
+    board:         JSON.stringify(board),
+    turn,
+    handW:         JSON.stringify(hand.w),
+    handB:         JSON.stringify(hand.b),
+    consecW:       consecCheckBy.w,  consecB:  consecCheckBy.b,
+    totalW:        totalCheckBy.w,   totalB:   totalCheckBy.b,
+    checkW:        checkState.w,     checkB:   checkState.b,
+    posHistory:    JSON.stringify(positionHistory),
+    lastMove:      JSON.stringify(lastMove),
+    gameOver,
+    pendingPromo:  JSON.stringify(pendingPromo),
+    moveLog:       JSON.stringify(log),
+    endEmoji:      document.getElementById('end-emoji').textContent,
+    endTitle:      document.getElementById('end-title').textContent,
+    endDesc:       document.getElementById('end-desc').textContent,
+  };
+}
+
+/* ============================================================
+   원격 상태 적용 (상대방 행동을 내 화면에 반영)
+============================================================ */
+function applyRemoteGameState(s) {
+  if (applyingRemote) return;
+  applyingRemote = true;
+
+  board            = JSON.parse(s.board);
+  turn             = s.turn;
+  hand.w           = JSON.parse(s.handW);
+  hand.b           = JSON.parse(s.handB);
+  consecCheckBy.w  = s.consecW;  consecCheckBy.b = s.consecB;
+  totalCheckBy.w   = s.totalW;   totalCheckBy.b  = s.totalB;
+  checkState.w     = s.checkW;   checkState.b    = s.checkB;
+  positionHistory  = JSON.parse(s.posHistory);
+  lastMove         = JSON.parse(s.lastMove);
+  gameOver         = s.gameOver;
+  pendingPromo     = JSON.parse(s.pendingPromo);
+
+  // 이동 기록 동기화
+  const list = document.getElementById('history-list');
+  if (list) {
+    list.innerHTML = '';
+    JSON.parse(s.moveLog).forEach(item => {
+      const el = document.createElement('div');
+      el.className = item.cls; el.textContent = item.txt;
+      list.appendChild(el);
     });
-}
+    list.parentElement.scrollTop = list.parentElement.scrollHeight;
+  }
 
-// =============================
-// 📤 상태 전송 (호스트 → 게스트)
-// =============================
-function sendFullState() {
-    if (!conn || !conn.open) return;
+  // 게임 종료 처리
+  if (s.gameOver && s.endTitle) {
+    document.getElementById('end-emoji').textContent = s.endEmoji;
+    document.getElementById('end-title').textContent = s.endTitle;
+    document.getElementById('end-desc').textContent  = s.endDesc;
+    document.getElementById('end-overlay').classList.add('show');
+  }
 
-    conn.send({
-        type: 'sync',
-        state: {
-            board,
-            turn,
-            hand,
-            lastMove,
-            consecCheckBy,
-            totalCheckBy,
-            checkState
-        }
-    });
-}
+  selectedHandPiece = null; selectedCell = null; highlights = [];
 
-// =============================
-// 📥 상태 적용 (게스트)
-// =============================
-function applyState(state) {
-    board = state.board;
-    turn = state.turn;
-    hand = state.hand;
-    lastMove = state.lastMove;
-    consecCheckBy = state.consecCheckBy;
-    totalCheckBy = state.totalCheckBy;
-    checkState = state.checkState;
+  // 상태 메시지
+  if (!gameOver) {
+    let msg = (turn === myColor) ? '내 턴!' : '상대방 턴 대기 중...';
+    if (turn === myColor && !findKing(board, turn))    msg = '내 턴 — 킹 배치';
+    if (turn === myColor && isInCheck(board, turn))    msg = '내 턴 ⚠ 체크!';
+    setStatus(msg);
+  }
 
-    selectedCell = null;
-    selectedHandPiece = null;
-    highlights = [];
-
-    renderAll();
-}
-
-// =============================
-// 🎮 게스트 입력 전송
-// =============================
-function sendInput(data) {
-    if (!isHost && conn && conn.open) {
-        conn.send({
-            type: 'input',
-            ...data
-        });
-    }
-}
-
-// =============================
-// 🧠 호스트가 입력 처리
-// =============================
-function handleRemoteInput(data) {
-    if (data.action === 'click') {
-        onCellClick(data.row, data.col);
-    }
-    if (data.action === 'hand') {
-        onHandClick(turn, data.type);
-    }
-
-    // 처리 후 상태 동기화
-    sendFullState();
+  renderAll();
+  applyingRemote = false;
 }
 </script>
 </body>
