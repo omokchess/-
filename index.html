@@ -31,7 +31,7 @@
 
     <script>
         const peer = new Peer();
-        
+
         peer.on('open', (id) => {
             document.getElementById('my-id').textContent = id;
         });
@@ -43,14 +43,9 @@
         });
 
         // 상대방 접속 감지
-        peer.on('connection', (c) => {
-            conn = c;
-
+        peer.on('connection', (conn) => {
             conn.on('open', () => {
-                setupConnection();
-                initGame(); // 👉 게임 확실히 시작
-                sendFullState();
-                // 친구가 들어오면 게임 페이지로 이동 (나는 호스트)
+                // ✅ 그냥 이동만 한다
                 window.location.href = `game.html?room=${peer.id}&role=host`;
             });
         });
@@ -59,7 +54,6 @@
         document.getElementById('btn-join').addEventListener('click', () => {
             const targetId = document.getElementById('join-id').value;
             if (targetId) {
-                // 바로 게임 페이지로 이동하면서 방 코드 전달 (나는 게스트)
                 window.location.href = `game.html?room=${targetId}&role=guest`;
             }
         });
