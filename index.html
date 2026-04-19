@@ -256,66 +256,29 @@ function _showWaiting(code) {
   }, 10 * 60 * 1000);
 }
 
-/* 게스트 연결 처리 */
+/* 게스트 연결 처리 — HELLO 없이 즉시 이동 */
 function _handleGuestConn(conn) {
-  conn.on('open', () => {
-    clearTimeout(cancelTimer);
-    document.getElementById('wait-msg').textContent = '게스트 입장! 게임 시작...';
-    document.getElementById('wait-spinner').style.display = 'none';
-    conn.send({ type: 'HELLO', role: 'host' });
-  });
-  conn.on('data', data => {
-    if (data && data.type === 'HELLO' && data.role === 'guest') {
-      setTimeout(() => {
-        window.location.href = `omokgay.html?role=host&room=${roomCode}`;
-      }, 400);
-    }
-  });
-  conn.on('error', () => {
-    document.getElementById('wait-msg').textContent = '❌ 연결 오류. 다시 시도하세요.';
-    document.getElementById('wait-spinner').style.display = 'none';
-  });
+  clearTimeout(cancelTimer);
+  document.getElementById('wait-msg').textContent = '게스트 입장! 게임 시작...';
+  document.getElementById('wait-spinner').style.display = 'none';
+  // 호스트: peer를 파괴하지 않고 페이지 이동
+  // (peer.destroy 없이 이동하면 잠깐 PeerID가 살아있어 게스트가 연결 가능)
+  window.location.href = `omokgay.html?role=host&room=${roomCode}`;
 }
 
 /* ============================================================
-   방 입장 (게스트)
+   방 입장 (게스트) — 코드 입력 후 바로 omokgay.html로 이동
+   실제 PeerJS 연결은 omokgay.html 안에서만 처리
 ============================================================ */
 function joinRoom() {
   if (!peerReady) { setOnlineMsg('서버에 연결 중입니다. 잠시 후 시도해주세요.', 'wait'); return; }
   const code = document.getElementById('join-input').value.trim().toUpperCase();
   if (code.length < 6) { setOnlineMsg('6자리 방 코드를 입력해주세요.', 'error'); return; }
-
   showScreen('connecting');
-  document.getElementById('connecting-msg').textContent = `[${code}] 방에 연결 중...`;
-
-  const conn = peer.connect(code, { reliable: true });
-  guestConn = conn;
-
-  const timeout = setTimeout(() => {
-    setOnlineMsg('❌ 시간 초과. 코드를 확인하거나 다시 시도하세요.', 'error');
-    showScreen('online');
-    try { conn.close(); } catch(e) {}
-    guestConn = null;
-  }, 10000);
-
-  conn.on('open', () => {
-    clearTimeout(timeout);
-    document.getElementById('connecting-msg').textContent = '연결됨! 잠시 후 시작...';
-    conn.send({ type: 'HELLO', role: 'guest' });
-  });
-  conn.on('data', data => {
-    if (data && data.type === 'HELLO' && data.role === 'host') {
-      setTimeout(() => {
-        window.location.href = `omokgay.html?role=guest&room=${code}`;
-      }, 400);
-    }
-  });
-  conn.on('error', err => {
-    clearTimeout(timeout);
-    setOnlineMsg('❌ 연결 실패. 코드를 확인하세요.', 'error');
-    showScreen('online');
-    guestConn = null;
-  });
+  document.getElementById('connecting-msg').textContent = '방에 연결 중...';
+  setTimeout(() => {
+    window.location.href = `omokgay.html?role=guest&room=${code}`;
+  }, 200);
 }
 
 /* ============================================================

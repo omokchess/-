@@ -1418,43 +1418,54 @@ initGame();
 ============================================================ */
 if (IS_ONLINE) {
   // 온라인 배지 표시
-  const badge = document.getElementById('online-badge');
-  badge.classList.add('show');
+  document.getElementById('online-badge').classList.add('show');
   document.getElementById('ob-color').textContent = myColor === 'w' ? '(백)' : '(흑)';
-  setStatus('상대방 연결 중...');
+  setStatus('연결 중...');
 
-  // 새 PeerJS 인스턴스 생성
-  // 호스트: 자기 고유 ID를 사용 (index에서 이미 가진 ID와 다를 수 있으므로 anonymous)
-  // 게스트: NET_ROOM(호스트 PeerID)에 연결
-  netPeer = new Peer(undefined, { debug: 0 });
+  if (NET_ROLE === 'host') {
+    // 호스트: 방 코드(NET_ROOM)를 PeerID로 재등록
+    // index.html에서 파괴된 Peer를 같은 ID로 다시 생성
+    // PeerJS 서버가 이전 ID를 해제하는 데 약간의 시간이 필요할 수 있으므로 재시도 포함
+    let hostRetry = 0;
+    function spawnHostPeer() {
+      netPeer = new Peer(NET_ROOM, { debug: 0 });
+      netPeer.on('open', () => {
+        setStatus('게스트 연결 대기 중...');
+      });
+      netPeer.on('connection', conn => {
+        if (!netConn) setupConn(conn, 'host');
+      });
+      netPeer.on('error', err => {
+        if (err.type === 'unavailable-id' && hostRetry < 5) {
+          // 서버에 이전 ID가 아직 남아있음 → 잠시 후 재시도
+          hostRetry++;
+          setStatus(`호스트 등록 중... (${hostRetry}/5)`);
+          setTimeout(spawnHostPeer, 1200);
+        } else if (err.type === 'unavailable-id') {
+          setStatus('❌ 방 등록 실패. 로비로 돌아가서 방을 다시 만들어주세요.');
+        } else {
+          setStatus('❌ 오류: ' + (err.type || err.message));
+        }
+      });
+    }
+    spawnHostPeer();
 
-  netPeer.on('open', myId => {
-    if (NET_ROLE === 'host') {
-      // 호스트: 게스트가 연결해오길 기다림
-      // index.html의 Peer는 이 페이지 로드로 파괴됐으므로 여기서 새로 받음
-      setStatus('게스트 연결 대기 중...');
-    } else {
-      // 게스트: 호스트 PeerID(NET_ROOM)에 연결
+  } else {
+    // 게스트: 익명으로 접속 후 NET_ROOM(방 코드)에 연결
+    netPeer = new Peer(undefined, { debug: 0 });
+    netPeer.on('open', () => {
       setStatus('호스트에 연결 중...');
       const conn = netPeer.connect(NET_ROOM, { reliable: true });
       setupConn(conn, 'guest');
-    }
-  });
-
-  // 호스트 측: 게스트 연결 수락
-  netPeer.on('connection', conn => {
-    if (NET_ROLE === 'host' && !netConn) {
-      setupConn(conn, 'host');
-    }
-  });
-
-  netPeer.on('error', err => {
-    if (err.type === 'peer-unavailable') {
-      setStatus('❌ 호스트를 찾을 수 없습니다. 로비로 돌아가 다시 시도하세요.');
-    } else {
-      setStatus('❌ 연결 오류: ' + (err.message || err.type));
-    }
-  });
+    });
+    netPeer.on('error', err => {
+      if (err.type === 'peer-unavailable') {
+        setStatus('❌ 방을 찾을 수 없습니다. 코드를 확인하거나 호스트가 아직 준비 중일 수 있어요. 잠시 후 다시 시도하세요.');
+      } else {
+        setStatus('❌ 연결 오류: ' + (err.type || err.message));
+      }
+    });
+  }
 }
 
 /* ============================================================
