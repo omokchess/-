@@ -685,7 +685,7 @@ h1 {
     <div class="rules-grid">
       <div class="rule-item"><div class="rule-num">1</div><span>체크메이트 혹은 자신의 기물 5개를 가로·세로·대각선으로 연속 배치하면 승리.</span></div>
       <div class="rule-item"><div class="rule-num">2</div><span>각 진영은 첫 번째 턴에 반드시 킹을 배치해야 함.</span></div>
-      <div class="rule-item"><div class="rule-num">3</div><span>기물 배치는 중앙 6×6 구역(파란 점 표시)에만 가능. 이동은 자유.</span></div>
+      <div class="rule-item"><div class="rule-num">3</div><span>기물 배치는 중앙 6×4 구역(파란 점 표시)에만 가능. 이동은 자유.</span></div>
       <div class="rule-item"><div class="rule-num">4</div><span>킹은 4*4 구역에만 배치 가능.</span></div>
       <div class="rule-item"><div class="rule-num">5</div><span>매 턴 손패에서 기물을 배치하거나, 보드 위 기물을 체스 규칙대로 이동.</span></div>
       <div class="rule-item"><div class="rule-num">6</div><span>폰이 상대 진영 끝 행에 도달하면 퀸·룩·비숍·나이트 중 하나로 프로모션.</span></div>
@@ -731,13 +731,13 @@ h1 {
    ▼▼▼ Firebase 설정 — index.html과 동일한 값을 여기도 넣어주세요 ▼▼▼
 ============================================================ */
 const FIREBASE_CONFIG = {
-  apiKey: "AIzaSyD_bv9vLqcMDMZgGHNLS2A94INXqkO8XX8",
-  authDomain: "ooooomok-285e6.firebaseapp.com",
-  databaseURL: "https://ooooomok-285e6-default-rtdb.asia-southeast1.firebasedatabase.app",
-  projectId: "ooooomok-285e6",
-  storageBucket: "ooooomok-285e6.firebasestorage.app",
+  apiKey:            "AIzaSyD_bv9vLqcMDMZgGHNLS2A94INXqkO8XX8",
+  authDomain:        "ooooomok-285e6.firebaseapp.com",
+  databaseURL:       "https://ooooomok-285e6-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId:         "ooooomok-285e6",
+  storageBucket:     "ooooomok-285e6.firebasestorage.app",
   messagingSenderId: "764275385569",
-  appId: "1:764275385569:web:44cecc18de9aef4d9a43a0"
+  appId:             "1:764275385569:web:44cecc18de9aef4d9a43a0",
 };
 /* ▲▲▲ Firebase 설정 끝 ▲▲▲ */
 
@@ -827,8 +827,9 @@ const fileChar  = col => 'abcdefgh'[col];
 const rankNum   = row => 8 - row;
 
 function isPlacementZone(row, col) {
-  // 6×6 배치 구역: 가장자리(0행,7행,0열,7열) 제외한 전체
-  return row>=1 && row<=6 && col>=1 && col<=6;
+  // 6×4 배치 구역: 열 b~g (1~6), 행 3~6 (row 2~5)
+  // → 프로모션 라인(1행/8행)에서 최소 2칸 이상 떨어짐
+  return row>=2 && row<=5 && col>=1 && col<=6;
 }
 function isKingPlacementZone(row, col) {
   // 킹 배치용 4×4 구역: 가운데 (row 2-5, col 2-5)
