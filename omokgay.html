@@ -602,7 +602,116 @@ h1 {
   :root { --cell: 42px; }
   .hand-piece .piece-icon { font-size: 1.2rem; }
 }
+</style>
+</head>
+<body>
 
+<header>
+  <h1>오목게이</h1>
+  <p class="header-sub">OMOK GAY — 체스 × 오목 하이브리드</p>
+  <div class="header-btns">
+    <button class="hdr-btn" id="btn-lobby" onclick="goLobby()">← 로비</button>
+    <button class="hdr-btn primary" id="restart-side-btn">⟳ 새 게임</button>
+    <button class="hdr-btn" id="toggle-rules-btn">규칙 보기</button>
+  </div>
+</header>
+
+<div id="app">
+
+  <!-- 백 패널 -->
+  <div class="side-panel" id="white-panel">
+    <div class="player-card white-side" id="white-info">
+      <div class="player-header">
+        <div class="player-dot white"></div>
+        <span class="player-name">백 진영</span>
+        <span class="turn-badge">내 턴</span>
+      </div>
+      <div class="check-counter">
+        <span>연속</span>
+        <div class="check-pips" id="white-check-pips"></div>
+        <span id="white-check-count">0/3</span>
+        <span style="margin-left:6px">총합</span>
+        <div class="check-pips" id="white-total-pips"></div>
+        <span id="white-total-count">0/5</span>
+      </div>
+      <div class="hand-label">보유 기물 (미배치)</div>
+      <div class="hand-pieces" id="white-hand"></div>
+    </div>
+    <div id="status-box">게임 시작!</div>
+    <div id="move-history">
+      <h3>이동 기록</h3>
+      <div id="history-list"></div>
+    </div>
+  </div>
+
+  <!-- 보드 -->
+  <div id="board-container">
+    <div class="file-labels" id="file-labels-top"></div>
+    <div id="board-wrap">
+      <div class="axis-labels" id="rank-labels"></div>
+      <div id="board"></div>
+      <div class="axis-labels" id="rank-labels-right"></div>
+    </div>
+    <div class="file-labels" id="file-labels"></div>
+  </div>
+
+  <!-- 흑 패널 -->
+  <div class="side-panel" id="black-panel">
+    <div class="player-card black-side" id="black-info">
+      <div class="player-header">
+        <div class="player-dot black"></div>
+        <span class="player-name">흑 진영</span>
+        <span class="turn-badge">내 턴</span>
+      </div>
+      <div class="check-counter">
+        <span>연속</span>
+        <div class="check-pips" id="black-check-pips"></div>
+        <span id="black-check-count">0/3</span>
+        <span style="margin-left:6px">총합</span>
+        <div class="check-pips" id="black-total-pips"></div>
+        <span id="black-total-count">0/5</span>
+      </div>
+      <div class="hand-label">보유 기물 (미배치)</div>
+      <div class="hand-pieces" id="black-hand"></div>
+    </div>
+  </div>
+
+</div>
+
+<!-- 규칙 섹션 -->
+<div id="rules-section">
+  <div id="rules-box">
+    <h2>게임 규칙</h2>
+    <div class="rules-grid">
+      <div class="rule-item"><div class="rule-num">1</div><span>체크메이트 혹은 자신의 기물 5개를 가로·세로·대각선으로 연속 배치하면 승리.</span></div>
+      <div class="rule-item"><div class="rule-num">2</div><span>각 진영은 첫 번째 턴에 반드시 킹을 배치해야 함.</span></div>
+      <div class="rule-item"><div class="rule-num">3</div><span>기물 배치는 중앙 6×6 구역(파란 점 표시)에만 가능. 이동은 자유.</span></div>
+      <div class="rule-item"><div class="rule-num">4</div><span>킹은 4*4 구역에만 배치 가능.</span></div>
+      <div class="rule-item"><div class="rule-num">5</div><span>매 턴 손패에서 기물을 배치하거나, 보드 위 기물을 체스 규칙대로 이동.</span></div>
+      <div class="rule-item"><div class="rule-num">6</div><span>폰이 상대 진영 끝 행에 도달하면 퀸·룩·비숍·나이트 중 하나로 프로모션.</span></div>
+      <div class="rule-item"><div class="rule-num">7</div><span>체크 상태에서는 반드시 체크를 해결하는 행동만 가능.</span></div>
+      <div class="rule-item"><div class="rule-num">8</div><span>3회 연속 체크를 걸면 패배.</span></div>
+      <div class="rule-item"><div class="rule-num">9</div><span>한 게임 동안 최대 5회 까지만 체크를 걸 수 있음.</span></div>
+      <div class="rule-item"><div class="rule-num">10</div><span>스테일메이트 / 3수 동행 / 기물 부족 시 무승부.</span></div>
+    </div>
+  </div>
+</div>
+
+<!-- 프로모션 모달 -->
+<div id="modal-overlay">
+  <div id="modal-box">
+    <h2>프로모션 선택</h2>
+    <div class="modal-btns" id="promo-btns"></div>
+  </div>
+</div>
+
+<!-- 온라인 배지 -->
+<div id="online-badge" style="display:none;position:fixed;top:12px;right:12px;z-index:50;background:var(--panel);border:1px solid var(--border);border-radius:20px;padding:5px 14px;font-size:0.75rem;color:var(--muted);gap:7px;align-items:center;">
+  <span id="ob-dot" style="width:8px;height:8px;border-radius:50%;background:var(--green);display:inline-block;animation:obpulse 1.5s ease infinite;"></span>
+  <span id="ob-label">온라인</span>
+  <span id="ob-color" style="color:var(--text);font-weight:700;margin-left:2px"></span>
+</div>
+<style>
 @keyframes obpulse{0%,100%{opacity:1}50%{opacity:0.3}}
 #online-badge.show{display:flex!important;}
 
@@ -689,148 +798,7 @@ h1 {
   transition: opacity 0.15s;
 }
 #btn-chat-send:hover { opacity: 0.85; }
-
-/* ── 리매치 모달 ── */
-#rematch-overlay {
-  display: none; position: fixed; inset: 0;
-  background: rgba(0,0,0,0.75); z-index: 250;
-  align-items: center; justify-content: center;
-}
-#rematch-overlay.show { display: flex; }
-#rematch-box {
-  background: var(--panel); border: 2px solid var(--gold);
-  border-radius: 18px; padding: 32px 36px; text-align: center;
-  max-width: 320px; width: 90%;
-  box-shadow: 0 20px 60px rgba(0,0,0,0.6);
-  display: flex; flex-direction: column; gap: 14px;
-}
-#rematch-box h3 { font-size: 1.1rem; color: var(--gold); }
-#rematch-box p  { font-size: 0.85rem; color: var(--muted); }
-.rematch-btns { display: flex; gap: 10px; justify-content: center; }
-.btn-rematch-yes {
-  padding: 11px 24px; border-radius: 10px; border: none;
-  background: var(--gold); color: #000; font-size: 0.9rem;
-  font-weight: 700; cursor: pointer; font-family: inherit;
-  transition: opacity 0.15s;
-}
-.btn-rematch-yes:hover { opacity: 0.85; }
-.btn-rematch-no {
-  padding: 11px 24px; border-radius: 10px;
-  border: 1.5px solid var(--border); background: var(--panel2);
-  color: var(--text); font-size: 0.9rem; font-weight: 700;
-  cursor: pointer; font-family: inherit; transition: opacity 0.15s;
-}
-.btn-rematch-no:hover { opacity: 0.85; }
-
 </style>
-</head>
-<body>
-
-<header>
-  <h1>오목게이</h1>
-  <p class="header-sub">OMOK GAY — 체스 × 오목 하이브리드</p>
-  <div class="header-btns">
-    <button class="hdr-btn" id="btn-lobby" onclick="goLobby()">← 로비</button>
-    <button class="hdr-btn primary" id="restart-side-btn">⟳ 새 게임</button>
-    <button class="hdr-btn" id="toggle-rules-btn">규칙 보기</button>
-  </div>
-</header>
-
-<div id="app">
-
-  <!-- 백 패널 -->
-  <div class="side-panel" id="white-panel">
-    <div class="player-card white-side" id="white-info">
-      <div class="player-header">
-        <div class="player-dot white"></div>
-        <span class="player-name">백 진영</span>
-        <span class="turn-badge">내 턴</span>
-      </div>
-      <div class="check-counter">
-        <span>연속</span>
-        <div class="check-pips" id="white-check-pips"></div>
-        <span id="white-check-count">0/3</span>
-        <span style="margin-left:6px">총합</span>
-        <div class="check-pips" id="white-total-pips"></div>
-        <span id="white-total-count">0/5</span>
-      </div>
-      <div class="hand-label">보유 기물 (미배치)</div>
-      <div class="hand-pieces" id="white-hand"></div>
-    </div>
-    <div id="status-box">게임 시작!</div>
-    <div id="move-history">
-      <h3>이동 기록</h3>
-      <div id="history-list"></div>
-    </div>
-  </div>
-
-  <!-- 보드 -->
-  <div id="board-container">
-    <div class="file-labels" id="file-labels-top"></div>
-    <div id="board-wrap">
-      <div class="axis-labels" id="rank-labels"></div>
-      <div id="board"></div>
-      <div class="axis-labels" id="rank-labels-right"></div>
-    </div>
-    <div class="file-labels" id="file-labels"></div>
-  </div>
-
-  <!-- 흑 패널 -->
-  <div class="side-panel" id="black-panel">
-    <div class="player-card black-side" id="black-info">
-      <div class="player-header">
-        <div class="player-dot black"></div>
-        <span class="player-name">흑 진영</span>
-        <span class="turn-badge">내 턴</span>
-      </div>
-      <div class="check-counter">
-        <span>연속</span>
-        <div class="check-pips" id="black-check-pips"></div>
-        <span id="black-check-count">0/3</span>
-        <span style="margin-left:6px">총합</span>
-        <div class="check-pips" id="black-total-pips"></div>
-        <span id="black-total-count">0/5</span>
-      </div>
-      <div class="hand-label">보유 기물 (미배치)</div>
-      <div class="hand-pieces" id="black-hand"></div>
-    </div>
-  </div>
-
-</div>
-
-<!-- 규칙 섹션 -->
-<div id="rules-section">
-  <div id="rules-box">
-    <h2>게임 규칙</h2>
-    <div class="rules-grid">
-      <div class="rule-item"><div class="rule-num">1</div><span>체크메이트 혹은 자신의 기물 5개를 가로·세로·대각선으로 연속 배치하면 승리.</span></div>
-      <div class="rule-item"><div class="rule-num">2</div><span>각 진영은 첫 번째 턴에 반드시 킹을 배치해야 함.</span></div>
-      <div class="rule-item"><div class="rule-num">3</div><span>기물 배치는 중앙 6×4 구역(파란 점 표시)에만 가능. 이동은 자유.</span></div>
-      <div class="rule-item"><div class="rule-num">4</div><span>킹은 4*4 구역에만 배치 가능.</span></div>
-      <div class="rule-item"><div class="rule-num">5</div><span>매 턴 손패에서 기물을 배치하거나, 보드 위 기물을 체스 규칙대로 이동.</span></div>
-      <div class="rule-item"><div class="rule-num">6</div><span>폰이 상대 진영 끝 행에 도달하면 퀸·룩·비숍·나이트 중 하나로 프로모션.</span></div>
-      <div class="rule-item"><div class="rule-num">7</div><span>체크 상태에서는 반드시 체크를 해결하는 행동만 가능.</span></div>
-      <div class="rule-item"><div class="rule-num">8</div><span>3회 연속 체크를 걸면 패배.</span></div>
-      <div class="rule-item"><div class="rule-num">9</div><span>한 게임 동안 최대 5회 까지만 체크를 걸 수 있음.</span></div>
-      <div class="rule-item"><div class="rule-num">10</div><span>스테일메이트 / 3수 동행 / 기물 부족 시 무승부.</span></div>
-    </div>
-  </div>
-</div>
-
-<!-- 프로모션 모달 -->
-<div id="modal-overlay">
-  <div id="modal-box">
-    <h2>프로모션 선택</h2>
-    <div class="modal-btns" id="promo-btns"></div>
-  </div>
-</div>
-
-<!-- 온라인 배지 -->
-<div id="online-badge" style="display:none;position:fixed;top:12px;right:12px;z-index:50;background:var(--panel);border:1px solid var(--border);border-radius:20px;padding:5px 14px;font-size:0.75rem;color:var(--muted);gap:7px;align-items:center;">
-  <span id="ob-dot" style="width:8px;height:8px;border-radius:50%;background:var(--green);display:inline-block;animation:obpulse 1.5s ease infinite;"></span>
-  <span id="ob-label">온라인</span>
-  <span id="ob-color" style="color:var(--text);font-weight:700;margin-left:2px"></span>
-</div>
 
 <!-- 게임 종료 오버레이 -->
 <div id="end-overlay">
@@ -838,10 +806,7 @@ h1 {
     <div class="end-emoji" id="end-emoji">🏆</div>
     <h2 id="end-title"></h2>
     <p  id="end-desc"></p>
-    <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap;">
-      <button id="restart-btn">재시작</button>
-      <button id="rematch-btn" style="display:none;padding:14px 36px;background:var(--blue);color:#fff;border:none;border-radius:12px;font-size:1rem;font-weight:700;cursor:pointer;font-family:inherit;" onclick="requestRematch()">🔄 리매치 요청</button>
-    </div>
+    <button id="restart-btn">재시작</button>
   </div>
 </div>
 
@@ -864,92 +829,7 @@ h1 {
   </div>
 </div>
 
-<!-- 리매치 모달 -->
-<div id="rematch-overlay">
-  <div id="rematch-box">
-    <h3 id="rematch-title">리매치 요청</h3>
-    <p  id="rematch-desc">상대방이 리매치를 요청했습니다.</p>
-    <div class="rematch-btns">
-      <button class="btn-rematch-yes" onclick="answerRematch(true)">✓ 수락</button>
-      <button class="btn-rematch-no"  onclick="answerRematch(false)">✕ 거절</button>
-    </div>
-  </div>
-</div>
-
 <script>
-/* ============================================================
-   🔊 사운드 시스템 — Web Audio API (외부 파일 없음)
-============================================================ */
-const SFX = (() => {
-  let ctx = null;
-  function ac() {
-    if (!ctx) ctx = new (window.AudioContext || window.webkitAudioContext)();
-    if (ctx.state === 'suspended') ctx.resume();
-    return ctx;
-  }
-  function noise(c, len) {
-    const b = c.createBuffer(1, c.sampleRate * len, c.sampleRate);
-    const d = b.getChannelData(0);
-    for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
-    return b;
-  }
-  function go(fn) { try { fn(ac()); } catch(e) {} }
-
-  /* 수 두기 / 배치 — 나무 탁 */
-  function move() {
-    go(c => {
-      const t = c.currentTime;
-      const src = c.createBufferSource(); src.buffer = noise(c, 0.12);
-      const bp = c.createBiquadFilter(); bp.type='bandpass'; bp.frequency.value=800; bp.Q.value=0.8;
-      const lp = c.createBiquadFilter(); lp.type='lowpass'; lp.frequency.value=1800;
-      const g = c.createGain(); g.gain.setValueAtTime(0.55,t); g.gain.exponentialRampToValueAtTime(0.001,t+0.1);
-      src.connect(bp); bp.connect(lp); lp.connect(g); g.connect(c.destination);
-      src.start(t); src.stop(t+0.12);
-    });
-  }
-
-  /* 기물 잡기 — 나무 탁탁 (두 번) */
-  function capture() {
-    go(c => {
-      [0, 0.06].forEach((delay, i) => {
-        const t = c.currentTime + delay;
-        const src = c.createBufferSource(); src.buffer = noise(c, 0.1);
-        const bp = c.createBiquadFilter(); bp.type='bandpass'; bp.frequency.value=i?600:900; bp.Q.value=1.0;
-        const g = c.createGain(); g.gain.setValueAtTime(i?0.45:0.6,t); g.gain.exponentialRampToValueAtTime(0.001,t+0.09);
-        src.connect(bp); bp.connect(g); g.connect(c.destination);
-        src.start(t); src.stop(t+0.1);
-      });
-    });
-  }
-
-  /* 체크메이트 — 무거운 둔탁음 두 번 */
-  function checkmate() {
-    go(c => {
-      [0, 0.2].forEach(delay => {
-        const t = c.currentTime + delay;
-        const src = c.createBufferSource(); src.buffer = noise(c, 0.28);
-        const bp = c.createBiquadFilter(); bp.type='bandpass'; bp.frequency.value=280; bp.Q.value=0.4;
-        const lp = c.createBiquadFilter(); lp.type='lowpass'; lp.frequency.value=500;
-        const g = c.createGain(); g.gain.setValueAtTime(0.75,t); g.gain.exponentialRampToValueAtTime(0.001,t+0.25);
-        src.connect(bp); bp.connect(lp); lp.connect(g); g.connect(c.destination);
-        src.start(t); src.stop(t+0.28);
-      });
-    });
-  }
-
-  /* 채팅 수신 알림 — 가벼운 틱 */
-  function chat() {
-    go(c => {
-      const t = c.currentTime;
-      const osc = c.createOscillator(); osc.type='sine'; osc.frequency.value=880;
-      const g = c.createGain(); g.gain.setValueAtTime(0.18,t); g.gain.exponentialRampToValueAtTime(0.001,t+0.12);
-      osc.connect(g); g.connect(c.destination); osc.start(t); osc.stop(t+0.12);
-    });
-  }
-
-  return { move, capture, checkmate, chat };
-})();
-
 /* ============================================================
    ▼▼▼ Firebase 설정 — index.html과 동일한 값을 여기도 넣어주세요 ▼▼▼
 ============================================================ */
@@ -963,141 +843,6 @@ const FIREBASE_CONFIG = {
   appId:             "1:764275385569:web:44cecc18de9aef4d9a43a0",
 };
 /* ▲▲▲ Firebase 설정 끝 ▲▲▲ */
-
-/* ============================================================
-   사운드 엔진 — Web Audio API (외부 파일 없음)
-   나무 두드리는 체스 풍 효과음
-============================================================ */
-const SFX = (() => {
-  let ctx = null;
-
-  /* AudioContext — 첫 사용자 인터랙션 후 생성 (브라우저 정책) */
-  function getCtx() {
-    if (!ctx) ctx = new (window.AudioContext || window.webkitAudioContext)();
-    if (ctx.state === 'suspended') ctx.resume();
-    return ctx;
-  }
-
-  /* 기본 합성 함수 */
-  function play(type) {
-    try {
-      const c = getCtx();
-      switch(type) {
-        case 'move':       _woodThud(c, 180, 0.12, 0.06); break;  // 짧고 둔탁한 나무 소리
-        case 'place':      _woodThud(c, 140, 0.16, 0.09); break;  // 조금 더 묵직하게
-        case 'capture':    _woodCrack(c);                  break;  // 탁 — 기물 잡는 소리
-        case 'check':      _alert(c);                      break;  // 긴장감 있는 두 음
-        case 'checkmate':  _fanfare(c);                    break;  // 짧은 승리 팡파레
-        case 'win':        _victory(c);                    break;  // 풍성한 승리음
-        case 'btn':        _click(c);                      break;  // UI 클릭
-      }
-    } catch(e) { /* 소리 실패해도 게임에 영향 없음 */ }
-  }
-
-  /* ── 나무 두드리기 (이동/배치) ── */
-  function _woodThud(c, freq, gain, decay) {
-    const buf = c.createBuffer(1, c.sampleRate * 0.15, c.sampleRate);
-    const data = buf.getChannelData(0);
-    for (let i = 0; i < data.length; i++) {
-      // 노이즈에 감쇠 적용
-      data[i] = (Math.random() * 2 - 1) * Math.exp(-i / (c.sampleRate * decay));
-    }
-    const src = c.createBufferSource();
-    src.buffer = buf;
-
-    // 밴드패스 필터 — 나무 질감
-    const filter = c.createBiquadFilter();
-    filter.type = 'bandpass';
-    filter.frequency.value = freq;
-    filter.Q.value = 1.8;
-
-    const gainNode = c.createGain();
-    gainNode.gain.setValueAtTime(gain, c.currentTime);
-    gainNode.gain.exponentialRampToValueAtTime(0.001, c.currentTime + 0.14);
-
-    src.connect(filter);
-    filter.connect(gainNode);
-    gainNode.connect(c.destination);
-    src.start();
-  }
-
-  /* ── 기물 잡기 — 탁 하는 충격음 ── */
-  function _woodCrack(c) {
-    // 두꺼운 노이즈 버스트
-    _woodThud(c, 120, 0.28, 0.04);
-    // 약간 높은 음 겹치기
-    setTimeout(() => _woodThud(c, 300, 0.12, 0.03), 18);
-  }
-
-  /* ── 체크 경고 — 긴장감 있는 두 음 ── */
-  function _alert(c) {
-    [0, 0.12].forEach((delay, i) => {
-      const osc = c.createOscillator();
-      const g   = c.createGain();
-      osc.type = 'sine';
-      osc.frequency.value = i === 0 ? 520 : 660;
-      g.gain.setValueAtTime(0, c.currentTime + delay);
-      g.gain.linearRampToValueAtTime(0.18, c.currentTime + delay + 0.02);
-      g.gain.exponentialRampToValueAtTime(0.001, c.currentTime + delay + 0.18);
-      osc.connect(g); g.connect(c.destination);
-      osc.start(c.currentTime + delay);
-      osc.stop(c.currentTime + delay + 0.2);
-    });
-  }
-
-  /* ── 체크메이트 — 묵직한 3음 하강 ── */
-  function _fanfare(c) {
-    const notes = [660, 550, 440];
-    notes.forEach((freq, i) => {
-      const delay = i * 0.15;
-      const osc = c.createOscillator();
-      const g   = c.createGain();
-      osc.type = 'triangle';
-      osc.frequency.value = freq;
-      g.gain.setValueAtTime(0, c.currentTime + delay);
-      g.gain.linearRampToValueAtTime(0.22, c.currentTime + delay + 0.03);
-      g.gain.exponentialRampToValueAtTime(0.001, c.currentTime + delay + 0.25);
-      osc.connect(g); g.connect(c.destination);
-      osc.start(c.currentTime + delay);
-      osc.stop(c.currentTime + delay + 0.28);
-    });
-  }
-
-  /* ── 승리 — 밝은 상승 아르페지오 ── */
-  function _victory(c) {
-    const notes = [440, 554, 659, 880];
-    notes.forEach((freq, i) => {
-      const delay = i * 0.11;
-      const osc = c.createOscillator();
-      const g   = c.createGain();
-      osc.type = 'sine';
-      osc.frequency.value = freq;
-      g.gain.setValueAtTime(0, c.currentTime + delay);
-      g.gain.linearRampToValueAtTime(0.20, c.currentTime + delay + 0.03);
-      g.gain.exponentialRampToValueAtTime(0.001, c.currentTime + delay + 0.35);
-      osc.connect(g); g.connect(c.destination);
-      osc.start(c.currentTime + delay);
-      osc.stop(c.currentTime + delay + 0.38);
-    });
-    // 마지막 음 강조
-    setTimeout(() => _woodThud(c, 160, 0.14, 0.08), 400);
-  }
-
-  /* ── UI 버튼 클릭 ── */
-  function _click(c) {
-    const osc = c.createOscillator();
-    const g   = c.createGain();
-    osc.type = 'sine';
-    osc.frequency.setValueAtTime(800, c.currentTime);
-    osc.frequency.exponentialRampToValueAtTime(400, c.currentTime + 0.06);
-    g.gain.setValueAtTime(0.1, c.currentTime);
-    g.gain.exponentialRampToValueAtTime(0.001, c.currentTime + 0.07);
-    osc.connect(g); g.connect(c.destination);
-    osc.start(); osc.stop(c.currentTime + 0.08);
-  }
-
-  return { play };
-})();
 
 /* Firebase 초기화 (방 정리 전용) */
 let _fbDb = null;
@@ -1162,6 +907,9 @@ let consecCheckBy;
 let totalCheckBy;
 // 이전 상태 저장 (5회 체크 시 복원용)
 let prevBoard, prevHand, prevTurn, prevLastMove;
+// 채팅 상태
+let chatVisible = false;
+let unreadCount = 0;
 
 let rulesOpen = false;
 
@@ -1185,9 +933,8 @@ const fileChar  = col => 'abcdefgh'[col];
 const rankNum   = row => 8 - row;
 
 function isPlacementZone(row, col) {
-  // 6×4 배치 구역: 열 b~g (1~6), 행 3~6 (row 2~5)
-  // → 프로모션 라인(1행/8행)에서 최소 2칸 이상 떨어짐
-  return row>=2 && row<=5 && col>=1 && col<=6;
+  // 6×6 배치 구역: 가장자리(0행,7행,0열,7열) 제외한 전체
+  return row>=1 && row<=6 && col>=1 && col<=6;
 }
 function isKingPlacementZone(row, col) {
   // 킹 배치용 4×4 구역: 가운데 (row 2-5, col 2-5)
@@ -1361,7 +1108,6 @@ function doMove(fromRow, fromCol, toRow, toCol) {
   }
   board=nb;
   lastMove={fromRow,fromCol,toRow,toCol};
-  if (captured) SFX.capture(); else SFX.move();
   finishTurn();
 }
 
@@ -1377,7 +1123,6 @@ function doPlace(type, row, col) {
   hand[turn][type]--;
   board=nb;
   lastMove=null;
-  SFX.move();
   addHistory(turn, `P ${PIECE_NAMES[type]} → ${fileChar(col)}${rankNum(row)}`);
   finishTurn();
 }
@@ -1417,7 +1162,6 @@ function finishTurn() {
     consecCheckBy[turn]++;
     totalCheckBy[turn]++;
     consecCheckBy[opp] = 0;
-    // 체크 소리 없음 (요청사항)
   } else {
     consecCheckBy[turn] = 0;
   }
@@ -1450,9 +1194,6 @@ function finishTurn() {
   selectedCell=null;
   highlights=[];
 
-  // 체크 소리 (체크메이트는 endGame에서 별도 처리)
-  // 체크 소리는 finishTurn에서 처리
-
   const kingNeeded = findKing(board,turn)===null;
   let statusMsg;
   if (IS_ONLINE) {
@@ -1477,11 +1218,8 @@ function endGame(emoji, title, desc) {
   document.getElementById('end-desc').textContent=desc;
   document.getElementById('end-overlay').classList.add('show');
   netSend({ type: 'STATE', payload: serializeGameState() });
+  // 게임 종료 시 Firebase에서 방 삭제 (호스트만)
   cleanupRoom(NET_ROOM);
-  if (desc === '체크메이트' || desc.includes('연속 체크') || desc.includes('기권')) SFX.checkmate();
-  // 온라인이면 리매치 버튼 표시
-  const rematchBtn = document.getElementById('rematch-btn');
-  if (rematchBtn) rematchBtn.style.display = IS_ONLINE && netReady ? 'block' : 'none';
   renderAll();
 }
 
@@ -1503,7 +1241,6 @@ function showPromoModal(color) {
     btn.appendChild(icon);
     btn.appendChild(label);
     btn.onclick=()=>{
-      SFX.move();
       board[pendingPromo.row][pendingPromo.col].type=type;
       pendingPromo=null;
       document.getElementById('modal-overlay').classList.remove('show');
@@ -1659,7 +1396,7 @@ function renderHand(color) {
       span.appendChild(badge);
     }
     span.title=PIECE_NAMES[type];
-    span.addEventListener('click',()=>{ onHandClick(color,type); });
+    span.addEventListener('click',()=>onHandClick(color,type));
     el.appendChild(span);
   });
 }
@@ -1788,24 +1525,20 @@ function initGame() {
    이벤트 연결
 ============================================================ */
 document.getElementById('restart-btn').addEventListener('click',()=>{
-  // 버튼 소리 없음
   document.getElementById('end-overlay').classList.remove('show');
   if (IS_ONLINE) netSend({ type: 'RESTART' });
   initGame();
 });
 document.getElementById('restart-side-btn').addEventListener('click',()=>{
-  // 버튼 소리 없음
   document.getElementById('end-overlay').classList.remove('show');
   if (IS_ONLINE) netSend({ type: 'RESTART' });
   initGame();
 });
 document.getElementById('toggle-rules-btn').addEventListener('click',()=>{
-  // 버튼 소리 없음
   rulesOpen=!rulesOpen;
   document.getElementById('rules-box').classList.toggle('open',rulesOpen);
   document.getElementById('toggle-rules-btn').textContent=rulesOpen?'규칙 숨기기':'규칙 보기';
 });
-// 로비 버튼 소리 없음
 
 /* ============================================================
    로비로 돌아가기
@@ -1848,9 +1581,9 @@ if (IS_ONLINE) {
   /* ── 온라인 UI 초기 설정 ── */
   document.getElementById('online-badge').classList.add('show');
   document.getElementById('ob-color').textContent = myColor === 'w' ? '(백)' : '(흑)';
-  document.getElementById('restart-side-btn').style.display = 'none';
-  // 채팅 버튼 표시
   document.getElementById('btn-chat').classList.add('show');
+  // 온라인 모드: "새 게임" 버튼 숨김
+  document.getElementById('restart-side-btn').style.display = 'none';
   setStatus('연결 중...');
 
   /* ── 연결 타임아웃 (30초) ── */
@@ -1932,19 +1665,16 @@ function setupConn(conn, role) {
       case 'RESTART':
         document.getElementById('end-overlay').classList.remove('show');
         initGame();
-        if (NET_ROLE === 'host') netSend({ type: 'STATE', payload: serializeGameState() });
+        if (NET_ROLE === 'host') {
+          netSend({ type: 'STATE', payload: serializeGameState() });
+        }
         break;
       case 'FORFEIT':
+        // 상대방이 로비로 나감 → 내가 승리
         endGame('🏆', data.winner + ' 승리!', data.loser + ' 진영이 기권했습니다.');
         break;
       case 'CHAT':
-        recvChat(data.msg);
-        break;
-      case 'REMATCH_REQ':
-        showRematchRequest();
-        break;
-      case 'REMATCH_ANS':
-        handleRematchAnswer(data.accept);
+        addChatMessage(data.msg, 'theirs');
         break;
     }
   });
@@ -1999,121 +1729,8 @@ function serializeGameState() {
 }
 
 /* ============================================================
-   💬 채팅 시스템
+   원격 상태 적용 (상대방 행동을 내 화면에 반영)
 ============================================================ */
-let chatOpen    = false;
-let unreadCount = 0;
-
-function toggleChat() {
-  chatOpen = !chatOpen;
-  document.getElementById('chat-panel').classList.toggle('show', chatOpen);
-  if (chatOpen) {
-    unreadCount = 0;
-    updateUnread();
-    document.getElementById('chat-input').focus();
-    // 스크롤 맨 아래로
-    const msgs = document.getElementById('chat-messages');
-    msgs.scrollTop = msgs.scrollHeight;
-  }
-}
-
-function sendChat() {
-  const input = document.getElementById('chat-input');
-  const msg = input.value.trim();
-  if (!msg || !netReady) return;
-  input.value = '';
-  // 내 메시지 화면에 추가
-  addChatMsg(msg, 'mine');
-  // 상대에게 전송
-  netSend({ type: 'CHAT', msg });
-}
-
-function recvChat(msg) {
-  SFX.chat();
-  addChatMsg(msg, 'theirs');
-  if (!chatOpen) {
-    unreadCount++;
-    updateUnread();
-  }
-}
-
-function addChatMsg(msg, cls) {
-  const el = document.createElement('div');
-  el.className = 'chat-msg ' + cls;
-  // XSS 방지
-  el.textContent = msg;
-  const container = document.getElementById('chat-messages');
-  container.appendChild(el);
-  container.scrollTop = container.scrollHeight;
-}
-
-function addChatSystem(msg) {
-  const el = document.createElement('div');
-  el.className = 'chat-msg system';
-  el.textContent = msg;
-  const container = document.getElementById('chat-messages');
-  container.appendChild(el);
-  container.scrollTop = container.scrollHeight;
-}
-
-function updateUnread() {
-  const badge = document.getElementById('chat-unread');
-  badge.textContent = unreadCount;
-  badge.classList.toggle('show', unreadCount > 0);
-}
-
-// Enter 키로 전송
-document.getElementById('chat-input').addEventListener('keydown', e => {
-  if (e.key === 'Enter') sendChat();
-});
-
-/* ============================================================
-   🔄 리매치 시스템
-============================================================ */
-let rematchRequested = false;  // 내가 요청 중인지
-
-function requestRematch() {
-  if (!netReady) return;
-  rematchRequested = true;
-  netSend({ type: 'REMATCH_REQ' });
-  // end-overlay에 대기 메시지 표시
-  document.getElementById('end-desc').textContent = '리매치 요청 중... 상대방의 응답을 기다립니다.';
-}
-
-function showRematchRequest() {
-  document.getElementById('rematch-title').textContent = '리매치 요청';
-  document.getElementById('rematch-desc').textContent  = '상대방이 리매치를 요청했습니다.';
-  document.getElementById('rematch-overlay').classList.add('show');
-}
-
-function answerRematch(accept) {
-  document.getElementById('rematch-overlay').classList.remove('show');
-  netSend({ type: 'REMATCH_ANS', accept });
-  if (accept) {
-    // 수락 — 게임 재시작
-    document.getElementById('end-overlay').classList.remove('show');
-    rematchRequested = false;
-    initGame();
-    if (NET_ROLE === 'host') netSend({ type: 'STATE', payload: serializeGameState() });
-    addChatSystem('리매치 시작!');
-  } else {
-    addChatSystem('리매치를 거절했습니다.');
-  }
-}
-
-function handleRematchAnswer(accept) {
-  rematchRequested = false;
-  if (accept) {
-    document.getElementById('end-overlay').classList.remove('show');
-    initGame();
-    if (NET_ROLE === 'host') netSend({ type: 'STATE', payload: serializeGameState() });
-    addChatSystem('리매치 시작!');
-  } else {
-    document.getElementById('end-desc').textContent = '상대방이 리매치를 거절했습니다.';
-  }
-}
-
-
 function applyRemoteGameState(s) {
   if (applyingRemote) return;
   applyingRemote = true;
@@ -2163,6 +1780,52 @@ function applyRemoteGameState(s) {
   renderAll();
   applyingRemote = false;
 }
+
+/* ============================================================
+   채팅 기능
+============================================================ */
+function toggleChat() {
+  chatVisible = !chatVisible;
+  document.getElementById('chat-panel').classList.toggle('show', chatVisible);
+  if (chatVisible) {
+    unreadCount = 0;
+    updateUnreadBadge();
+    document.getElementById('chat-input').focus();
+  }
+}
+
+function sendChat() {
+  const input = document.getElementById('chat-input');
+  const msg = input.value.trim();
+  if (!msg || !IS_ONLINE || !netReady) return;
+  addChatMessage(msg, 'mine');
+  netSend({ type: 'CHAT', msg });
+  input.value = '';
+}
+
+function addChatMessage(msg, type) {
+  const container = document.getElementById('chat-messages');
+  const el = document.createElement('div');
+  el.className = 'chat-msg ' + type;
+  el.textContent = msg;
+  container.appendChild(el);
+  container.scrollTop = container.scrollHeight;
+  if (!chatVisible && type === 'theirs') {
+    unreadCount++;
+    updateUnreadBadge();
+  }
+}
+
+function updateUnreadBadge() {
+  const badge = document.getElementById('chat-unread');
+  badge.textContent = unreadCount;
+  badge.classList.toggle('show', unreadCount > 0);
+}
+
+// 채팅 입력 이벤트
+document.getElementById('chat-input').addEventListener('keypress', e => {
+  if (e.key === 'Enter') sendChat();
+});
 </script>
 </body>
 </html>
