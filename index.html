@@ -410,7 +410,8 @@ async function createRoom() {
   if (!fbReady) {
     // Firebase 미설정 → 코드만 생성해서 바로 이동
     const code = makeCode();
-    window.location.href = `omokgay.html?role=host&room=${code}`;
+    const timeLimit = document.getElementById('room-time-limit').value;
+    window.location.href = `omokgay.html?role=host&room=${code}&time=${timeLimit}`;
     return;
   }
 
@@ -455,7 +456,7 @@ async function createRoom() {
       // 방 정리는 게임 종료 후 omokgay.html에서 처리
       document.getElementById('wait-msg').textContent = '게스트 입장! 게임 시작...';
       setTimeout(() => {
-        window.location.href = `omokgay.html?role=host&room=${code}`;
+        window.location.href = `omokgay.html?role=host&room=${code}&time=${timeLimit}`;
       }, 400);
     }
   });
@@ -486,6 +487,7 @@ function joinByCode() {
 ============================================================ */
 async function enterAsGuest(code) {
   setJoinMsg('방을 확인 중...', 'wait');
+  let timeLimit = 'unlimited';  // 기본값
 
   if (fbReady) {
     // Firebase에서 방 존재 확인
@@ -509,11 +511,13 @@ async function enterAsGuest(code) {
     }
     // 방 started = true 로 업데이트 (호스트에게 알림)
     await roomsRef.child(code).update({ started: true });
+    // 방에서 timeLimit 가져오기
+    timeLimit = room.timeLimit || 'unlimited';
   }
 
   setJoinMsg('입장 중...', 'ok');
   setTimeout(() => {
-    window.location.href = `omokgay.html?role=guest&room=${code}`;
+    window.location.href = `omokgay.html?role=guest&room=${code}&time=${timeLimit}`;
   }, 200);
 }
 

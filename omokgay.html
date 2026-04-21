@@ -997,7 +997,9 @@ let unreadCount = 0;
 // 리매치 상태
 let rematchPending = false;
 // 타이머 상태
-let roomTimeLimit = 'unlimited'; // 방의 시간제한 (초 단위 숫자 또는 'unlimited')
+// URL ?time=60 파라미터에서 시간제한 읽기 (없으면 'unlimited')
+const _timeParam = _urlParams.get('time');
+let roomTimeLimit = (_timeParam && _timeParam !== 'unlimited') ? parseInt(_timeParam) : 'unlimited';
 let timerInterval = null;
 let whiteTimeRemaining = 0; // 초
 let blackTimeRemaining = 0; // 초
