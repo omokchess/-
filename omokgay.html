@@ -930,29 +930,6 @@ const FIREBASE_CONFIG = {
 };
 /* ▲▲▲ Firebase 설정 끝 ▲▲▲ */
 
-/* Firebase 초기화 (방 정리 전용) */
-let _fbDb = null;
-function getFbDb() {
-  if (_fbDb) return _fbDb;
-  try {
-    if (FIREBASE_CONFIG.apiKey.includes('여기에')) return null;
-    // 이미 초기화됐으면 기존 인스턴스 사용
-    const app = firebase.apps.length ? firebase.app() : firebase.initializeApp(FIREBASE_CONFIG);
-    _fbDb = firebase.database(app);
-  } catch(e) { console.warn('Firebase DB 오류:', e); }
-  return _fbDb;
-}
-
-/* 호스트가 방을 Firebase에서 삭제 */
-function cleanupRoom(code) {
-  if (!code || !IS_ONLINE || NET_ROLE !== 'host') return;
-  const db = getFbDb();
-  if (db) db.ref('rooms/' + code).remove().catch(() => {});
-}
-
-/* ============================================================
-   온라인 모드 — URL 파라미터 파싱 & PeerJS 설정
-============================================================ */
 const _urlParams     = new URLSearchParams(window.location.search);
 const NET_ROLE       = _urlParams.get('role');   // 'host'|'guest'|'spectator'|null
 const NET_ROOM       = _urlParams.get('room');
@@ -2036,18 +2013,39 @@ function pushStateToFirebase() {
   if (!IS_ONLINE || NET_ROLE !== 'host' || !NET_ROOM) return;
   const db = getFbDb();
   if (!db) return;
-  const state = serializeGameState();
-  // 채팅 로그도 함께 저장
-  const chatMsgs = [];
-  document.querySelectorAll('#chat-messages .chat-msg').forEach(el => {
-    chatMsgs.push({ cls: el.className, txt: el.textContent });
-  });
-  db.ref('rooms/' + NET_ROOM).update({
-    gameActive:  true,
-    gameState:   JSON.stringify(state),
-    chatLog:     JSON.stringify(chatMsgs),
-    updatedAt:   Date.now(),
-  }).catch(() => {});
+  try {
+    const state = serializeGameState();
+    const chatMsgs = [];
+    document.querySelectorAll('#chat-messages .chat-msg').forEach(el => {
+      chatMsgs.push({ cls: el.className, txt: el.textContent });
+    });
+    db.ref('rooms/' + NET_ROOM).update({
+      gameActive: true,
+      gameState:  JSON.stringify(state),
+      chatLog:    JSON.stringify(chatMsgs),
+      updatedAt:  Date.now(),
+    }).catch(e => console.warn('Firebase 업로드 실패:', e));
+  } catch(e) { console.warn('pushStateToFirebase 오류:', e); }
+}
+
+/* Firebase DB 인스턴스 (싱글턴) */
+let _fbDbInst = null;
+function getFbDb() {
+  if (_fbDbInst) return _fbDbInst;
+  try {
+    if (FIREBASE_CONFIG.apiKey && !FIREBASE_CONFIG.apiKey.includes('여기에')) {
+      const app = firebase.apps.length ? firebase.app() : firebase.initializeApp(FIREBASE_CONFIG);
+      _fbDbInst = firebase.database(app);
+    }
+  } catch(e) { console.warn('Firebase 초기화 실패:', e); }
+  return _fbDbInst;
+}
+
+/* 호스트가 방을 Firebase에서 삭제 */
+function cleanupRoom(code) {
+  if (!code || !IS_ONLINE || NET_ROLE !== 'host') return;
+  const db = getFbDb();
+  if (db) db.ref('rooms/' + code).remove().catch(() => {});
 }
 
 /* ============================================================

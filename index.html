@@ -337,14 +337,18 @@ function startAI() {
 ============================================================ */
 function startRoomsListener() {
   roomsRef.on('value', snap => {
-    const cutoff = Date.now() - 30 * 60 * 1000; // 콜백마다 최신 기준
+    const cutoff = Date.now() - 30 * 60 * 1000;
     const waiting = [], playing = [];
     snap.forEach(child => {
       const r = child.val();
       if (!r || r.createdAt <= cutoff) return;
       if (child.key === myRoomCode) return;
-      if (!r.started) waiting.push({ code: child.key, ...r });
-      else if (r.gameActive) playing.push({ code: child.key, ...r });
+      if (!r.started) {
+        waiting.push({ code: child.key, ...r });
+      } else {
+        // started:true = 게임 진행 중 (gameActive 필드 의존 안 함)
+        playing.push({ code: child.key, ...r });
+      }
     });
     waiting.sort((a,b) => b.createdAt - a.createdAt);
     playing.sort((a,b) => b.createdAt - a.createdAt);
