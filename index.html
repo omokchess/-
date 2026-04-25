@@ -584,8 +584,8 @@ async function enterAsGuest(code) {
         return;
       }
     }
-    // 방 started = true 로 업데이트 (호스트에게 알림)
-    await roomsRef.child(code).update({ started: true });
+    // 방 started = true, gameActive = true 로 업데이트 (호스트 알림 + 관전 목록 유지)
+    await roomsRef.child(code).update({ started: true, gameActive: true });
     // 방에서 timeLimit 가져오기
     timeLimit = room.timeLimit || 'unlimited';
   }

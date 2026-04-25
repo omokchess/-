@@ -879,6 +879,7 @@ h1 {
     <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap;">
       <button id="restart-btn">재시작</button>
       <button id="rematch-btn" style="display:none;padding:14px 36px;background:var(--blue);color:#fff;border:none;border-radius:12px;font-size:1rem;font-weight:700;cursor:pointer;font-family:inherit;" onclick="requestRematch()">🔄 리매치 요청</button>
+      <button id="exit-btn" style="display:none;padding:14px 36px;background:var(--panel2);color:var(--text);border:1.5px solid var(--border);border-radius:12px;font-size:1rem;font-weight:700;cursor:pointer;font-family:inherit;" onclick="exitToLobby()">← 로비로</button>
     </div>
   </div>
 </div>
@@ -1328,6 +1329,10 @@ function endGame(emoji, title, desc) {
   document.getElementById('end-overlay').classList.add('show');
   if (IS_ONLINE && netReady) {
     document.getElementById('rematch-btn').style.display = 'block';
+    document.getElementById('exit-btn').style.display    = 'block';
+  } else if (IS_ONLINE) {
+    // 연결이 끊긴 경우 로비 버튼만
+    document.getElementById('exit-btn').style.display    = 'block';
   }
   netSend({ type: 'STATE', payload: serializeGameState() });
   // Firebase: 게임 종료 상태 업로드 후 방 삭제
@@ -1682,21 +1687,26 @@ document.getElementById('toggle-rules-btn').addEventListener('click',()=>{
 ============================================================ */
 function goLobby() {
   if (IS_ONLINE && !gameOver) {
+    // 게임 중: 기권 → 종료 화면 표시 (리매치 기회 제공), 로비 이동 안 함
     const loserName  = myColor === 'w' ? '백' : '흑';
     const winnerName = myColor === 'w' ? '흑' : '백';
     netSend({ type: 'FORFEIT', loser: loserName, winner: winnerName });
-    setTimeout(() => {
-      cleanupRoom(NET_ROOM);
-      if (netConn)  { try { netConn.close();  } catch(e) {} netConn = null; }
-      if (netPeer)  { try { netPeer.destroy(); } catch(e) {} netPeer = null; }
-      window.location.href = 'index.html';
-    }, 300);
+    endGame('🏳', loserName + ' 기권', '로비 버튼을 눌러 기권했습니다.');
   } else {
+    // 게임 종료 후 또는 로컬: 바로 로비로
     cleanupRoom(NET_ROOM);
-    if (netConn)  { try { netConn.close();  } catch(e) {} netConn = null; }
-    if (netPeer)  { try { netPeer.destroy(); } catch(e) {} netPeer = null; }
+    if (netConn) { try { netConn.close();  } catch(e) {} netConn = null; }
+    if (netPeer) { try { netPeer.destroy(); } catch(e) {} netPeer = null; }
     window.location.href = 'index.html';
   }
+}
+
+/* 종료 화면에서 로비로 나가는 버튼용 함수 */
+function exitToLobby() {
+  cleanupRoom(NET_ROOM);
+  if (netConn) { try { netConn.close();  } catch(e) {} netConn = null; }
+  if (netPeer) { try { netPeer.destroy(); } catch(e) {} netPeer = null; }
+  window.location.href = 'index.html';
 }
 
 /* ============================================================
