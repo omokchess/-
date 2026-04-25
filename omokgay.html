@@ -1832,27 +1832,55 @@ if (IS_ONLINE) {
     });
 
   } else {
-    /* 게스트: 익명 Peer로 접속 후 방 코드(NET_ROOM)에 연결 */
+    /* 게스트: 익명 Peer로 접속 후 방 코드(NET_ROOM)에 연결
+       호스트가 아직 준비 중일 수 있으므로 자동 재시도 */
     netPeer = new Peer(undefined, { debug: 0 });
     netPeer.on('open', () => {
       setStatus('호스트에 연결 중...');
-      const conn = netPeer.connect(NET_ROOM, { reliable: true });
-      setupConn(conn, 'guest');
-      // connect() 자체의 타임아웃 (peer-unavailable 이벤트가 늦게 오는 경우 대비)
-      setTimeout(() => {
-        if (!netReady) {
+      let retryCount = 0;
+      const MAX_RETRY = 6;
+
+      function tryConnect() {
+        if (netReady || retryCount >= MAX_RETRY) return;
+
+        const conn = netPeer.connect(NET_ROOM, { reliable: true });
+
+        // 연결 성공
+        conn.on('open', () => {
           clearTimeout(connTimeout);
-          setStatus('❌ 방을 찾을 수 없습니다. 코드를 확인하거나 호스트가 아직 준비 중일 수 있어요.');
-        }
-      }, 8000);
-    });
-    netPeer.on('error', err => {
-      clearTimeout(connTimeout);
-      if (err.type === 'peer-unavailable') {
-        setStatus('❌ 방을 찾을 수 없습니다. 코드를 확인하거나 호스트가 준비될 때까지 기다려주세요.');
-      } else {
-        setStatus('❌ 연결 오류: ' + (err.type || err.message));
+          setupConn(conn, 'guest');
+        });
+
+        // 연결 실패 시 재시도
+        conn.on('error', () => {
+          retryCount++;
+          if (retryCount < MAX_RETRY) {
+            setStatus(`호스트 연결 대기 중... (${retryCount}/${MAX_RETRY})`);
+            setTimeout(tryConnect, 1500);
+          } else {
+            setStatus('❌ 호스트에 연결할 수 없습니다. 로비로 돌아가 다시 시도해주세요.');
+          }
+        });
       }
+
+      tryConnect();
+
+      // peer-unavailable은 netPeer 레벨에서도 발생 — 재시도로 처리
+      netPeer.on('error', err => {
+        if (err.type === 'peer-unavailable') {
+          retryCount++;
+          if (retryCount < MAX_RETRY) {
+            setStatus(`호스트 준비 대기 중... (${retryCount}/${MAX_RETRY})`);
+            setTimeout(tryConnect, 1500);
+          } else {
+            clearTimeout(connTimeout);
+            setStatus('❌ 호스트를 찾을 수 없습니다. 로비로 돌아가 다시 시도해주세요.');
+          }
+        } else {
+          clearTimeout(connTimeout);
+          setStatus('❌ 연결 오류: ' + (err.type || err.message));
+        }
+      });
     });
   }
 }
