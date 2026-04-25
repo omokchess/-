@@ -642,6 +642,7 @@ h1 {
     <button class="hdr-btn" id="btn-lobby" onclick="goLobby()">← 로비 & 항복</button>
     <button class="hdr-btn primary" id="restart-side-btn">⟳ 새 게임</button>
     <button class="hdr-btn" id="toggle-rules-btn">규칙 보기</button>
+    <span id="ai-badge" style="display:none;background:rgba(10,132,255,0.18);color:#0A84FF;border:1px solid rgba(10,132,255,0.5);border-radius:20px;padding:4px 12px;font-size:0.75rem;font-weight:700;">🤖 AI</span>
   </div>
 </header>
 
@@ -951,10 +952,13 @@ function cleanupRoom(code) {
 /* ============================================================
    온라인 모드 — URL 파라미터 파싱 & PeerJS 설정
 ============================================================ */
-const _urlParams = new URLSearchParams(window.location.search);
-const NET_ROLE   = _urlParams.get('role');   // 'host' | 'guest' | null
-const NET_ROOM   = _urlParams.get('room');   // 호스트의 Peer ID
-const IS_ONLINE  = !!NET_ROLE;
+const _urlParams   = new URLSearchParams(window.location.search);
+const NET_ROLE     = _urlParams.get('role');
+const NET_ROOM     = _urlParams.get('room');
+const IS_ONLINE    = !!NET_ROLE;
+const IS_AI        = _urlParams.get('mode') === 'ai';
+const AI_COLOR     = 'b';   // AI는 항상 흑
+const AI_DIFF      = _urlParams.get('difficulty') || 'easy'; // easy | normal | hard
 
 /* 온라인 모드에서 내 진영 */
 let myColor = null;
@@ -1304,6 +1308,11 @@ function finishTurn() {
   }
   setStatus(statusMsg);
   renderAll();
+
+  // AI 모드: 흑 턴이면 자동 실행
+  if (IS_AI && turn === AI_COLOR && !gameOver) {
+    aiDoMove();
+  }
 }
 
 function endGame(emoji, title, desc) {
@@ -1632,6 +1641,9 @@ function initGame() {
       ? (turn === myColor ? '내 턴 — 킹 배치' : '상대방 턴 대기 중...')
       : '상대방 연결 대기 중...';
     setStatus(msg);
+  } else if (IS_AI) {
+    const diffNames = { easy:'쉬움', normal:'보통', hard:'어려움' };
+    setStatus(`AI 대전 [${diffNames[AI_DIFF]||AI_DIFF}] — 백 턴 (킹 배치)`);
   } else {
     setStatus('백 턴 — 킹 배치');
   }
@@ -1688,6 +1700,15 @@ initGame();
 if (IS_ONLINE) {
   document.getElementById('restart-side-btn').style.display = 'none';
   document.getElementById('restart-btn').style.display      = 'none';
+}
+
+// AI 모드: 배지 표시
+if (IS_AI) {
+  const badge = document.getElementById('ai-badge');
+  const diffNames = { easy:'쉬움', normal:'보통', hard:'어려움' };
+  badge.textContent = `🤖 AI — ${diffNames[AI_DIFF] || AI_DIFF}`;
+  badge.style.display = 'inline-flex';
+  badge.style.alignItems = 'center';
 }
 
 /* ============================================================
@@ -1889,8 +1910,269 @@ function serializeGameState() {
 }
 
 /* ============================================================
-   원격 상태 적용 (상대방 행동을 내 화면에 반영)
+   🤖 AI 엔진 — 휴리스틱 (미니맥스 업그레이드 예정)
+   AI는 항상 흑(b) 진영
 ============================================================ */
+
+/* ── 평가 함수 ── */
+function countLine(board, color, r, c, dr, dc) {
+  // (r,c)에서 (dr,dc) 방향으로 연속된 color 기물 수와 양끝 열린 공간 반환
+  let cnt = 0, nr = r, nc = c;
+  while (inBounds(nr, nc) && board[nr][nc]?.color === color) { cnt++; nr+=dr; nc+=dc; }
+  const openFront = inBounds(nr, nc) && !board[nr][nc];
+  nr = r - dr; nc = c - dc;
+  while (inBounds(nr, nc) && board[nr][nc]?.color === color) { cnt++; nr-=dr; nc-=dc; }
+  const openBack  = inBounds(nr, nc) && !board[nr][nc];
+  return { cnt, open: (openFront ? 1 : 0) + (openBack ? 1 : 0) };
+}
+
+function omokThreat(board, color) {
+  // 오목 위협 점수: 4연속=1000, 3연속=100, 2연속=10
+  const dirs = [[0,1],[1,0],[1,1],[1,-1]];
+  const visited = new Set();
+  let score = 0;
+  for (let r=0; r<8; r++) for (let c=0; c<8; c++) {
+    if (!board[r][c] || board[r][c].color !== color) continue;
+    for (const [dr, dc] of dirs) {
+      const key = `${r},${c},${dr},${dc}`;
+      if (visited.has(key)) continue;
+      const { cnt, open } = countLine(board, color, r, c, dr, dc);
+      // 선분 위 모든 셀 visited 처리
+      for (let k=0; k<cnt; k++) visited.add(`${r+dr*k},${c+dc*k},${dr},${dc}`);
+      if (cnt >= 5) { score += 100000; continue; }
+      if (open === 0) continue; // 막힌 선은 위협 아님
+      if (cnt === 4) score += open === 2 ? 2000 : 800;
+      else if (cnt === 3) score += open === 2 ? 200  : 60;
+      else if (cnt === 2) score += open === 2 ? 20   : 5;
+    }
+  }
+  return score;
+}
+
+function boardScore(board, hand, color) {
+  const opp = color === 'w' ? 'b' : 'w';
+  // 기물 가치
+  const VAL = { K:0, Q:90, R:50, B:35, N:30, P:10 };
+  let pieceScore = 0;
+  for (let r=0; r<8; r++) for (let c=0; c<8; c++) {
+    const p = board[r][c];
+    if (!p) continue;
+    const v = VAL[p.type] || 0;
+    pieceScore += p.color === color ? v : -v;
+  }
+  // 손패 가치 (배치 안 된 기물도 자산)
+  for (const [t, n] of Object.entries(hand[color]  || {})) pieceScore += (VAL[t]||0) * n * 0.5;
+  for (const [t, n] of Object.entries(hand[opp] || {})) pieceScore -= (VAL[t]||0) * n * 0.5;
+  // 오목 위협
+  const omokMy  = omokThreat(board, color);
+  const omokOpp = omokThreat(board, opp);
+  // 체크 보너스
+  const checkBonus = isInCheck(board, opp)  ?  50 : 0;
+  const checkPenal = isInCheck(board, color) ? -80 : 0;
+  return pieceScore + (omokMy - omokOpp * 1.2) + checkBonus + checkPenal;
+}
+
+/* ── 모든 가능한 액션 수집 ── */
+function allActions(board, hand, color) {
+  const actions = [];
+  // 이동
+  for (let r=0; r<8; r++) for (let c=0; c<8; c++) {
+    if (!board[r][c] || board[r][c].color !== color) continue;
+    for (const {row:tr, col:tc} of legalMoves(board, r, c)) {
+      actions.push({ kind:'move', fromRow:r, fromCol:c, toRow:tr, toCol:tc });
+    }
+  }
+  // 배치
+  const kingOnBoard = !!findKing(board, color);
+  if (!kingOnBoard && hand[color]['K'] > 0) {
+    // 킹 없으면 킹만 배치 가능
+    for (const {row, col} of legalPlacements(board, 'K', color)) {
+      actions.push({ kind:'place', type:'K', row, col });
+    }
+  } else if (kingOnBoard) {
+    for (const [type, cnt] of Object.entries(hand[color])) {
+      if (cnt <= 0 || type === 'K') continue;
+      for (const {row, col} of legalPlacements(board, type, color)) {
+        actions.push({ kind:'place', type, row, col });
+      }
+    }
+  }
+  return actions;
+}
+
+/* ── 액션 적용 후 보드 반환 ── */
+function applyAction(board, hand, color, action) {
+  const nb = copyBoard(board);
+  const nh = { w: {...hand.w}, b: {...hand.b} };
+  if (action.kind === 'move') {
+    const captured = nb[action.toRow][action.toCol];
+    nb[action.toRow][action.toCol] = nb[action.fromRow][action.fromCol];
+    nb[action.fromRow][action.fromCol] = null;
+    // 잡은 기물은 내 손패로 (킹 제외)
+    if (captured && captured.type !== 'K') {
+      nh[color][captured.type] = (nh[color][captured.type] || 0) + 1;
+    }
+  } else {
+    nb[action.row][action.col] = { color, type: action.type };
+    nh[color][action.type]--;
+  }
+  return { nb, nh };
+}
+
+/* ── 액션 우선순위 정렬 (pruning 효율화) ── */
+function sortActions(actions, board, hand, color) {
+  return actions.map(a => {
+    const { nb, nh } = applyAction(board, hand, color, a);
+    const s = boardScore(nb, nh, color);
+    return { a, s };
+  }).sort((x, y) => y.s - x.s).map(x => x.a);
+}
+
+/* ── 쉬움: 랜덤 + 즉각 위협만 처리 ── */
+function aiEasy(board, hand) {
+  const color = AI_COLOR;
+  const opp   = 'w';
+  const actions = allActions(board, hand, color);
+  if (actions.length === 0) return null;
+
+  // 즉시 오목 완성 가능하면 무조건 실행
+  for (const a of actions) {
+    const { nb } = applyAction(board, hand, color, a);
+    if (checkOmok(nb, color)) return a;
+  }
+  // 상대 오목 4연속 막기
+  for (const a of actions) {
+    const { nb } = applyAction(board, hand, color, a);
+    if (!checkOmok(nb, opp) && omokThreat(board, opp) >= 800) {
+      const after = applyAction(nb, hand, opp, {kind:'move',fromRow:0,fromCol:0,toRow:0,toCol:0});
+      if (omokThreat(nb, opp) < 800) return a;
+    }
+  }
+  // 체크 걸기 우선 (30% 확률)
+  if (Math.random() < 0.3) {
+    for (const a of actions) {
+      const { nb } = applyAction(board, hand, color, a);
+      if (isInCheck(nb, opp)) return a;
+    }
+  }
+  // 나머지는 랜덤
+  return actions[Math.floor(Math.random() * actions.length)];
+}
+
+/* ── 보통: 탐욕적 1수 선택 + 위협 처리 ── */
+function aiNormal(board, hand) {
+  const color = AI_COLOR;
+  const opp   = 'w';
+  const actions = allActions(board, hand, color);
+  if (actions.length === 0) return null;
+
+  // 즉시 오목
+  for (const a of actions) {
+    const { nb } = applyAction(board, hand, color, a);
+    if (checkOmok(nb, color)) return a;
+  }
+  // 즉시 체크메이트
+  for (const a of actions) {
+    const { nb, nh } = applyAction(board, hand, color, a);
+    if (!hasAnyLegalAction(nb, opp, nh)) return a;
+  }
+  // 상대 오목 위협 차단
+  const oppThreat = omokThreat(board, opp);
+  if (oppThreat >= 200) {
+    let best = null, bestBlock = -Infinity;
+    for (const a of actions) {
+      const { nb, nh } = applyAction(board, hand, color, a);
+      const afterThreat = omokThreat(nb, opp);
+      if (afterThreat < bestBlock || best === null) { bestBlock = afterThreat; best = a; }
+    }
+    if (bestBlock < oppThreat * 0.5) return best;
+  }
+  // 최고 점수 액션 (약간의 랜덤성 추가)
+  const sorted = sortActions(actions, board, hand, color);
+  const topN = sorted.slice(0, Math.max(1, Math.floor(sorted.length * 0.35)));
+  return topN[Math.floor(Math.random() * topN.length)];
+}
+
+/* ── 어려움: 2수 lookahead + 강한 위협 처리 ── */
+function aiHard(board, hand) {
+  const color = AI_COLOR;
+  const opp   = 'w';
+  const actions = allActions(board, hand, color);
+  if (actions.length === 0) return null;
+
+  // 즉시 오목
+  for (const a of actions) {
+    const { nb } = applyAction(board, hand, color, a);
+    if (checkOmok(nb, color)) return a;
+  }
+  // 즉시 체크메이트
+  for (const a of actions) {
+    const { nb, nh } = applyAction(board, hand, color, a);
+    if (!hasAnyLegalAction(nb, opp, nh)) return a;
+  }
+
+  // 2수 lookahead
+  let bestScore = -Infinity, bestAction = null;
+  const sorted = sortActions(actions, board, hand, color).slice(0, 18);
+
+  for (const a of sorted) {
+    const { nb, nh } = applyAction(board, hand, color, a);
+
+    // 상대 최선 응수 중 내게 가장 불리한 것을 상정
+    const oppActions = allActions(nb, nh, opp).slice(0, 12);
+    let worstForMe = Infinity;
+
+    if (oppActions.length === 0) {
+      // 상대 수 없음 → 매우 유리
+      worstForMe = 99999;
+    } else {
+      for (const oa of oppActions) {
+        const { nb: nb2, nh: nh2 } = applyAction(nb, nh, opp, oa);
+        const s = boardScore(nb2, nh2, color);
+        if (s < worstForMe) worstForMe = s;
+      }
+    }
+
+    if (worstForMe > bestScore) { bestScore = worstForMe; bestAction = a; }
+  }
+
+  return bestAction || sorted[0];
+}
+
+/* ── AI 메인 진입점 ── */
+let aiThinking = false;
+
+function aiDoMove() {
+  if (aiThinking || gameOver || turn !== AI_COLOR) return;
+  aiThinking = true;
+  setStatus('🤖 AI 생각 중...');
+
+  // UI 업데이트 후 실행 (화면 멈춤 방지)
+  setTimeout(() => {
+    let action = null;
+    try {
+      if      (AI_DIFF === 'easy')   action = aiEasy(board, hand);
+      else if (AI_DIFF === 'normal') action = aiNormal(board, hand);
+      else                           action = aiHard(board, hand);
+    } catch(e) {
+      console.error('AI 오류:', e);
+    }
+
+    aiThinking = false;
+
+    if (!action) {
+      // 액션 없으면 패배 처리
+      endGame('🏆', '백 승리!', 'AI가 둘 수 없습니다.');
+      return;
+    }
+
+    if (action.kind === 'move') {
+      doMove(action.fromRow, action.fromCol, action.toRow, action.toCol);
+    } else {
+      doPlace(action.type, action.row, action.col);
+    }
+  }, AI_DIFF === 'hard' ? 400 : 150); // 어려움은 약간 더 생각하는 척
+}
 function applyRemoteGameState(s) {
   if (applyingRemote) return;
   applyingRemote = true;

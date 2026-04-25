@@ -36,6 +36,15 @@ body{
 
 /* ── 로컬 화면 ── */
 .local-desc{font-size:0.85rem;color:var(--muted);text-align:center;line-height:1.6;padding:8px 0;}
+#screen-local { flex-direction: row; flex-wrap: wrap; gap: 16px; }
+#screen-local .panel-card { flex: 1; min-width: 240px; }
+.diff-btn {
+  flex:1; padding:10px 6px; border-radius:10px; border:1.5px solid var(--border);
+  background:var(--panel2); color:var(--muted); font-size:0.82rem; font-weight:700;
+  cursor:pointer; font-family:inherit; transition:all 0.15s;
+}
+.diff-btn:hover { border-color:var(--gold); color:var(--text); }
+.diff-btn.active { border-color:var(--gold); background:rgba(245,200,66,0.12); color:var(--gold); }
 
 /* ── 버튼 ── */
 .btn{width:100%;padding:14px;border-radius:12px;border:none;font-size:1rem;font-weight:700;cursor:pointer;font-family:inherit;transition:opacity 0.15s,transform 0.1s;display:flex;align-items:center;justify-content:center;gap:8px;}
@@ -145,8 +154,24 @@ body{
 
 <!-- ── 로컬 화면 ── -->
 <div class="screen active" id="screen-local">
-  <p class="local-desc">같은 기기에서 두 명이 번갈아 플레이합니다.<br>추가 설정 없이 바로 시작!</p>
-  <button class="btn btn-gold" onclick="startLocal()">▶ 바로 시작</button>
+  <!-- 2인 로컬 -->
+  <div class="panel-card">
+    <div class="panel-title">👥 로컬 2인</div>
+    <p style="font-size:0.82rem;color:var(--muted);line-height:1.6">같은 기기에서 두 명이 번갈아 플레이합니다.</p>
+    <button class="btn btn-gold" onclick="startLocal()">▶ 바로 시작</button>
+  </div>
+  <!-- AI 대전 -->
+  <div class="panel-card">
+    <div class="panel-title">🤖 AI 대전</div>
+    <p style="font-size:0.82rem;color:var(--muted);line-height:1.6">AI와 1인 대전합니다. 내 진영은 <b style="color:var(--text)">백</b>입니다.</p>
+    <div class="form-label">난이도</div>
+    <div style="display:flex;gap:8px;">
+      <button class="diff-btn active" id="diff-easy"   onclick="setDiff('easy')">😊 쉬움</button>
+      <button class="diff-btn"        id="diff-normal" onclick="setDiff('normal')">🧠 보통</button>
+      <button class="diff-btn"        id="diff-hard"   onclick="setDiff('hard')">💀 어려움</button>
+    </div>
+    <button class="btn btn-blue" onclick="startAI()">🤖 AI와 대전</button>
+  </div>
 </div>
 
 <!-- ── 온라인 화면 ── -->
@@ -290,6 +315,17 @@ function initFirebase() {
 
 function startLocal() {
   window.location.href = 'omokgay.html';
+}
+
+let _difficulty = 'easy';
+function setDiff(d) {
+  _difficulty = d;
+  ['easy','normal','hard'].forEach(k => {
+    document.getElementById('diff-'+k).classList.toggle('active', k===d);
+  });
+}
+function startAI() {
+  window.location.href = `omokgay.html?mode=ai&difficulty=${_difficulty}`;
 }
 
 /* ============================================================
