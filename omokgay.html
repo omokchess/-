@@ -952,13 +952,14 @@ function cleanupRoom(code) {
 /* ============================================================
    온라인 모드 — URL 파라미터 파싱 & PeerJS 설정
 ============================================================ */
-const _urlParams   = new URLSearchParams(window.location.search);
-const NET_ROLE     = _urlParams.get('role');
-const NET_ROOM     = _urlParams.get('room');
-const IS_ONLINE    = !!NET_ROLE;
-const IS_AI        = _urlParams.get('mode') === 'ai';
-const AI_COLOR     = 'b';   // AI는 항상 흑
-const AI_DIFF      = _urlParams.get('difficulty') || 'easy'; // easy | normal | hard
+const _urlParams     = new URLSearchParams(window.location.search);
+const NET_ROLE       = _urlParams.get('role');   // 'host'|'guest'|'spectator'|null
+const NET_ROOM       = _urlParams.get('room');
+const IS_ONLINE      = NET_ROLE === 'host' || NET_ROLE === 'guest';
+const IS_SPECTATOR   = NET_ROLE === 'spectator';
+const IS_AI          = _urlParams.get('mode') === 'ai';
+const AI_COLOR       = 'b';
+const AI_DIFF        = _urlParams.get('difficulty') || 'easy';
 
 /* 온라인 모드에서 내 진영 */
 let myColor = null;
@@ -1309,6 +1310,9 @@ function finishTurn() {
   setStatus(statusMsg);
   renderAll();
 
+  // 호스트: Firebase에 게임 상태 업로드 (관전자용)
+  if (IS_ONLINE && NET_ROLE === 'host') pushStateToFirebase();
+
   // AI 모드: 흑 턴이면 자동 실행
   if (IS_AI && turn === AI_COLOR && !gameOver) {
     aiDoMove();
@@ -1326,8 +1330,13 @@ function endGame(emoji, title, desc) {
     document.getElementById('rematch-btn').style.display = 'block';
   }
   netSend({ type: 'STATE', payload: serializeGameState() });
-  // 게임 종료 시 Firebase에서 방 삭제 (호스트만)
-  cleanupRoom(NET_ROOM);
+  // Firebase: 게임 종료 상태 업로드 후 방 삭제
+  if (IS_ONLINE && NET_ROLE === 'host') {
+    pushStateToFirebase();
+    setTimeout(() => cleanupRoom(NET_ROOM), 5000); // 5초 후 삭제 (관전자 최종 상태 볼 시간)
+  } else {
+    cleanupRoom(NET_ROOM);
+  }
   renderAll();
 }
 
@@ -1712,6 +1721,84 @@ if (IS_AI) {
 }
 
 /* ============================================================
+   👁 관전자 모드
+============================================================ */
+if (IS_SPECTATOR && NET_ROOM) {
+  // UI — 모든 상호작용 비활성화
+  document.getElementById('restart-side-btn').style.display = 'none';
+  document.getElementById('restart-btn').style.display      = 'none';
+  document.getElementById('btn-lobby').textContent = '← 로비';
+  document.getElementById('board').style.pointerEvents = 'none';
+  document.querySelectorAll('.hand-piece').forEach(el => el.style.pointerEvents = 'none');
+
+  // 관전 배지
+  const specBadge = document.getElementById('ai-badge');
+  specBadge.textContent = '👁 관전 중';
+  specBadge.style.cssText += ';background:rgba(255,149,0,0.15);color:#FF9500;border:1px solid rgba(255,149,0,0.4);display:inline-flex;align-items:center;';
+
+  // 채팅 읽기 전용
+  document.getElementById('btn-chat').classList.add('show');
+  const chatInput = document.getElementById('chat-input');
+  if (chatInput) { chatInput.disabled = true; chatInput.placeholder = '관전자는 채팅에 참여할 수 없습니다'; }
+  const sendBtn = document.getElementById('btn-chat-send');
+  if (sendBtn) sendBtn.disabled = true;
+
+  setStatus('👁 관전 중...');
+
+  const db = getFbDb();
+  if (db) {
+    const roomRef = db.ref('rooms/' + NET_ROOM);
+
+    // 방 존재 확인
+    roomRef.once('value', snap => {
+      if (!snap.exists()) setStatus('❌ 방을 찾을 수 없거나 이미 종료된 게임입니다.');
+    });
+
+    // 게임 상태 실시간 구독
+    roomRef.child('gameState').on('value', snap => {
+      if (!snap.val()) return;
+      try {
+        const state = JSON.parse(snap.val());
+        applyRemoteGameState(state);
+        setStatus(state.gameOver
+          ? '게임이 종료되었습니다.'
+          : `👁 관전 중 — ${state.turn === 'w' ? '백' : '흑'} 턴`);
+      } catch(e) { console.warn('관전 상태 파싱 오류:', e); }
+    });
+
+    // 채팅 구독 (읽기 전용)
+    roomRef.child('chatLog').on('value', snap => {
+      if (!snap.val()) return;
+      try {
+        const msgs = JSON.parse(snap.val());
+        const container = document.getElementById('chat-messages');
+        if (!container) return;
+        container.innerHTML = '';
+        msgs.forEach(m => {
+          const el = document.createElement('div');
+          el.className = m.cls.includes('system') ? 'chat-msg system'
+                       : m.cls.includes('mine')   ? 'chat-msg mine'
+                       :                            'chat-msg theirs';
+          el.textContent = m.txt;
+          container.appendChild(el);
+        });
+        container.scrollTop = container.scrollHeight;
+      } catch(e) {}
+    });
+
+    // 방 삭제 감지 (게임 종료)
+    roomRef.on('value', snap => {
+      if (!snap.exists()) {
+        setStatus('게임이 종료되어 방이 삭제되었습니다.');
+        roomRef.off();
+      }
+    });
+  } else {
+    setStatus('❌ Firebase 미연결 — 관전 불가');
+  }
+}
+
+/* ============================================================
    온라인 시스템 (로컬 모드면 아무것도 하지 않음)
 ============================================================ */
 if (IS_ONLINE) {
@@ -1879,6 +1966,25 @@ function netSend(data) {
   if (netConn && netConn.open) {
     try { netConn.send(data); } catch(e) { console.warn('netSend 실패:', e); }
   }
+}
+
+/* 호스트가 Firebase에 게임 상태 업로드 (관전자용) */
+function pushStateToFirebase() {
+  if (!IS_ONLINE || NET_ROLE !== 'host' || !NET_ROOM) return;
+  const db = getFbDb();
+  if (!db) return;
+  const state = serializeGameState();
+  // 채팅 로그도 함께 저장
+  const chatMsgs = [];
+  document.querySelectorAll('#chat-messages .chat-msg').forEach(el => {
+    chatMsgs.push({ cls: el.className, txt: el.textContent });
+  });
+  db.ref('rooms/' + NET_ROOM).update({
+    gameActive:  true,
+    gameState:   JSON.stringify(state),
+    chatLog:     JSON.stringify(chatMsgs),
+    updatedAt:   Date.now(),
+  }).catch(() => {});
 }
 
 /* ============================================================
