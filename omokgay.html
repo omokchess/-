@@ -2019,7 +2019,7 @@ function pushStateToFirebase() {
 }
 
 /* Firebase DB 인스턴스 (싱글턴) */
-let _fbDbInst = null;
+var _fbDbInst = null;
 function getFbDb() {
   if (_fbDbInst) return _fbDbInst;
   try {
