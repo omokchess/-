@@ -1751,9 +1751,18 @@ if (IS_SPECTATOR && NET_ROOM) {
       try {
         const state = JSON.parse(snap.val());
         applyRemoteGameState(state);
-        setStatus(state.gameOver
-          ? '게임이 종료되었습니다.'
-          : `👁 관전 중 — ${state.turn === 'w' ? '백' : '흑'} 턴`);
+        if (state.gameOver) {
+          // 관전자: 종료 오버레이에서 리매치/재시작 버튼 숨기고 로비 버튼만 표시
+          const rematchBtn = document.getElementById('rematch-btn');
+          const restartBtn = document.getElementById('restart-btn');
+          const exitBtn    = document.getElementById('exit-btn');
+          if (rematchBtn) rematchBtn.style.display = 'none';
+          if (restartBtn) restartBtn.style.display = 'none';
+          if (exitBtn)    exitBtn.style.display    = 'block';
+          setStatus('게임이 종료되었습니다. ← 로비 버튼으로 돌아가세요.');
+        } else {
+          setStatus(`👁 관전 중 — ${state.turn === 'w' ? '백' : '흑'} 턴`);
+        }
       } catch(e) { console.warn('관전 상태 파싱 오류:', e); }
     });
 
@@ -1780,7 +1789,7 @@ if (IS_SPECTATOR && NET_ROOM) {
     // 방 삭제 감지 (게임 종료)
     roomRef.on('value', snap => {
       if (!snap.exists()) {
-        setStatus('게임이 종료되어 방이 삭제되었습니다.');
+        setStatus('게임이 종료되었습니다. ← 로비 버튼으로 돌아가세요.');
         roomRef.off();
       }
     });
@@ -1930,6 +1939,8 @@ function setupConn(conn, role) {
     switch (data.type) {
       case 'STATE':
         applyRemoteGameState(data.payload);
+        // 호스트: 게스트에게서 받은 상태도 Firebase에 올려서 관전자에게 반영
+        if (NET_ROLE === 'host') pushStateToFirebase();
         break;
       case 'RESTART':
         document.getElementById('end-overlay').classList.remove('show');
