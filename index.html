@@ -450,7 +450,7 @@ function loadRooms() {
       if (!r || !r.createdAt || r.createdAt <= cutoff) return;
       if (child.key === myRoomCode) return;
       if (!r.started) waiting.push({ code: child.key, ...r });
-      else if (r.gameActive) playing.push({ code: child.key, ...r });
+      else playing.push({ code: child.key, ...r });
     });
     waiting.sort((a,b) => b.createdAt - a.createdAt);
     playing.sort((a,b) => b.createdAt - a.createdAt);
@@ -533,12 +533,12 @@ async function createRoom() {
     if (snap.val() === true) {
       clearTimeout(autoDelete);
       document.getElementById('wait-msg').textContent = '게스트 입장! 게임 시작...';
-      // 이동 전에 gameActive:true 먼저 올려서 관전 목록에 바로 뜨게 함
-      roomsRef.child(code).update({ gameActive: true }).finally(() => {
-        setTimeout(() => {
-          window.location.href = `omokgay.html?role=host&room=${code}&time=${timeLimit}`;
-        }, 400);
-      });
+      // myRoomCode를 null로 초기화 → beforeunload에서 방 삭제 방지
+      const roomToGo = myRoomCode;
+      myRoomCode = null;
+      setTimeout(() => {
+        window.location.href = `omokgay.html?role=host&room=${roomToGo}&time=${timeLimit}`;
+      }, 400);
     }
   });
 }
@@ -683,6 +683,8 @@ document.getElementById('room-name-input').addEventListener('keydown', e => {
 
 /* ── 페이지 이탈 시 방 정리 ── */
 window.addEventListener('beforeunload', () => {
+  // myRoomCode가 있으면 아직 대기 중인 방 → 삭제
+  // 게임 시작 시 myRoomCode를 null로 초기화하므로 게임 중 방은 삭제 안 됨
   if (myRoomCode && fbReady) {
     roomsRef.child(myRoomCode).remove();
   }
