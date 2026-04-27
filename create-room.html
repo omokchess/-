@@ -1,0 +1,471 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>방 만들기 — 프론티어</title>
+<style>
+:root {
+  --bg:#2C2C2E; --panel:#3A3A3C; --panel2:#48484A;
+  --border:#555558; --gold:#F5C842;
+  --text:#F2F2F7; --muted:#AEAEB2;
+  --red:#FF453A; --green:#30D158; --blue:#0A84FF;
+  --orange:#FF9500;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body {
+  font-family:'Noto Sans KR','Apple SD Gothic Neo','Malgun Gothic',sans-serif;
+  background:var(--bg); color:var(--text);
+  min-height:100vh; display:flex; flex-direction:column;
+  align-items:center; padding:28px 16px 60px;
+}
+.top-bar {
+  width:100%; max-width:900px;
+  display:flex; align-items:center; gap:12px; margin-bottom:24px;
+}
+.btn-back {
+  background:var(--panel2); border:1px solid var(--border); border-radius:10px;
+  color:var(--text); font-size:0.85rem; font-weight:600;
+  padding:8px 14px; cursor:pointer; font-family:inherit;
+  transition:border-color 0.15s; text-decoration:none;
+}
+.btn-back:hover { border-color:var(--gold); color:var(--gold); }
+h1 { font-size:1.4rem; font-weight:800; color:var(--gold); letter-spacing:1px; }
+
+/* 3열 레이아웃 */
+.layout {
+  width:100%; max-width:900px;
+  display:grid;
+  grid-template-columns:240px 1fr 220px;
+  gap:16px;
+}
+@media(max-width:700px) {
+  .layout { grid-template-columns:1fr; }
+}
+
+.col {
+  background:var(--panel); border:1px solid var(--border);
+  border-radius:16px; padding:20px;
+  display:flex; flex-direction:column; gap:14px;
+}
+.col-title {
+  font-size:0.72rem; color:var(--muted); text-transform:uppercase;
+  letter-spacing:1.5px; font-weight:700;
+}
+
+/* 방 코드 */
+.room-code-box {
+  font-size:2rem; font-weight:800; letter-spacing:8px; color:var(--gold);
+  background:var(--panel2); border:2px dashed var(--border);
+  border-radius:12px; padding:14px; text-align:center;
+  font-family:'Consolas',monospace; cursor:pointer;
+  transition:border-color 0.2s;
+}
+.room-code-box:hover { border-color:var(--gold); }
+.code-hint { font-size:0.72rem; color:var(--muted); text-align:center; margin-top:-8px; }
+
+/* 입력 필드 */
+.form-label { font-size:0.75rem; color:var(--muted); margin-bottom:-8px; }
+.text-input {
+  width:100%; padding:11px 13px;
+  background:var(--panel2); border:1.5px solid var(--border);
+  border-radius:10px; color:var(--text); font-size:0.9rem;
+  font-family:inherit; transition:border-color 0.15s; outline:none;
+}
+.text-input:focus { border-color:var(--gold); }
+.text-input::placeholder { color:var(--muted); }
+.divider { border:none; border-top:1px solid var(--border); }
+
+/* 기물 설정 */
+.piece-row {
+  display:flex; align-items:center; gap:10px;
+  padding:8px 0; border-bottom:1px solid var(--border);
+}
+.piece-row:last-child { border-bottom:none; }
+.piece-icon { font-size:1.3rem; width:28px; text-align:center; }
+.piece-icon.chess { font-size:1.4rem; }
+.piece-name { flex:1; font-size:0.85rem; font-weight:600; }
+.piece-desc { font-size:0.68rem; color:var(--muted); line-height:1.4; }
+.counter {
+  display:flex; align-items:center; gap:6px;
+}
+.cnt-btn {
+  width:26px; height:26px; border-radius:8px;
+  border:1px solid var(--border); background:var(--panel2);
+  color:var(--text); font-size:1rem; cursor:pointer;
+  display:flex; align-items:center; justify-content:center;
+  transition:background 0.12s, border-color 0.12s; font-family:inherit;
+}
+.cnt-btn:hover { border-color:var(--gold); background:#3f3f41; }
+.cnt-val {
+  width:24px; text-align:center; font-size:0.95rem;
+  font-weight:700; font-family:'Consolas',monospace; color:var(--gold);
+}
+.special-tag {
+  font-size:0.62rem; padding:1px 5px; border-radius:4px;
+  background:rgba(255,149,0,0.15); color:var(--orange);
+  font-weight:700; white-space:nowrap;
+}
+
+/* 시간 선택 */
+.time-grid {
+  display:grid; grid-template-columns:1fr 1fr;
+  gap:8px;
+}
+.time-btn {
+  padding:12px 8px; border-radius:10px;
+  border:1.5px solid var(--border); background:var(--panel2);
+  color:var(--muted); font-size:0.85rem; font-weight:700;
+  cursor:pointer; font-family:inherit; transition:all 0.15s;
+  text-align:center;
+}
+.time-btn:hover { border-color:var(--gold); color:var(--text); }
+.time-btn.active {
+  border-color:var(--gold); background:rgba(245,200,66,0.12);
+  color:var(--gold);
+}
+.time-btn.unlimited {
+  grid-column:1 / -1;
+}
+
+/* 방 만들기 버튼 */
+.btn-create {
+  width:100%; padding:16px; border-radius:12px; border:none;
+  background:var(--blue); color:#fff; font-size:1.05rem; font-weight:800;
+  cursor:pointer; font-family:inherit; transition:opacity 0.15s,transform 0.1s;
+  letter-spacing:0.5px;
+}
+.btn-create:hover { opacity:0.88; transform:translateY(-1px); }
+.btn-create:active { transform:scale(0.98); }
+.btn-create:disabled { opacity:0.4; cursor:not-allowed; transform:none; }
+
+.status-msg { font-size:0.8rem; text-align:center; color:var(--muted); min-height:16px; }
+.status-msg.wait { color:var(--gold); }
+.status-msg.error { color:var(--red); }
+</style>
+</head>
+<body>
+
+<div class="top-bar">
+  <a href="index.html" class="btn-back">← 로비</a>
+  <h1>방 만들기</h1>
+</div>
+
+<div class="layout">
+
+  <!-- ── 왼쪽: 방 정보 ── -->
+  <div class="col">
+    <div class="col-title">방 정보</div>
+    <div class="room-code-box" id="display-code" onclick="copyCode()" title="클릭하면 복사">------</div>
+    <p class="code-hint">클릭하면 코드 복사</p>
+    <hr class="divider">
+    <div class="form-label">방 이름 (선택)</div>
+    <input class="text-input" id="room-name" maxlength="20" placeholder="이름 없는 방">
+    <div class="form-label">비밀번호 (선택)</div>
+    <input class="text-input" id="room-pw" maxlength="12" placeholder="없으면 공개방">
+    <div class="form-label" style="margin-bottom:0">방 설명 (선택)</div>
+    <textarea class="text-input" id="room-desc" maxlength="60" placeholder="짧은 설명..."
+      style="resize:none;height:64px;line-height:1.5;"></textarea>
+  </div>
+
+  <!-- ── 가운데: 기물 설정 ── -->
+  <div class="col">
+    <div class="col-title">기물 설정</div>
+
+    <!-- 일반 기물 -->
+    <div class="piece-row">
+      <span class="piece-icon chess" style="color:#ccc">♛</span>
+      <div style="flex:1"><div class="piece-name">퀸</div></div>
+      <div class="counter">
+        <button class="cnt-btn" onclick="adj('Q',-1)">−</button>
+        <span class="cnt-val" id="cnt-Q">1</span>
+        <button class="cnt-btn" onclick="adj('Q',1)">+</button>
+      </div>
+    </div>
+    <div class="piece-row">
+      <span class="piece-icon chess" style="color:#ccc">♜</span>
+      <div style="flex:1"><div class="piece-name">룩</div></div>
+      <div class="counter">
+        <button class="cnt-btn" onclick="adj('R',-1)">−</button>
+        <span class="cnt-val" id="cnt-R">2</span>
+        <button class="cnt-btn" onclick="adj('R',1)">+</button>
+      </div>
+    </div>
+    <div class="piece-row">
+      <span class="piece-icon chess" style="color:#ccc">♝</span>
+      <div style="flex:1"><div class="piece-name">비숍</div></div>
+      <div class="counter">
+        <button class="cnt-btn" onclick="adj('B',-1)">−</button>
+        <span class="cnt-val" id="cnt-B">2</span>
+        <button class="cnt-btn" onclick="adj('B',1)">+</button>
+      </div>
+    </div>
+    <div class="piece-row">
+      <span class="piece-icon chess" style="color:#ccc">♞</span>
+      <div style="flex:1"><div class="piece-name">나이트</div></div>
+      <div class="counter">
+        <button class="cnt-btn" onclick="adj('N',-1)">−</button>
+        <span class="cnt-val" id="cnt-N">2</span>
+        <button class="cnt-btn" onclick="adj('N',1)">+</button>
+      </div>
+    </div>
+    <div class="piece-row">
+      <span class="piece-icon chess" style="color:#ccc">♟</span>
+      <div style="flex:1"><div class="piece-name">폰</div></div>
+      <div class="counter">
+        <button class="cnt-btn" onclick="adj('P',-1)">−</button>
+        <span class="cnt-val" id="cnt-P">8</span>
+        <button class="cnt-btn" onclick="adj('P',1)">+</button>
+      </div>
+    </div>
+
+    <hr class="divider">
+    <div class="col-title">특수 기물 <span class="special-tag">NEW</span></div>
+
+    <div class="piece-row">
+      <span class="piece-icon">🛡</span>
+      <div style="flex:1">
+        <div class="piece-name">방패병</div>
+        <div class="piece-desc">앞뒤 1칸 이동, 기물 밀기 가능</div>
+      </div>
+      <div class="counter">
+        <button class="cnt-btn" onclick="adj('SH',-1)">−</button>
+        <span class="cnt-val" id="cnt-SH">0</span>
+        <button class="cnt-btn" onclick="adj('SH',1)">+</button>
+      </div>
+    </div>
+    <div class="piece-row">
+      <span class="piece-icon">🎯</span>
+      <div style="flex:1">
+        <div class="piece-name">저격수</div>
+        <div class="piece-desc">꼭짓점 배치, 직선 3칸 공격</div>
+      </div>
+      <div class="counter">
+        <button class="cnt-btn" onclick="adj('SN',-1)">−</button>
+        <span class="cnt-val" id="cnt-SN">0</span>
+        <button class="cnt-btn" onclick="adj('SN',1)">+</button>
+      </div>
+    </div>
+    <div class="piece-row">
+      <span class="piece-icon">🦘</span>
+      <div style="flex:1">
+        <div class="piece-name">점퍼</div>
+        <div class="piece-desc">상하좌우 1칸 건너 2번째 칸 이동/공격</div>
+      </div>
+      <div class="counter">
+        <button class="cnt-btn" onclick="adj('JP',-1)">−</button>
+        <span class="cnt-val" id="cnt-JP">0</span>
+        <button class="cnt-btn" onclick="adj('JP',1)">+</button>
+      </div>
+    </div>
+
+    <div style="font-size:0.72rem;color:var(--muted);line-height:1.6;margin-top:-4px;">
+      킹은 항상 1개입니다. 특수기물은 꼭짓점을 제외한 배치 구역에 놓을 수 있습니다.
+    </div>
+  </div>
+
+  <!-- ── 오른쪽: 시간 설정 + 방 만들기 ── -->
+  <div class="col">
+    <div class="col-title">시간제한 (1턴당)</div>
+    <div class="time-grid">
+      <button class="time-btn" data-val="3600" onclick="setTime(this)">1시간</button>
+      <button class="time-btn" data-val="1800" onclick="setTime(this)">30분</button>
+      <button class="time-btn" data-val="600"  onclick="setTime(this)">10분</button>
+      <button class="time-btn" data-val="300"  onclick="setTime(this)">5분</button>
+      <button class="time-btn" data-val="60"   onclick="setTime(this)">1분</button>
+      <button class="time-btn" data-val="30"   onclick="setTime(this)">30초</button>
+      <button class="time-btn unlimited active" data-val="unlimited" onclick="setTime(this)">제한 없음</button>
+    </div>
+    <hr class="divider">
+    <button class="btn-create" id="btn-create" onclick="createRoom()">방 만들기</button>
+    <div class="status-msg" id="status-msg"></div>
+  </div>
+
+</div>
+
+<!-- Firebase SDK -->
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script>
+/* ── Firebase ── */
+const FIREBASE_CONFIG = {
+  apiKey:            "AIzaSyD_bv9vLqcMDMZgGHNLS2A94INXqkO8XX8",
+  authDomain:        "ooooomok-285e6.firebaseapp.com",
+  databaseURL:       "https://ooooomok-285e6-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId:         "ooooomok-285e6",
+  storageBucket:     "ooooomok-285e6.firebasestorage.app",
+  messagingSenderId: "764275385569",
+  appId:             "1:764275385569:web:44cecc18de9aef4d9a43a0",
+};
+
+let db = null, auth = null, currentUser = null, roomsRef = null;
+let fbReady = false;
+
+firebase.initializeApp(FIREBASE_CONFIG);
+db       = firebase.database();
+auth     = firebase.auth();
+roomsRef = db.ref('rooms');
+
+auth.onAuthStateChanged(u => {
+  if (u) { currentUser = u; }
+  else { auth.signInAnonymously().catch(()=>{}); }
+});
+
+db.ref('.info/connected').on('value', snap => {
+  fbReady = snap.val() === true;
+  if (fbReady) document.getElementById('btn-create').disabled = false;
+});
+
+/* ── 기물 카운터 ── */
+const LIMITS = { Q:[0,3], R:[0,4], B:[0,4], N:[0,4], P:[0,12],
+                  SH:[0,4], SN:[0,4], JP:[0,4] };
+const counts = { Q:1, R:2, B:2, N:2, P:8, SH:0, SN:0, JP:0 };
+
+function adj(type, delta) {
+  const [min, max] = LIMITS[type];
+  counts[type] = Math.max(min, Math.min(max, counts[type] + delta));
+  document.getElementById('cnt-'+type).textContent = counts[type];
+}
+
+/* ── 시간 선택 ── */
+let selectedTime = 'unlimited';
+function setTime(btn) {
+  document.querySelectorAll('.time-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  selectedTime = btn.dataset.val;
+}
+
+/* ── 6자리 코드 생성 ── */
+function makeCode() {
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  return Array.from({length:6}, () => chars[Math.floor(Math.random()*chars.length)]).join('');
+}
+
+/* ── 방 코드 표시 (나중에 createRoom에서 확정) ── */
+function copyCode() {
+  const code = document.getElementById('display-code').textContent;
+  if (code === '------') return;
+  navigator.clipboard.writeText(code).then(() => {
+    const el = document.getElementById('display-code');
+    const prev = el.textContent;
+    el.textContent = '복사됨!';
+    setTimeout(() => el.textContent = prev, 1200);
+  });
+}
+
+/* ── 손패 파라미터 문자열 생성 ── */
+function buildHandParam() {
+  return 'K1' + Object.entries(counts).map(([t,n])=>`${t}${n}`).join('');
+}
+
+/* ── 방 만들기 ── */
+let myRoomCode = null;
+let roomWatcher = null;
+let autoDeleteTimer = null;
+
+async function createRoom() {
+  if (!fbReady) { setMsg('Firebase 연결 중...', 'wait'); return; }
+
+  const btn  = document.getElementById('btn-create');
+  btn.disabled = true;
+  setMsg('방 생성 중...', 'wait');
+
+  const name = document.getElementById('room-name').value.trim() || '이름 없는 방';
+  const pw   = document.getElementById('room-pw').value.trim();
+  const desc = document.getElementById('room-desc').value.trim();
+  const hand = buildHandParam();
+
+  // 코드 충돌 없을 때까지 재시도
+  let code, exists = true;
+  while (exists) {
+    code = makeCode();
+    const snap = await roomsRef.child(code).once('value');
+    exists = snap.exists();
+  }
+
+  myRoomCode = code;
+  document.getElementById('display-code').textContent = code;
+
+  const roomData = {
+    name, desc,
+    hand,
+    timeLimit:        selectedTime,
+    timeLimitDisplay: timeLimitLabel(selectedTime),
+    createdAt:        Date.now(),
+    started:          false,
+    gameActive:       false,
+    hostUid:          currentUser?.uid || null,
+    hostElo:          1200,
+  };
+  if (pw) roomData.password = pw;
+
+  await roomsRef.child(code).set(roomData);
+
+  setMsg('상대방 입장 대기 중...', 'wait');
+  btn.textContent = '⏳ 대기 중...';
+
+  // 30분 자동 삭제
+  autoDeleteTimer = setTimeout(() => {
+    setMsg('시간 초과. 방이 취소됐습니다.', 'error');
+    cancelRoom();
+  }, 30 * 60 * 1000);
+
+  // 게스트 입장 감시
+  roomWatcher = roomsRef.child(code).child('started').on('value', snap => {
+    if (snap.val() === true) {
+      clearTimeout(autoDeleteTimer);
+      setMsg('게스트 입장! 게임 시작...', 'wait');
+      const uid  = currentUser?.uid || '';
+      const roomToGo = myRoomCode;
+      myRoomCode = null; // beforeunload 방 삭제 방지
+      setTimeout(() => {
+        window.location.href =
+          `omokgay.html?role=host&room=${roomToGo}&time=${selectedTime}&uid=${uid}&hand=${encodeURIComponent(hand)}`;
+      }, 400);
+    }
+  });
+
+  // 취소 버튼 표시
+  btn.textContent = '🚪 방 취소';
+  btn.disabled = false;
+  btn.style.background = 'var(--red)';
+  btn.onclick = cancelRoom;
+}
+
+async function cancelRoom() {
+  clearTimeout(autoDeleteTimer);
+  if (roomWatcher && myRoomCode) {
+    roomsRef.child(myRoomCode).child('started').off('value', roomWatcher);
+    roomWatcher = null;
+  }
+  if (myRoomCode) {
+    await roomsRef.child(myRoomCode).remove().catch(()=>{});
+    myRoomCode = null;
+  }
+  const btn = document.getElementById('btn-create');
+  btn.textContent = '방 만들기';
+  btn.style.background = '';
+  btn.onclick = createRoom;
+  setMsg('방이 취소됐습니다.');
+}
+
+// 페이지 이탈 시 방 삭제
+window.addEventListener('beforeunload', () => {
+  if (myRoomCode && roomsRef) roomsRef.child(myRoomCode).remove();
+});
+
+function timeLimitLabel(v) {
+  const m = { unlimited:'제한 없음', 30:'30초', 60:'1분',
+              300:'5분', 600:'10분', 1800:'30분', 3600:'1시간' };
+  return m[v] || v;
+}
+
+function setMsg(msg, cls='') {
+  const el = document.getElementById('status-msg');
+  el.textContent = msg;
+  el.className   = 'status-msg' + (cls ? ' '+cls : '');
+}
+</script>
+</body>
+</html>

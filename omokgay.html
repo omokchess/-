@@ -942,6 +942,18 @@ const IS_AI          = _urlParams.get('mode') === 'ai';
 const AI_COLOR       = 'b';
 const AI_DIFF        = _urlParams.get('difficulty') || 'easy';
 
+// 커스텀 기물 설정 (create-room.html에서 전달)
+// ?hand=K1Q1R2B2N2P8SH1SN0JP0 형태
+const _handParam = _urlParams.get('hand');
+if (_handParam) {
+  const m = _handParam.matchAll(/([A-Z]+)(\d+)/g);
+  for (const [,type,cnt] of m) {
+    if (INIT_HAND_DEFAULT.hasOwnProperty(type) || ['SH','SN','JP'].includes(type)) {
+      INIT_HAND[type] = parseInt(cnt);
+    }
+  }
+}
+
 /* 온라인 모드에서 내 진영 */
 let myColor = null;
 
@@ -958,10 +970,15 @@ let applyingRemote = false;
 ============================================================ */
 const PIECE_SYMBOLS = {
   wK:'♚', wQ:'♛', wR:'♜', wB:'♝', wN:'♞', wP:'♟',
-  bK:'♚', bQ:'♛', bR:'♜', bB:'♝', bN:'♞', bP:'♟'
+  bK:'♚', bQ:'♛', bR:'♜', bB:'♝', bN:'♞', bP:'♟',
+  wSH:'🛡', bSH:'🛡',
+  wSN:'🎯', bSN:'🎯',
+  wJP:'🦘', bJP:'🦘',
 };
-const INIT_HAND   = { K:1, Q:1, R:2, B:2, N:2, P:8 };
-const PIECE_NAMES = { K:'킹', Q:'퀸', R:'룩', B:'비숍', N:'나이트', P:'폰' };
+const INIT_HAND_DEFAULT = { K:1, Q:1, R:2, B:2, N:2, P:8 };
+let   INIT_HAND         = { ...INIT_HAND_DEFAULT };
+const PIECE_NAMES  = { K:'킹', Q:'퀸', R:'룩', B:'비숍', N:'나이트', P:'폰',
+                        SH:'방패병', SN:'저격수', JP:'점퍼' };
 const PROMO_PIECES = ['Q','R','B','N'];
 const MAX_CONSEC_CHECK = 3; // 이 횟수 연속 체크 시 체크 건 쪽 패배
 const MAX_TOTAL_CHECK  = 5; // 한 판 동안 한 진영이 걸 수 있는 체크 최대 횟수
@@ -1072,6 +1089,47 @@ function rawMoves(board, row, col, attackOnly=false) {
       });
       break;
     }
+    case 'SH': {
+      // 방패병: 앞/뒤 1칸 이동 (공격 불가, 밀기는 doMove에서 처리)
+      const dirs = color==='w' ? [-1, 1] : [1, -1];
+      if (!attackOnly) {
+        dirs.forEach(dr => {
+          const nr = row + dr;
+          if (!inBounds(nr, col)) return;
+          // 빈 칸이거나 상대 기물(밀기 가능)이면 이동 후보
+          if (!board[nr][col] || board[nr][col].color === opp) {
+            moves.push({row:nr, col, push: !!board[nr][col]});
+          }
+        });
+      }
+      // 방패병은 공격 불가 — attackOnly면 빈 배열
+      break;
+    }
+    case 'SN': {
+      // 저격수: 직선 3칸 거리 공격 (이동 불가)
+      if (!attackOnly) break; // 이동 없음
+      [[-3,0],[3,0],[0,-3],[0,3]].forEach(([dr,dc]) => {
+        const nr = row+dr, nc = col+dc;
+        if (!inBounds(nr,nc)) return;
+        // 중간 기물 무시하고 공격 가능
+        if (!board[nr][nc] || board[nr][nc].color === opp) {
+          moves.push({row:nr, col:nc});
+        }
+      });
+      break;
+    }
+    case 'JP': {
+      // 점퍼: 상하좌우 1칸 건너뛴 2번째 칸 이동/공격
+      [[-2,0],[2,0],[0,-2],[0,2]].forEach(([dr,dc]) => {
+        const nr = row+dr, nc = col+dc;
+        if (!inBounds(nr,nc)) return;
+        // 중간 기물 무시 (점프)
+        if (!board[nr][nc] || board[nr][nc].color === opp) {
+          moves.push({row:nr, col:nc});
+        }
+      });
+      break;
+    }
   }
   return moves;
 }
@@ -1106,15 +1164,25 @@ function legalMoves(board, row, col) {
   });
 }
 function legalPlacements(board, type, color) {
-  const result=[];
+  const result = [];
+  // 저격수: 꼭짓점(0,0),(0,7),(7,0),(7,7)만 배치 가능
+  const corners = [[0,0],[0,7],[7,0],[7,7]];
   const isKing = type === 'K';
-  for(let r=0;r<8;r++) for(let c=0;c<8;c++) {
-    const zone = isKing ? isKingPlacementZone(r,c) : isPlacementZone(r,c);
-    if(!zone||board[r][c]) continue;
-    const nb=copyBoard(board);
-    nb[r][c]={color,type};
-    // 오목을 완성하거나 체크를 해결하면 허용
-    if(checkOmok(nb,color) || !isInCheck(nb,color)) result.push({row:r,col:c});
+  const isSniper = type === 'SN';
+
+  const candidates = isSniper
+    ? corners
+    : Array.from({length:8}, (_,r) => Array.from({length:8}, (_,c) => [r,c])).flat();
+
+  for (const [r, c] of candidates) {
+    if (board[r][c]) continue;
+    const zone = isKing ? isKingPlacementZone(r,c)
+               : isSniper ? true  // 꼭짓점은 배치 구역 무관
+               : isPlacementZone(r,c);
+    if (!zone) continue;
+    const nb = copyBoard(board);
+    nb[r][c] = {color, type};
+    if (checkOmok(nb,color) || !isInCheck(nb,color)) result.push({row:r, col:c});
   }
   return result;
 }
@@ -1164,31 +1232,52 @@ function checkOmok(board, color) {
 let pendingPromo = null;
 
 function doMove(fromRow, fromCol, toRow, toCol) {
-  // 이전 상태 저장 (5회 체크 시 복원용)
   prevBoard = copyBoard(board);
   prevHand = {w:{...hand.w}, b:{...hand.b}};
   prevTurn = turn;
   prevLastMove = lastMove ? {...lastMove} : null;
 
-  const nb=copyBoard(board);
-  const piece=nb[fromRow][fromCol];
-  const captured=nb[toRow][toCol];
-  nb[toRow][toCol]=piece;
-  nb[fromRow][fromCol]=null;
+  const nb = copyBoard(board);
+  const piece = nb[fromRow][fromCol];
+  let captured = nb[toRow][toCol];
+
+  // 방패병(SH) 밀기 처리
+  if (piece.type === 'SH' && captured) {
+    const dr = toRow - fromRow;
+    const pushRow = toRow + dr;
+    if (!inBounds(pushRow, toCol) || nb[pushRow][toCol]) {
+      // 밀린 기물 사망 (판 끝 또는 다른 기물)
+      // 상대 기물이면 손패로 돌아오지 않고 그냥 제거
+      captured = null;
+    } else {
+      // 빈 칸으로 밀기
+      nb[pushRow][toCol] = nb[toRow][toCol];
+      captured = null;
+    }
+  }
+
   const capturedStr = captured ? `×${PIECE_NAMES[captured.type]}` : '';
   addHistory(turn, `${PIECE_NAMES[piece.type]} ${fileChar(fromCol)}${rankNum(fromRow)}→${fileChar(toCol)}${rankNum(toRow)}${capturedStr}`);
 
-  if(piece.type==='P') {
-    if((piece.color==='w'&&toRow===0)||(piece.color==='b'&&toRow===7)) {
-      board=nb;
-      lastMove={fromRow,fromCol,toRow,toCol};
-      pendingPromo={row:toRow,col:toCol,color:piece.color};
+  nb[toRow][toCol] = piece;
+  nb[fromRow][fromCol] = null;
+
+  // 잡은 기물 손패에 추가 (킹·저격수·방패병 제외)
+  if (captured && captured.type !== 'K' && captured.type !== 'SN') {
+    hand[turn][captured.type] = (hand[turn][captured.type] || 0) + 1;
+  }
+
+  if (piece.type === 'P') {
+    if ((piece.color==='w'&&toRow===0)||(piece.color==='b'&&toRow===7)) {
+      board = nb;
+      lastMove = {fromRow,fromCol,toRow,toCol};
+      pendingPromo = {row:toRow, col:toCol, color:piece.color};
       showPromoModal(piece.color);
       return;
     }
   }
-  board=nb;
-  lastMove={fromRow,fromCol,toRow,toCol};
+  board = nb;
+  lastMove = {fromRow,fromCol,toRow,toCol};
   if (IS_ONLINE && NET_ROLE === 'host') pushStateToFirebase();
   finishTurn();
 }
@@ -1493,35 +1582,43 @@ function renderBoard() {
 }
 
 function renderHand(color) {
-  const el=document.getElementById(color==='w'?'white-hand':'black-hand');
-  el.innerHTML='';
-  ['K','Q','R','B','N','P'].forEach(type=>{
-    const cnt=hand[color][type];
-    if(cnt<=0) return;
-    const span=document.createElement('span');
-    span.className='hand-piece';
-    if(selectedHandPiece===type&&color===turn) span.classList.add('selected-hand');
+  const el = document.getElementById(color==='w'?'white-hand':'black-hand');
+  el.innerHTML = '';
+  const ALL_TYPES = ['K','Q','R','B','N','P','SH','SN','JP'];
+  ALL_TYPES.forEach(type => {
+    const cnt = hand[color][type] || 0;
+    if (cnt <= 0) return;
+    const span = document.createElement('span');
+    span.className = 'hand-piece';
+    if (selectedHandPiece===type && color===turn) span.classList.add('selected-hand');
 
-    const icon=document.createElement('span');
-    icon.className='piece-icon';
-    icon.textContent=PIECE_SYMBOLS[color+type];
-    icon.style.color=color==='w'?'#FAFAFA':'#0A0A0A';
+    const icon = document.createElement('span');
+    icon.className = 'piece-icon';
+    const sym = PIECE_SYMBOLS[color+type];
+    // 특수기물은 이모지라 색상 구분 불필요
+    if (['SH','SN','JP'].includes(type)) {
+      icon.textContent = sym;
+      icon.style.fontSize = '1rem';
+    } else {
+      icon.textContent = sym;
+      icon.style.color = color==='w' ? '#FAFAFA' : '#0A0A0A';
+    }
 
-    const lbl=document.createElement('span');
-    lbl.className='piece-label';
-    lbl.textContent=PIECE_NAMES[type];
+    const lbl = document.createElement('span');
+    lbl.className = 'piece-label';
+    lbl.textContent = PIECE_NAMES[type];
 
     span.appendChild(icon);
     span.appendChild(lbl);
 
-    if(cnt>1) {
-      const badge=document.createElement('span');
-      badge.className='count-badge';
-      badge.textContent=cnt;
+    if (cnt > 1) {
+      const badge = document.createElement('span');
+      badge.className = 'count-badge';
+      badge.textContent = cnt;
       span.appendChild(badge);
     }
-    span.title=PIECE_NAMES[type];
-    span.addEventListener('click',()=>onHandClick(color,type));
+    span.title = PIECE_NAMES[type];
+    span.addEventListener('click', () => onHandClick(color, type));
     el.appendChild(span);
   });
 }

@@ -17,7 +17,7 @@ body{
   font-family:'Noto Sans KR','Apple SD Gothic Neo','Malgun Gothic',sans-serif;
   background:var(--bg);color:var(--text);
   min-height:100vh;display:flex;flex-direction:column;
-  align-items:center;padding:28px 16px 48px;gap:12px;
+  align-items:center;padding:28px 16px 48px;gap:0;
 }
 
 /* ── 로고 ── */
@@ -26,33 +26,9 @@ body{
 .logo p{font-size:0.78rem;color:var(--muted);letter-spacing:1px;}
 
 /* ── 탭 ── */
-.tabs {
-  display: flex !important;
-  gap: 6px;
-  background: var(--panel2);
-  padding: 4px;
-  border-radius: 12px;
-  margin-bottom: 20px;
-  width: 100%;
-  max-width: 820px;
-}
-.tab {
-  flex: 1;
-  padding: 9px;
-  border-radius: 9px;
-  border: none;
-  background: transparent;
-  color: var(--muted);
-  font-size: 0.85rem;
-  font-weight: 600;
-  cursor: pointer;
-  font-family: inherit;
-  transition: background 0.15s, color 0.15s;
-}
-.tab.active {
-  background: var(--panel);
-  color: var(--text);
-}
+.tabs{display:flex;gap:6px;background:var(--panel2);padding:4px;border-radius:12px;margin-bottom:20px;width:100%;max-width:820px;}
+.tab{flex:1;padding:9px;border-radius:9px;border:none;background:transparent;color:var(--muted);font-size:0.85rem;font-weight:600;cursor:pointer;font-family:inherit;transition:background 0.15s,color 0.15s;}
+.tab.active{background:var(--panel);color:var(--text);}
 
 /* ── 공통 화면 컨테이너 ── */
 .screen{display:none;width:100%;max-width:820px;flex-direction:column;gap:16px;}
@@ -227,8 +203,6 @@ body{
   </div>
   <button class="btn-ranking" style="width:auto;padding:11px 16px;white-space:nowrap;" onclick="window.open('ranking.html','_blank')">🏆 랭킹</button>
 </div>
-
-<div class="tabs">
   <button class="tab active" id="tab-local"  onclick="switchTab('local')">👥 로컬 2인</button>
   <button class="tab"        id="tab-online" onclick="switchTab('online')">🌐 온라인 대전</button>
 </div>
@@ -288,24 +262,14 @@ body{
     <!-- 오른쪽: 방 만들기 -->
     <div class="panel-card">
       <div class="panel-title">🏠 방 만들기</div>
-      <div class="form-label">방 이름 (선택사항)</div>
-      <input class="text-input" id="room-name-input" maxlength="20" placeholder="방 이름 입력">
-      <div class="form-label">시간제한</div>
-      <select class="select-input" id="room-time-limit">
-        <option value="unlimited">제한 없음</option>
-        <option value="30">30초</option>
-        <option value="60">1분</option>
-        <option value="600">10분</option>
-        <option value="1800">30분</option>
-        <option value="3600">1시간</option>
-      </select>
-      <div class="form-label">비밀번호 (선택사항)</div>
-      <input class="text-input" id="room-password-input" maxlength="20" placeholder="비밀번호 입력">
-      <button class="btn btn-gold" id="btn-create" onclick="createRoom()" disabled>방 만들기</button>
-      <div class="status-msg" id="create-msg"></div>
+      <p style="font-size:0.82rem;color:var(--muted);line-height:1.6;">
+        방 이름, 비밀번호, 기물 설정, 시간제한을<br>직접 커스터마이징할 수 있습니다.
+      </p>
+      <button class="btn btn-gold" id="btn-create" onclick="goCreateRoom()">⚙ 방 설정 및 만들기</button>
       <div class="divider"></div>
-      <p style="font-size:0.78rem;color:var(--muted);line-height:1.6">
-        방을 만들면 목록에 공개됩니다.<br>상대방이 입장하면 자동으로 게임이 시작됩니다.
+      <p style="font-size:0.75rem;color:var(--muted);line-height:1.6">
+        방을 만들면 목록에 공개됩니다.<br>상대방이 입장하면 자동으로 게임이 시작됩니다.<br>
+        호스트는 <b style="color:var(--text)">백 진영</b>, 게스트는 <b style="color:var(--text)">흑 진영</b>입니다.
       </p>
     </div>
 
@@ -689,66 +653,11 @@ function makeCode() {
 /* ============================================================
    방 만들기
 ============================================================ */
-async function createRoom() {
-  if (!fbReady) {
-    // Firebase 미설정 → 코드만 생성해서 바로 이동
-    const code = makeCode();
-    const timeLimit = document.getElementById('room-time-limit').value;
-    window.location.href = `omokgay.html?role=host&room=${code}&time=${timeLimit}&uid=${currentUser?.uid||''}`;
-    return;
-  }
-
-  const name = document.getElementById('room-name-input').value.trim() || '이름 없는 방';
-  const timeLimit = document.getElementById('room-time-limit').value;
-  const password = document.getElementById('room-password-input').value.trim() || null;
-  document.getElementById('btn-create').disabled = true;
-
-  // 코드 충돌 없을 때까지 재시도
-  let code, exists = true;
-  while (exists) {
-    code = makeCode();
-    const snap = await roomsRef.child(code).once('value');
-    exists = snap.exists();
-  }
-
-  myRoomCode = code;
-
-  // Firebase에 방 등록
-  const roomData = {
-    name,
-    timeLimit,
-    timeLimitDisplay: getTimeLimitDisplay(timeLimit),
-    createdAt:  Date.now(),
-    started:    false,
-    gameActive: false,
-    hostUid:    currentUser?.uid    || null,
-    hostNick:   myRatingData?.nickname || '?',
-    hostElo:    myRatingData?.elo       || DEFAULT_ELO,
-  };
-  if (password) roomData.password = password;
-  await roomsRef.child(code).set(roomData);
-
-  // 대기 화면으로 전환
-  document.getElementById('display-code').textContent = code;
-  document.getElementById('wait-msg').textContent = '상대방 입장 대기 중...';
-  showScreen('waiting');
-
-  // 30분 자동 삭제
-  const autoDelete = setTimeout(() => cancelRoom(), 30 * 60 * 1000);
-
-  // 게스트 입장 감시 — started 필드가 true가 되면 게임 시작
-  roomWatcher = roomsRef.child(code).child('started').on('value', snap => {
-    if (snap.val() === true) {
-      clearTimeout(autoDelete);
-      document.getElementById('wait-msg').textContent = '게스트 입장! 게임 시작...';
-      // myRoomCode를 null로 초기화 → beforeunload에서 방 삭제 방지
-      const roomToGo = myRoomCode;
-      myRoomCode = null;
-      setTimeout(() => {
-        window.location.href = `omokgay.html?role=host&room=${roomToGo}&time=${timeLimit}&uid=${currentUser?.uid||''}`;
-      }, 400);
-    }
-  });
+/* ============================================================
+   방 만들기 → create-room.html로 이동
+============================================================ */
+function goCreateRoom() {
+  window.location.href = 'create-room.html';
 }
 
 /* ============================================================
@@ -806,13 +715,16 @@ async function enterAsGuest(code) {
       guestNick: myRatingData?.nickname || '?',
       guestElo:  myRatingData?.elo       || DEFAULT_ELO,
     });
-    // 방에서 timeLimit 가져오기
+    // 방에서 timeLimit, hand 가져오기
     timeLimit = room.timeLimit || 'unlimited';
   }
 
   setJoinMsg('입장 중...', 'ok');
   setTimeout(() => {
-    window.location.href = `omokgay.html?role=guest&room=${code}&time=${timeLimit}&uid=${currentUser?.uid||''}`;
+    // hand 파라미터: 방 데이터에서 가져온 기물 설정
+    const handParam = typeof room !== 'undefined' && room?.hand ? encodeURIComponent(room.hand) : '';
+    const handStr   = handParam ? `&hand=${handParam}` : '';
+    window.location.href = `omokgay.html?role=guest&room=${code}&time=${timeLimit}&uid=${currentUser?.uid||''}${handStr}`;
   }, 800);
 }
 
