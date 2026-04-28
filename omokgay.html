@@ -960,11 +960,11 @@ let applyingRemote = false;
    상수
 ============================================================ */
 const PIECE_SYMBOLS = {
-  wK:'♚', wQ:'♛', wR:'♜', wB:'♝', wN:'♞', wP:'♟',
+  wK:'♔', wQ:'♕', wR:'♖', wB:'♗', wN:'♘', wP:'♙',
   bK:'♚', bQ:'♛', bR:'♜', bB:'♝', bN:'♞', bP:'♟',
-  wSH:'🛡', bSH:'🛡',
-  wSN:'🎯', bSN:'🎯',
-  wJP:'🦘', bJP:'🦘',
+  wSH:'白🛡', bSH:'黒🛡',
+  wSN:'白🎯', bSN:'黒🎯',
+  wJP:'白🦘', bJP:'黒🦘',
 };
 const INIT_HAND_DEFAULT = { K:1, Q:1, R:2, B:2, N:2, P:8 };
 let   INIT_HAND         = { ...INIT_HAND_DEFAULT };
@@ -1484,12 +1484,13 @@ function onCellClick(row, col) {
   }
 
   if(selectedHandPiece) {
-    if(!isPlacementZone(row,col)||board[row][col]) {
+    // highlights에 포함된 칸인지 확인 (legalPlacements 결과 기반)
+    const isHighlighted = highlights.some(h => h.row===row && h.col===col);
+    if(!isHighlighted || board[row][col]) {
       selectedHandPiece=null; highlights=[]; renderBoard(); return;
     }
     if(isInCheck(board,turn)) {
       const nb=copyBoard(board); nb[row][col]={color:turn,type:selectedHandPiece};
-      // 오목을 완성하거나 체크를 해결하면 허용
       if(!checkOmok(nb,turn) && isInCheck(nb,turn)) { setStatus('체크 상태 — 체크를 해결해야 합니다!'); return; }
     }
     doPlace(selectedHandPiece,row,col); return;
@@ -1573,13 +1574,21 @@ function renderBoard() {
     pieceEl.className='piece';
     if(piece) {
       pieceEl.textContent=PIECE_SYMBOLS[piece.color+piece.type];
-      pieceEl.style.color=piece.color==='w'?'#FAFAFA':'#0A0A0A';
+      // 특수기물은 심볼에 색상 구분 포함(白/黒), 일반 기물은 CSS color로 구분
+      if(['SH','SN','JP'].includes(piece.type)) {
+        pieceEl.style.color='';
+        pieceEl.style.fontSize='0.9rem';
+      } else {
+        pieceEl.style.color=piece.color==='w'?'#FAFAFA':'#0A0A0A';
+        pieceEl.style.fontSize='';
+      }
       if(piece.type==='P') {
         pieceEl.classList.add(piece.color==='w' ? 'pawn-white' : 'pawn-black');
       }
     } else {
       pieceEl.textContent='';
       pieceEl.style.color='';
+      pieceEl.style.fontSize='';
     }
   }
 }
@@ -1598,13 +1607,13 @@ function renderHand(color) {
     const icon = document.createElement('span');
     icon.className = 'piece-icon';
     const sym = PIECE_SYMBOLS[color+type];
-    // 특수기물은 이모지라 색상 구분 불필요
     if (['SH','SN','JP'].includes(type)) {
       icon.textContent = sym;
-      icon.style.fontSize = '1rem';
+      icon.style.fontSize = '0.85rem';
+      icon.style.lineHeight = '1';
     } else {
       icon.textContent = sym;
-      icon.style.color = color==='w' ? '#FAFAFA' : '#0A0A0A';
+      icon.style.color = color==='w' ? '#FAFAFA' : '#1a1a1a';
     }
 
     const lbl = document.createElement('span');
