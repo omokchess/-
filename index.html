@@ -31,14 +31,12 @@ body{
 .tab.active{background:var(--panel);color:var(--text);}
 
 /* ── 공통 화면 컨테이너 ── */
-.screen{display:none;width:100%;max-width:820px;flex-direction:column;gap:16px;}
-.screen.active{display:flex;}
-.screen.active{display:flex;}
+.screen { display:none; width:100%; max-width:820px; flex-direction:column; gap:16px; }
+.screen.active { display:flex; flex-direction:column; }
 
-/* ── 로컬 화면 ── */
-.local-desc{font-size:0.85rem;color:var(--muted);text-align:center;line-height:1.6;padding:8px 0;}
-#screen-local { flex-direction: row; flex-wrap: wrap; gap: 16px; }
-#screen-local .panel-card { flex: 1; min-width: 240px; }
+/* ── 로컬 화면 — 카드 2개 가로 배치 ── */
+#screen-local.active { flex-direction:row; flex-wrap:wrap; }
+#screen-local .panel-card { flex:1; min-width:240px; }
 .diff-btn {
   flex:1; padding:10px 6px; border-radius:10px; border:1.5px solid var(--border);
   background:var(--panel2); color:var(--muted); font-size:0.82rem; font-weight:700;
@@ -204,6 +202,8 @@ body{
   </div>
   <button class="btn-ranking" style="width:auto;padding:11px 16px;white-space:nowrap;" onclick="window.open('ranking.html','_blank')">🏆 랭킹</button>
 </div>
+
+<div class="tabs">
   <button class="tab active" id="tab-local"  onclick="switchTab('local')">👥 로컬 2인</button>
   <button class="tab"        id="tab-online" onclick="switchTab('online')">🌐 온라인 대전</button>
 </div>
