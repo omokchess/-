@@ -2,470 +2,369 @@
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>방 만들기 — 프론티어</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>방 만들기 — FRONTIER</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;900&family=Cinzel:wght@600;800&display=swap" rel="stylesheet">
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
 <style>
-:root {
-  --bg:#2C2C2E; --panel:#3A3A3C; --panel2:#48484A;
-  --border:#555558; --gold:#F5C842;
+:root{
+  --bg:#2C2C2E; --panel:#3A3A3C; --panel2:#48484A; --border:#555558;
+  --gold:#F5C842; --gold2:#E5B832;
   --text:#F2F2F7; --muted:#AEAEB2;
-  --red:#FF453A; --green:#30D158; --blue:#0A84FF;
-  --orange:#FF9500;
+  --red:#FF453A; --green:#30D158; --blue:#0A84FF; --orange:#FF9500;
 }
-*{box-sizing:border-box;margin:0;padding:0;}
-body {
-  font-family:'Noto Sans KR','Apple SD Gothic Neo','Malgun Gothic',sans-serif;
-  background:var(--bg); color:var(--text);
-  min-height:100vh; display:flex; flex-direction:column;
-  align-items:center; padding:28px 16px 60px;
-}
-.top-bar {
-  width:100%; max-width:900px;
-  display:flex; align-items:center; gap:12px; margin-bottom:24px;
-}
-.btn-back {
-  background:var(--panel2); border:1px solid var(--border); border-radius:10px;
-  color:var(--text); font-size:0.85rem; font-weight:600;
-  padding:8px 14px; cursor:pointer; font-family:inherit;
-  transition:border-color 0.15s; text-decoration:none;
-}
-.btn-back:hover { border-color:var(--gold); color:var(--gold); }
-h1 { font-size:1.4rem; font-weight:800; color:var(--gold); letter-spacing:1px; }
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;background:var(--bg);color:var(--text);font-family:'Noto Sans KR','Apple SD Gothic Neo',sans-serif}
+body{background:radial-gradient(ellipse at top,#3a3a3c 0%,#2c2c2e 50%,#1c1c1e 100%);min-height:100vh}
+button{font-family:inherit;cursor:pointer;border:none;outline:none}
+input,textarea{font-family:inherit;outline:none}
 
-/* 3열 레이아웃 */
-.layout {
-  width:100%; max-width:900px;
-  display:grid;
-  grid-template-columns:240px 1fr 220px;
-  gap:16px;
-}
-@media(max-width:700px) {
-  .layout { grid-template-columns:1fr; }
-}
+.wrap{max-width:1200px;margin:0 auto;padding:18px 16px 60px}
 
-.col {
-  background:var(--panel); border:1px solid var(--border);
-  border-radius:16px; padding:20px;
-  display:flex; flex-direction:column; gap:14px;
-}
-.col-title {
-  font-size:0.72rem; color:var(--muted); text-transform:uppercase;
-  letter-spacing:1.5px; font-weight:700;
-}
+.head{display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;gap:12px;flex-wrap:wrap}
+.title{display:flex;align-items:baseline;gap:12px}
+.logo{font-family:'Cinzel',serif;font-weight:800;font-size:22px;letter-spacing:3px;color:var(--gold)}
+.tag{color:var(--muted);font-size:13px}
+.back{color:var(--text);text-decoration:none;background:var(--panel2);padding:8px 14px;border-radius:8px;font-size:14px;border:1px solid var(--border)}
+.back:hover{background:var(--panel)}
+
+.cols{display:grid;grid-template-columns:1fr 1.4fr 1fr;gap:14px}
+@media (max-width:920px){.cols{grid-template-columns:1fr}}
+
+.card{background:var(--panel);border:1px solid var(--border);border-radius:14px;padding:18px}
+.card h3{font-size:15px;margin-bottom:14px;color:var(--gold);letter-spacing:.5px}
 
 /* 방 코드 */
-.room-code-box {
-  font-size:2rem; font-weight:800; letter-spacing:8px; color:var(--gold);
-  background:var(--panel2); border:2px dashed var(--border);
-  border-radius:12px; padding:14px; text-align:center;
-  font-family:'Consolas',monospace; cursor:pointer;
-  transition:border-color 0.2s;
-}
-.room-code-box:hover { border-color:var(--gold); }
-.code-hint { font-size:0.72rem; color:var(--muted); text-align:center; margin-top:-8px; }
+.code-box{background:linear-gradient(135deg,rgba(245,200,66,.15),rgba(245,200,66,.05));
+  border:1px dashed var(--gold);border-radius:12px;padding:14px;text-align:center;margin-bottom:14px;cursor:pointer;transition:all .15s}
+.code-box:hover{background:rgba(245,200,66,.18)}
+.code-label{font-size:11px;color:var(--muted);letter-spacing:1px;margin-bottom:4px}
+.code-val{font-family:'Cinzel',monospace;font-size:30px;font-weight:800;color:var(--gold);letter-spacing:5px}
+.code-hint{font-size:11px;color:var(--muted);margin-top:4px}
 
-/* 입력 필드 */
-.form-label { font-size:0.75rem; color:var(--muted); margin-bottom:-8px; }
-.text-input {
-  width:100%; padding:11px 13px;
-  background:var(--panel2); border:1.5px solid var(--border);
-  border-radius:10px; color:var(--text); font-size:0.9rem;
-  font-family:inherit; transition:border-color 0.15s; outline:none;
-}
-.text-input:focus { border-color:var(--gold); }
-.text-input::placeholder { color:var(--muted); }
-.divider { border:none; border-top:1px solid var(--border); }
+.field{margin-bottom:12px}
+.field label{display:block;font-size:12px;color:var(--muted);margin-bottom:5px;letter-spacing:.5px}
+.field input,.field textarea{
+  width:100%;padding:10px 12px;background:var(--panel2);border:1px solid var(--border);
+  border-radius:8px;color:var(--text);font-size:14px}
+.field input:focus,.field textarea:focus{border-color:var(--gold)}
+.field textarea{resize:none;min-height:60px}
 
-/* 기물 설정 */
-.piece-row {
-  display:flex; align-items:center; gap:10px;
-  padding:8px 0; border-bottom:1px solid var(--border);
-}
-.piece-row:last-child { border-bottom:none; }
-.piece-icon { font-size:1.3rem; width:28px; text-align:center; }
-.piece-icon.chess { font-size:1.4rem; }
-.piece-name { flex:1; font-size:0.85rem; font-weight:600; }
-.piece-desc { font-size:0.68rem; color:var(--muted); line-height:1.4; }
-.counter {
-  display:flex; align-items:center; gap:6px;
-}
-.cnt-btn {
-  width:26px; height:26px; border-radius:8px;
-  border:1px solid var(--border); background:var(--panel2);
-  color:var(--text); font-size:1rem; cursor:pointer;
-  display:flex; align-items:center; justify-content:center;
-  transition:background 0.12s, border-color 0.12s; font-family:inherit;
-}
-.cnt-btn:hover { border-color:var(--gold); background:#3f3f41; }
-.cnt-val {
-  width:24px; text-align:center; font-size:0.95rem;
-  font-weight:700; font-family:'Consolas',monospace; color:var(--gold);
-}
-.special-tag {
-  font-size:0.62rem; padding:1px 5px; border-radius:4px;
-  background:rgba(255,149,0,0.15); color:var(--orange);
-  font-weight:700; white-space:nowrap;
-}
+/* 기물 카운터 */
+.piece{display:flex;align-items:center;gap:10px;padding:10px;background:var(--panel2);border:1px solid var(--border);border-radius:8px;margin-bottom:6px}
+.piece .sym{font-size:24px;width:32px;text-align:center;line-height:1;color:var(--text)}
+.piece .info{flex:1;min-width:0}
+.piece .pname{font-weight:700;font-size:13px}
+.piece .pdesc{font-size:11px;color:var(--muted);line-height:1.3}
+.piece .ctl{display:flex;align-items:center;gap:6px}
+.cbtn{width:30px;height:30px;border-radius:6px;background:var(--panel);border:1px solid var(--border);
+  color:var(--text);font-size:16px;font-weight:700;display:flex;align-items:center;justify-content:center}
+.cbtn:hover:not(:disabled){background:var(--gold);color:#1c1c1e;border-color:var(--gold)}
+.cbtn:disabled{opacity:.3;cursor:not-allowed}
+.cnum{min-width:24px;text-align:center;font-weight:800;font-size:15px}
 
-/* 시간 선택 */
-.time-grid {
-  display:grid; grid-template-columns:1fr 1fr;
-  gap:8px;
-}
-.time-btn {
-  padding:12px 8px; border-radius:10px;
-  border:1.5px solid var(--border); background:var(--panel2);
-  color:var(--muted); font-size:0.85rem; font-weight:700;
-  cursor:pointer; font-family:inherit; transition:all 0.15s;
-  text-align:center;
-}
-.time-btn:hover { border-color:var(--gold); color:var(--text); }
-.time-btn.active {
-  border-color:var(--gold); background:rgba(245,200,66,0.12);
-  color:var(--gold);
-}
-.time-btn.unlimited {
-  grid-column:1 / -1;
-}
+.divider{height:1px;background:var(--border);margin:12px 0}
+.subtitle{font-size:12px;color:var(--muted);letter-spacing:.5px;margin-bottom:8px;font-weight:600;text-transform:uppercase}
 
-/* 방 만들기 버튼 */
-.btn-create {
-  width:100%; padding:16px; border-radius:12px; border:none;
-  background:var(--blue); color:#fff; font-size:1.05rem; font-weight:800;
-  cursor:pointer; font-family:inherit; transition:opacity 0.15s,transform 0.1s;
-  letter-spacing:0.5px;
-}
-.btn-create:hover { opacity:0.88; transform:translateY(-1px); }
-.btn-create:active { transform:scale(0.98); }
-.btn-create:disabled { opacity:0.4; cursor:not-allowed; transform:none; }
+/* 시간제한 */
+.times{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-bottom:14px}
+.tbtn{padding:10px 4px;background:var(--panel2);border:1px solid var(--border);border-radius:8px;
+  color:var(--text);font-size:13px;font-weight:600;cursor:pointer}
+.tbtn.on{background:var(--gold);color:#1c1c1e;border-color:var(--gold)}
+.tbtn:hover:not(.on){background:var(--panel)}
 
-.status-msg { font-size:0.8rem; text-align:center; color:var(--muted); min-height:16px; }
-.status-msg.wait { color:var(--gold); }
-.status-msg.error { color:var(--red); }
+.btn{padding:12px 20px;border-radius:10px;font-weight:700;font-size:14px;cursor:pointer;border:none;font-family:inherit;width:100%}
+.btn-gold{background:linear-gradient(180deg,var(--gold),var(--gold2));color:#1c1c1e;font-size:16px;padding:14px}
+.btn-gold:hover{transform:translateY(-1px);box-shadow:0 4px 12px rgba(245,200,66,.3)}
+.btn-gold:disabled{opacity:.5;cursor:not-allowed;transform:none}
+.btn-ghost{background:var(--panel2);color:var(--text);border:1px solid var(--border)}
+
+/* 대기 화면 */
+.wait{display:none;position:fixed;inset:0;background:rgba(0,0,0,.85);align-items:center;justify-content:center;z-index:200;padding:20px}
+.wait.show{display:flex}
+.wait-card{background:var(--panel);border:1px solid var(--border);border-radius:16px;padding:30px;text-align:center;max-width:420px}
+.wait-spin{width:60px;height:60px;border:4px solid var(--border);border-top-color:var(--gold);border-radius:50%;
+  animation:spin 1s linear infinite;margin:0 auto 18px}
+@keyframes spin{to{transform:rotate(360deg)}}
+.wait-code{font-family:'Cinzel',monospace;font-size:34px;font-weight:800;color:var(--gold);letter-spacing:6px;margin:8px 0 14px}
+.wait-msg{color:var(--muted);font-size:13px;margin-bottom:14px;line-height:1.5}
+.wait-actions{display:flex;gap:8px}
+.wait-actions .btn{font-size:13px;padding:10px}
+
+.toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:var(--panel);
+  border:1px solid var(--gold);padding:10px 18px;border-radius:8px;font-size:13px;display:none;z-index:300}
+.toast.show{display:block}
 </style>
 </head>
 <body>
+<div class="wrap">
+  <div class="head">
+    <div class="title">
+      <div class="logo">FRONTIER</div>
+      <div class="tag">방 만들기</div>
+    </div>
+    <a href="index.html" class="back">← 로비</a>
+  </div>
 
-<div class="top-bar">
-  <a href="index.html" class="btn-back">← 로비</a>
-  <h1>방 만들기</h1>
+  <div class="cols">
+    <!-- 왼쪽: 방 정보 -->
+    <div class="card">
+      <h3>방 정보</h3>
+      <div class="code-box" onclick="copyCode()">
+        <div class="code-label">방 코드 (클릭 복사)</div>
+        <div class="code-val" id="codeVal">------</div>
+        <div class="code-hint" id="codeHint">친구에게 공유하세요</div>
+      </div>
+      <div class="field">
+        <label>방 이름 (선택)</label>
+        <input type="text" id="roomName" placeholder="예: 가볍게 한판" maxlength="30">
+      </div>
+      <div class="field">
+        <label>비밀번호 (선택)</label>
+        <input type="text" id="roomPw" placeholder="비워두면 누구나 입장 가능" maxlength="20">
+      </div>
+      <div class="field">
+        <label>방 설명 (선택, 60자)</label>
+        <textarea id="roomDesc" placeholder="" maxlength="60"></textarea>
+      </div>
+    </div>
+
+    <!-- 가운데: 기물 설정 -->
+    <div class="card">
+      <h3>기물 구성</h3>
+      <div class="subtitle">일반 기물</div>
+      <div id="normalPieces"></div>
+      <div class="divider"></div>
+      <div class="subtitle">특수 기물</div>
+      <div id="specialPieces"></div>
+    </div>
+
+    <!-- 오른쪽: 시간 + 만들기 -->
+    <div class="card">
+      <h3>시간 제한</h3>
+      <div class="times" id="times"></div>
+      <div class="subtitle" style="margin-top:8px">현재 설정 요약</div>
+      <div style="background:var(--panel2);border:1px solid var(--border);border-radius:8px;padding:10px;font-size:12px;color:var(--muted);line-height:1.7;margin-bottom:18px" id="summary"></div>
+      <button class="btn btn-gold" onclick="createRoom()" id="createBtn">방 만들기</button>
+    </div>
+  </div>
 </div>
 
-<div class="layout">
-
-  <!-- ── 왼쪽: 방 정보 ── -->
-  <div class="col">
-    <div class="col-title">방 정보</div>
-    <div class="room-code-box" id="display-code" onclick="copyCode()" title="클릭하면 복사">------</div>
-    <p class="code-hint">클릭하면 코드 복사</p>
-    <hr class="divider">
-    <div class="form-label">방 이름 (선택)</div>
-    <input class="text-input" id="room-name" maxlength="20" placeholder="이름 없는 방">
-    <div class="form-label">비밀번호 (선택)</div>
-    <input class="text-input" id="room-pw" maxlength="12" placeholder="없으면 공개방">
-    <div class="form-label" style="margin-bottom:0">방 설명 (선택)</div>
-    <textarea class="text-input" id="room-desc" maxlength="60" placeholder="짧은 설명..."
-      style="resize:none;height:64px;line-height:1.5;"></textarea>
-  </div>
-
-  <!-- ── 가운데: 기물 설정 ── -->
-  <div class="col">
-    <div class="col-title">기물 설정</div>
-
-    <!-- 일반 기물 -->
-    <div class="piece-row">
-      <span class="piece-icon chess" style="color:#ccc">♛</span>
-      <div style="flex:1"><div class="piece-name">퀸</div></div>
-      <div class="counter">
-        <button class="cnt-btn" onclick="adj('Q',-1)">−</button>
-        <span class="cnt-val" id="cnt-Q">1</span>
-        <button class="cnt-btn" onclick="adj('Q',1)">+</button>
-      </div>
-    </div>
-    <div class="piece-row">
-      <span class="piece-icon chess" style="color:#ccc">♜</span>
-      <div style="flex:1"><div class="piece-name">룩</div></div>
-      <div class="counter">
-        <button class="cnt-btn" onclick="adj('R',-1)">−</button>
-        <span class="cnt-val" id="cnt-R">2</span>
-        <button class="cnt-btn" onclick="adj('R',1)">+</button>
-      </div>
-    </div>
-    <div class="piece-row">
-      <span class="piece-icon chess" style="color:#ccc">♝</span>
-      <div style="flex:1"><div class="piece-name">비숍</div></div>
-      <div class="counter">
-        <button class="cnt-btn" onclick="adj('B',-1)">−</button>
-        <span class="cnt-val" id="cnt-B">2</span>
-        <button class="cnt-btn" onclick="adj('B',1)">+</button>
-      </div>
-    </div>
-    <div class="piece-row">
-      <span class="piece-icon chess" style="color:#ccc">♞</span>
-      <div style="flex:1"><div class="piece-name">나이트</div></div>
-      <div class="counter">
-        <button class="cnt-btn" onclick="adj('N',-1)">−</button>
-        <span class="cnt-val" id="cnt-N">2</span>
-        <button class="cnt-btn" onclick="adj('N',1)">+</button>
-      </div>
-    </div>
-    <div class="piece-row">
-      <span class="piece-icon chess" style="color:#ccc">♟</span>
-      <div style="flex:1"><div class="piece-name">폰</div></div>
-      <div class="counter">
-        <button class="cnt-btn" onclick="adj('P',-1)">−</button>
-        <span class="cnt-val" id="cnt-P">8</span>
-        <button class="cnt-btn" onclick="adj('P',1)">+</button>
-      </div>
-    </div>
-
-    <hr class="divider">
-    <div class="col-title">특수 기물 <span class="special-tag">NEW</span></div>
-
-    <div class="piece-row">
-      <span class="piece-icon">🛡</span>
-      <div style="flex:1">
-        <div class="piece-name">방패병</div>
-        <div class="piece-desc">앞뒤 1칸 이동, 기물 밀기 가능</div>
-      </div>
-      <div class="counter">
-        <button class="cnt-btn" onclick="adj('SH',-1)">−</button>
-        <span class="cnt-val" id="cnt-SH">0</span>
-        <button class="cnt-btn" onclick="adj('SH',1)">+</button>
-      </div>
-    </div>
-    <div class="piece-row">
-      <span class="piece-icon">🎯</span>
-      <div style="flex:1">
-        <div class="piece-name">저격수</div>
-        <div class="piece-desc">꼭짓점 배치, 직선 3칸 공격</div>
-      </div>
-      <div class="counter">
-        <button class="cnt-btn" onclick="adj('SN',-1)">−</button>
-        <span class="cnt-val" id="cnt-SN">0</span>
-        <button class="cnt-btn" onclick="adj('SN',1)">+</button>
-      </div>
-    </div>
-    <div class="piece-row">
-      <span class="piece-icon">🦘</span>
-      <div style="flex:1">
-        <div class="piece-name">캥거루</div>
-        <div class="piece-desc">상하좌우 1칸 건너 2번째 칸 이동/공격</div>
-      </div>
-      <div class="counter">
-        <button class="cnt-btn" onclick="adj('JP',-1)">−</button>
-        <span class="cnt-val" id="cnt-JP">0</span>
-        <button class="cnt-btn" onclick="adj('JP',1)">+</button>
-      </div>
-    </div>
-
-    <div style="font-size:0.72rem;color:var(--muted);line-height:1.6;margin-top:-4px;">
-      킹은 항상 1개입니다. 특수기물은 꼭짓점을 제외한 배치 구역에 놓을 수 있습니다.
+<!-- 대기 화면 -->
+<div class="wait" id="waitOverlay">
+  <div class="wait-card">
+    <div class="wait-spin"></div>
+    <div style="font-size:13px;color:var(--muted)">방 코드</div>
+    <div class="wait-code" id="waitCode">------</div>
+    <div class="wait-msg">상대 입장을 기다리는 중…<br>30분 동안 입장이 없으면 방이 자동 취소됩니다.</div>
+    <div class="wait-actions">
+      <button class="btn btn-ghost" onclick="copyWaitCode()">코드 복사</button>
+      <button class="btn btn-ghost" onclick="cancelRoom()" style="color:var(--red)">방 취소</button>
     </div>
   </div>
-
-  <!-- ── 오른쪽: 시간 설정 + 방 만들기 ── -->
-  <div class="col">
-    <div class="col-title">시간제한 (1턴당)</div>
-    <div class="time-grid">
-      <button class="time-btn" data-val="3600" onclick="setTime(this)">1시간</button>
-      <button class="time-btn" data-val="1800" onclick="setTime(this)">30분</button>
-      <button class="time-btn" data-val="600"  onclick="setTime(this)">10분</button>
-      <button class="time-btn" data-val="300"  onclick="setTime(this)">5분</button>
-      <button class="time-btn" data-val="60"   onclick="setTime(this)">1분</button>
-      <button class="time-btn" data-val="30"   onclick="setTime(this)">30초</button>
-      <button class="time-btn unlimited active" data-val="unlimited" onclick="setTime(this)">제한 없음</button>
-    </div>
-    <hr class="divider">
-    <button class="btn-create" id="btn-create" onclick="createRoom()">방 만들기</button>
-    <div class="status-msg" id="status-msg"></div>
-  </div>
-
 </div>
 
-<!-- Firebase SDK -->
-<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<div class="toast" id="toast"></div>
+
 <script>
-/* ── Firebase ── */
-const FIREBASE_CONFIG = {
-  apiKey:            "AIzaSyD_bv9vLqcMDMZgGHNLS2A94INXqkO8XX8",
-  authDomain:        "ooooomok-285e6.firebaseapp.com",
-  databaseURL:       "https://ooooomok-285e6-default-rtdb.asia-southeast1.firebasedatabase.app",
-  projectId:         "ooooomok-285e6",
-  storageBucket:     "ooooomok-285e6.firebasestorage.app",
-  messagingSenderId: "764275385569",
-  appId:             "1:764275385569:web:44cecc18de9aef4d9a43a0",
+// =============== Firebase ===============
+const FB_CONFIG = {
+  apiKey: "AIzaSyB1xN9bp9HsmVmGTHwTIEzKxlbS0RhuwLY",
+  authDomain: "ooooomok-285e6.firebaseapp.com",
+  databaseURL: "https://ooooomok-285e6-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId: "ooooomok-285e6",
+  appId: "1:1:web:1"
 };
+let _fbDb=null, _fbAuth=null;
+function fbInit(){
+  const app = firebase.apps.length ? firebase.app() : firebase.initializeApp(FB_CONFIG);
+  _fbDb = firebase.database();
+  _fbAuth = firebase.auth();
+}
+fbInit();
 
-let db = null, auth = null, currentUser = null, roomsRef = null;
-let fbReady = false;
+// =============== URL params ===============
+const Q = new URLSearchParams(location.search);
+const MY_UID = Q.get('uid');
+const MY_NICK = Q.get('nick') || '익명';
+const MY_ELO = parseInt(Q.get('elo')||'1200');
 
-firebase.initializeApp(FIREBASE_CONFIG);
-db       = firebase.database();
-auth     = firebase.auth();
-roomsRef = db.ref('rooms');
+// =============== 방 코드 ===============
+function genCode(){
+  const ch = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  let s=''; for(let i=0;i<6;i++) s += ch[Math.floor(Math.random()*ch.length)];
+  return s;
+}
+let MY_CODE = genCode();
+document.getElementById('codeVal').textContent = MY_CODE;
 
-auth.onAuthStateChanged(u => {
-  if (u) { currentUser = u; }
-  else { auth.signInAnonymously().catch(()=>{}); }
-});
-
-db.ref('.info/connected').on('value', snap => {
-  fbReady = snap.val() === true;
-  if (fbReady) document.getElementById('btn-create').disabled = false;
-});
-
-/* ── 기물 카운터 ── */
-const LIMITS = { Q:[0,3], R:[0,4], B:[0,4], N:[0,4], P:[0,12],
-                  SH:[0,4], SN:[0,4], JP:[0,4] };
-const counts = { Q:1, R:2, B:2, N:2, P:8, SH:0, SN:0, JP:0 };
-
-function adj(type, delta) {
-  const [min, max] = LIMITS[type];
-  counts[type] = Math.max(min, Math.min(max, counts[type] + delta));
-  document.getElementById('cnt-'+type).textContent = counts[type];
+function copyCode(){
+  navigator.clipboard.writeText(MY_CODE).then(()=>showToast('코드 복사됨: '+MY_CODE));
+}
+function copyWaitCode(){
+  navigator.clipboard.writeText(MY_CODE).then(()=>showToast('코드 복사됨: '+MY_CODE));
+}
+function showToast(msg){
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'), 1800);
 }
 
-/* ── 시간 선택 ── */
-let selectedTime = 'unlimited';
-function setTime(btn) {
-  document.querySelectorAll('.time-btn').forEach(b => b.classList.remove('active'));
-  btn.classList.add('active');
-  selectedTime = btn.dataset.val;
+// =============== 기물 구성 ===============
+const PIECE_DEFS = {
+  Q:{sym:'♕',name:'퀸',desc:'8방향 직선 이동',def:1,max:2},
+  R:{sym:'♖',name:'룩',desc:'4방향 직선 이동',def:2,max:4},
+  B:{sym:'♗',name:'비숍',desc:'대각선 이동',def:2,max:4},
+  N:{sym:'♘',name:'나이트',desc:'L자 점프',def:2,max:4},
+  P:{sym:'♙',name:'폰',desc:'1칸 전진, 대각 공격',def:8,max:8},
+  SH:{sym:'۩',name:'방패',desc:'앞/뒤 1칸, 기물 밀기 가능',def:0,max:2},
+  SN:{sym:'፬',name:'스나이퍼',desc:'4꼭짓점 배치, 직선 3칸 저격',def:0,max:1},
+  JP:{sym:'ᎇ',name:'어쌔신',desc:'상하좌우 2칸 점프',def:0,max:2}
+};
+const PIECE_ORDER = ['Q','R','B','N','P','SH','SN','JP'];
+const NORMAL_KEYS = ['Q','R','B','N','P'];
+const SPEC_KEYS = ['SH','SN','JP'];
+
+let counts = {K:1};
+PIECE_ORDER.forEach(k=> counts[k] = PIECE_DEFS[k].def);
+
+function renderPieces(){
+  const np = document.getElementById('normalPieces');
+  const sp = document.getElementById('specialPieces');
+  np.innerHTML = NORMAL_KEYS.map(renderRow).join('');
+  sp.innerHTML = SPEC_KEYS.map(renderRow).join('');
+  updateSummary();
+}
+function renderRow(k){
+  const d = PIECE_DEFS[k];
+  const c = counts[k];
+  return `
+  <div class="piece">
+    <div class="sym">${d.sym}</div>
+    <div class="info">
+      <div class="pname">${d.name}</div>
+      <div class="pdesc">${d.desc}</div>
+    </div>
+    <div class="ctl">
+      <button class="cbtn" onclick="adj('${k}',-1)" ${c<=0?'disabled':''}>−</button>
+      <span class="cnum">${c}</span>
+      <button class="cbtn" onclick="adj('${k}',1)" ${c>=d.max?'disabled':''}>+</button>
+    </div>
+  </div>`;
+}
+function adj(k, delta){
+  const d = PIECE_DEFS[k];
+  counts[k] = Math.max(0, Math.min(d.max, counts[k]+delta));
+  renderPieces();
 }
 
-/* ── 6자리 코드 생성 ── */
-function makeCode() {
-  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
-  return Array.from({length:6}, () => chars[Math.floor(Math.random()*chars.length)]).join('');
+// =============== 시간 제한 ===============
+const TIME_OPTS = [
+  {v:'30',l:'30초'},{v:'60',l:'1분'},{v:'300',l:'5분'},
+  {v:'600',l:'10분'},{v:'1800',l:'30분'},{v:'3600',l:'1시간'},
+  {v:'unlimited',l:'제한없음'}
+];
+let SEL_TIME = '300';
+function renderTimes(){
+  document.getElementById('times').innerHTML = TIME_OPTS.map(o=>
+    `<button class="tbtn ${o.v===SEL_TIME?'on':''}" onclick="setTime('${o.v}')">${o.l}</button>`
+  ).join('');
+}
+function setTime(v){ SEL_TIME = v; renderTimes(); updateSummary(); }
+
+function updateSummary(){
+  const total = Object.values(counts).reduce((a,b)=>a+b, 0);
+  const tlabel = TIME_OPTS.find(o=>o.v===SEL_TIME)?.l || '5분';
+  document.getElementById('summary').innerHTML = `
+    총 기물 수: <b style="color:var(--gold)">${total}</b><br>
+    1턴 시간: <b style="color:var(--gold)">${tlabel}</b><br>
+    배치 영역: 6×4 (b~g, 3~6행)`;
 }
 
-/* ── 방 코드 표시 (나중에 createRoom에서 확정) ── */
-function copyCode() {
-  const code = document.getElementById('display-code').textContent;
-  if (code === '------') return;
-  navigator.clipboard.writeText(code).then(() => {
-    const el = document.getElementById('display-code');
-    const prev = el.textContent;
-    el.textContent = '복사됨!';
-    setTimeout(() => el.textContent = prev, 1200);
-  });
+// =============== 방 생성 ===============
+function buildHandStr(){
+  return PIECE_ORDER.reduce((s,k)=> s + k + counts[k], 'K1');
 }
 
-/* ── 손패 파라미터 문자열 생성 ── */
-function buildHandParam() {
-  return 'K1' + Object.entries(counts).map(([t,n])=>`${t}${n}`).join('');
-}
+let _waitTimer = null;
+let _roomWatcher = null;
 
-/* ── 방 만들기 ── */
-let myRoomCode = null;
-let roomWatcher = null;
-let autoDeleteTimer = null;
-
-async function createRoom() {
-  if (!fbReady) { setMsg('Firebase 연결 중...', 'wait'); return; }
-
-  const btn  = document.getElementById('btn-create');
-  btn.disabled = true;
-  setMsg('방 생성 중...', 'wait');
-
-  const name = document.getElementById('room-name').value.trim() || '이름 없는 방';
-  const pw   = document.getElementById('room-pw').value.trim();
-  const desc = document.getElementById('room-desc').value.trim();
-  const hand = buildHandParam();
-
-  // 코드 충돌 없을 때까지 재시도
-  let code, exists = true;
-  while (exists) {
-    code = makeCode();
-    const snap = await roomsRef.child(code).once('value');
-    exists = snap.exists();
-  }
-
-  myRoomCode = code;
-  document.getElementById('display-code').textContent = code;
-
-  const roomData = {
-    name, desc,
-    hand,
-    timeLimit:        selectedTime,
-    timeLimitDisplay: timeLimitLabel(selectedTime),
-    createdAt:        Date.now(),
-    started:          false,
-    gameActive:       false,
-    hostUid:          currentUser?.uid || null,
-    hostElo:          1200,
+async function createRoom(){
+  if(!MY_UID){ alert('로그인이 필요합니다.'); return; }
+  document.getElementById('createBtn').disabled = true;
+  const data = {
+    name: document.getElementById('roomName').value.trim() || '',
+    desc: document.getElementById('roomDesc').value.trim() || '',
+    password: document.getElementById('roomPw').value.trim() || '',
+    hand: buildHandStr(),
+    timeLimit: SEL_TIME,
+    createdAt: Date.now(),
+    started: false,
+    gameActive: false,
+    hostUid: MY_UID,
+    hostNick: MY_NICK,
+    hostElo: MY_ELO
   };
-  if (pw) roomData.password = pw;
+  try{
+    await _fbDb.ref('rooms/'+MY_CODE).set(data);
+  }catch(e){
+    alert('방 생성 실패: '+e.message);
+    document.getElementById('createBtn').disabled = false;
+    return;
+  }
+  document.getElementById('waitCode').textContent = MY_CODE;
+  document.getElementById('waitOverlay').classList.add('show');
 
-  await roomsRef.child(code).set(roomData);
+  // 30분 후 자동 취소
+  _waitTimer = setTimeout(()=>{ cancelRoom(true); }, 30*60*1000);
 
-  setMsg('상대방 입장 대기 중...', 'wait');
-  btn.textContent = '⏳ 대기 중...';
-
-  // 30분 자동 삭제
-  autoDeleteTimer = setTimeout(() => {
-    setMsg('시간 초과. 방이 취소됐습니다.', 'error');
-    cancelRoom();
-  }, 30 * 60 * 1000);
-
-  // 게스트 입장 감시
-  roomWatcher = roomsRef.child(code).child('started').on('value', snap => {
-    if (snap.val() === true) {
-      clearTimeout(autoDeleteTimer);
-      setMsg('게스트 입장! 게임 시작...', 'wait');
-      const uid  = currentUser?.uid || '';
-      const roomToGo = myRoomCode;
-      myRoomCode = null; // beforeunload 방 삭제 방지
-      setTimeout(() => {
-        window.location.href =
-          `omokgay.html?role=host&room=${roomToGo}&time=${selectedTime}&uid=${uid}&hand=${encodeURIComponent(hand)}`;
-      }, 400);
+  // 게스트 입장 감지
+  _roomWatcher = _fbDb.ref('rooms/'+MY_CODE).on('value', snap=>{
+    const r = snap.val();
+    if(!r) return;
+    if(r.guestUid && !r.started){
+      // 게스트 입장 완료 → started로 마크하고 게임 시작
+      _fbDb.ref('rooms/'+MY_CODE).update({started:true}).then(()=>{
+        // 페이지 떠나기 전 myRoomCode 보호 (이건 게임 페이지 이슈, 여기선 단순 이동)
+        const params = new URLSearchParams({
+          role:'host', room:MY_CODE, time:SEL_TIME,
+          uid:MY_UID, nick:MY_NICK, elo:MY_ELO,
+          hand:data.hand
+        });
+        // 즉시 이동
+        location.href = 'omokgay.html?'+params.toString();
+      });
     }
   });
-
-  // 취소 버튼 표시
-  btn.textContent = '🚪 방 취소';
-  btn.disabled = false;
-  btn.style.background = 'var(--red)';
-  btn.onclick = cancelRoom;
 }
 
-async function cancelRoom() {
-  clearTimeout(autoDeleteTimer);
-  if (roomWatcher && myRoomCode) {
-    roomsRef.child(myRoomCode).child('started').off('value', roomWatcher);
-    roomWatcher = null;
-  }
-  if (myRoomCode) {
-    await roomsRef.child(myRoomCode).remove().catch(()=>{});
-    myRoomCode = null;
-  }
-  const btn = document.getElementById('btn-create');
-  btn.textContent = '방 만들기';
-  btn.style.background = '';
-  btn.onclick = createRoom;
-  setMsg('방이 취소됐습니다.');
+async function cancelRoom(silent){
+  if(_waitTimer){ clearTimeout(_waitTimer); _waitTimer=null; }
+  if(_roomWatcher){ _fbDb.ref('rooms/'+MY_CODE).off(); _roomWatcher=null; }
+  try{ await _fbDb.ref('rooms/'+MY_CODE).remove(); }catch(e){}
+  document.getElementById('waitOverlay').classList.remove('show');
+  document.getElementById('createBtn').disabled = false;
+  if(!silent) showToast('방이 취소되었습니다.');
+  else showToast('30분 경과로 방이 자동 취소되었습니다.');
 }
 
-// 페이지 이탈 시 방 삭제
-window.addEventListener('beforeunload', () => {
-  if (myRoomCode && roomsRef) roomsRef.child(myRoomCode).remove();
+// 페이지 떠날 때 정리
+window.addEventListener('beforeunload', ()=>{
+  if(_roomWatcher){
+    // 호스트가 아직 게임에 진입 안 한 상태면 방 삭제
+    _fbDb.ref('rooms/'+MY_CODE).once('value').then(snap=>{
+      const r = snap.val();
+      if(r && !r.started){ _fbDb.ref('rooms/'+MY_CODE).remove(); }
+    });
+  }
 });
 
-function timeLimitLabel(v) {
-  const m = { unlimited:'제한 없음', 30:'30초', 60:'1분',
-              300:'5분', 600:'10분', 1800:'30분', 3600:'1시간' };
-  return m[v] || v;
-}
-
-function setMsg(msg, cls='') {
-  const el = document.getElementById('status-msg');
-  el.textContent = msg;
-  el.className   = 'status-msg' + (cls ? ' '+cls : '');
-}
+// =============== 초기화 ===============
+renderPieces();
+renderTimes();
 </script>
 </body>
 </html>

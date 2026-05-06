@@ -2,2806 +2,2128 @@
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>프론티어</title>
-<!-- Firebase SDK (방 정리용) -->
-<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>FRONTIER — 게임</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;900&family=Cinzel:wght@600;800&display=swap" rel="stylesheet">
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
 <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
 <style>
-/* ── 기본 리셋 & 변수 ── */
-:root {
-  --cell: 68px;
-  --light: #EDD9A3;
-  --dark:  #A97C50;
-  --bg:    #2C2C2E;
-  --panel: #3A3A3C;
-  --panel2:#48484A;
-  --border:#555558;
-  --gold:  #F5C842;
-  --gold2: #FDE68A;
-  --white-side: #4A4A6A;
-  --black-side: #2A2A4A;
-  --text:  #F2F2F7;
-  --muted: #AEAEB2;
-  --red:   #FF453A;
-  --green: #30D158;
-  --blue:  #0A84FF;
-  --highlight: rgba(48,209,88,0.50);
-  --highlight-capture: rgba(255,69,58,0.60);
-  --zone-tint: rgba(10, 132, 255, 0);
-  --check-bg:  rgba(255,69,58,0.55);
-  --selected:  rgba(48,209,88,0.65);
-  --last-move: rgba(245,200,66,0.30);
+:root{
+  --bg:#2C2C2E; --panel:#3A3A3C; --panel2:#48484A; --border:#555558;
+  --gold:#F5C842; --gold2:#E5B832;
+  --text:#F2F2F7; --muted:#AEAEB2;
+  --red:#FF453A; --green:#30D158; --blue:#0A84FF; --orange:#FF9500;
+  --light:#F0D9B5; --dark:#B58863;
 }
-* { box-sizing:border-box; margin:0; padding:0; }
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100dvh;overflow:hidden;background:var(--bg);color:var(--text);
+  font-family:'Noto Sans KR','Apple SD Gothic Neo',sans-serif;
+  -webkit-tap-highlight-color:transparent;user-select:none}
+button{font-family:inherit;cursor:pointer;border:none;outline:none;color:inherit;background:transparent}
+input{font-family:inherit;outline:none}
 
-body {
-  font-family: 'Noto Sans KR','Apple SD Gothic Neo','Malgun Gothic',sans-serif;
-  background: var(--bg);
-  color: var(--text);
-  min-height: 100vh;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  padding: 20px 12px 40px;
-  gap: 16px;
-}
+/* 데스크탑 3열 */
+.app{display:grid;grid-template-columns:240px 1fr 240px;grid-template-rows:auto 1fr;
+  gap:8px;height:100dvh;padding:8px;max-width:1400px;margin:0 auto}
 
-/* ── 헤더 ── */
-header {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 6px;
-  width: 100%;
-  max-width: 1160px;
-}
-h1 {
-  font-size: 1.9rem;
-  font-weight: 800;
-  letter-spacing: 3px;
-  color: var(--gold);
-  text-shadow: 0 2px 16px rgba(245,200,66,0.35);
-  margin: 0;
-}
-.header-sub {
-  font-size: 0.78rem;
-  color: var(--muted);
-  letter-spacing: 1px;
-}
-.header-btns {
-  display: flex;
-  gap: 8px;
-  margin-top: 4px;
-}
-.hdr-btn {
-  padding: 6px 16px;
-  border-radius: 20px;
-  border: 1.5px solid var(--border);
-  background: var(--panel);
-  color: var(--text);
-  font-size: 0.8rem;
-  cursor: pointer;
-  transition: background 0.15s, border-color 0.15s;
-}
-.hdr-btn:hover { background: var(--panel2); border-color: var(--gold); }
-.hdr-btn.primary { background: var(--gold); color: #000; border-color: var(--gold); font-weight:700; }
-.hdr-btn.primary:hover { background: var(--gold2); }
+.topbar{grid-column:1/-1;display:flex;align-items:center;justify-content:space-between;
+  background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:8px 12px}
+.tb-left{display:flex;gap:8px;align-items:center}
+.tb-mid{font-family:'Cinzel',serif;font-weight:800;color:var(--gold);font-size:18px;letter-spacing:3px}
+.tb-right{display:flex;gap:6px;align-items:center}
+.tb-btn{padding:6px 10px;background:var(--panel2);border:1px solid var(--border);border-radius:7px;font-size:12px;font-weight:600;color:var(--text)}
+.tb-btn:hover{background:var(--panel)}
+.tb-btn.danger{color:var(--red)}
 
-/* ── 메인 레이아웃 ── */
-#app {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 14px;
-  justify-content: center;
-  width: 100%;
-  max-width: 1160px;
-  align-items: flex-start;
-}
+/* 좌/우 패널 (플레이어 카드 + 손패) */
+.side{display:flex;flex-direction:column;gap:8px;min-height:0}
+.pcard{background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:10px}
+.pcard.active{border-color:var(--gold);box-shadow:0 0 0 1px var(--gold)}
+.pcard .ph{display:flex;align-items:center;gap:8px;margin-bottom:8px}
+.pcard .av{width:28px;height:28px;border-radius:50%;background:var(--gold);color:#1c1c1e;
+  display:flex;align-items:center;justify-content:center;font-weight:900;font-size:13px;flex-shrink:0}
+.pcard .av.b{background:#1c1c1e;color:var(--gold);border:1px solid var(--gold)}
+.pcard .pn{font-weight:700;font-size:13px;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pcard .pe{font-size:11px;color:var(--muted)}
+.pcard .ck{font-size:11px;color:var(--orange);margin-top:4px}
+.pcard .timer{font-family:'Cinzel',monospace;font-size:18px;font-weight:800;text-align:center;
+  background:var(--panel2);padding:4px 8px;border-radius:6px;margin-top:4px}
+.pcard .timer.warn{color:var(--red);animation:pulse 1s infinite}
+@keyframes pulse{50%{opacity:.5}}
 
-/* ── 사이드 패널 ── */
-.side-panel {
-  background: var(--panel);
-  border-radius: 16px;
-  padding: 16px;
-  width: 230px;
-  border: 1px solid var(--border);
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  flex-shrink: 0;
-}
+.hand-card{background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:10px;flex:1;min-height:0;display:flex;flex-direction:column}
+.hand-card h4{font-size:11px;color:var(--muted);letter-spacing:1px;margin-bottom:8px;text-transform:uppercase}
+.hand-list{display:flex;flex-direction:column;gap:4px;overflow-y:auto;flex:1}
+.hand-list::-webkit-scrollbar{width:4px}
+.hand-list::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px}
+.hp{display:flex;align-items:center;gap:8px;padding:6px 8px;background:var(--panel2);border:1px solid var(--border);
+  border-radius:6px;cursor:pointer;transition:all .12s}
+.hp:hover{background:var(--panel);border-color:var(--gold)}
+.hp.sel{background:rgba(245,200,66,.2);border-color:var(--gold)}
+.hp.dis{opacity:.4;cursor:not-allowed}
+.hp .sym{font-size:22px;line-height:1;width:24px;text-align:center}
+.hp .nm{font-size:12px;font-weight:600;flex:1}
+.hp .ct{font-weight:800;font-size:14px;color:var(--gold)}
 
-/* ── 플레이어 카드 ── */
-.player-card {
-  border-radius: 12px;
-  padding: 14px;
-  border: 2px solid transparent;
-  transition: border-color 0.25s, box-shadow 0.25s;
-}
-.player-card.active {
-  border-color: var(--gold);
-  box-shadow: 0 0 14px rgba(245,200,66,0.25);
-}
-.player-card.white-side { background: var(--white-side); }
-.player-card.black-side { background: var(--black-side); }
+/* 보드 */
+.board-wrap{display:flex;align-items:center;justify-content:center;min-height:0;position:relative}
+.board-outer{position:relative}
+.board{display:grid;grid-template-columns:repeat(8, var(--cs));grid-template-rows:repeat(8, var(--cs));
+  border:2px solid #5a4a36;border-radius:6px;box-shadow:0 12px 50px rgba(0,0,0,.5);background:#5a4a36}
+.cell{width:var(--cs);height:var(--cs);position:relative;display:flex;align-items:center;justify-content:center;
+  font-size:calc(var(--cs) * .68);line-height:1;cursor:pointer;transition:background .1s}
+.cell.lt{background:var(--light)}
+.cell.dk{background:var(--dark)}
+.cell.king-zone::before{content:'';position:absolute;inset:2px;border:2px dashed rgba(245,200,66,.5);border-radius:4px;pointer-events:none}
+.cell.place-zone::after{content:'';position:absolute;inset:0;background:rgba(48,209,88,.15);pointer-events:none}
+.cell.corner-zone::after{content:'';position:absolute;inset:0;background:rgba(255,69,58,.18);pointer-events:none}
+.cell.move::after{content:'';position:absolute;width:30%;height:30%;background:rgba(48,209,88,.55);border-radius:50%;pointer-events:none}
+.cell.attack::after{content:'';position:absolute;inset:8%;border:3px solid rgba(255,69,58,.65);border-radius:50%;pointer-events:none}
+.cell.sel{background:rgba(245,200,66,.5)!important}
+.cell.last{background:rgba(245,200,66,.3)!important}
+.cell.check::before{content:'';position:absolute;inset:0;background:rgba(255,69,58,.4);border-radius:0;animation:checkpulse 1s infinite}
+@keyframes checkpulse{50%{background:rgba(255,69,58,.15)}}
+.cell .pc{position:relative;z-index:1;text-shadow:0 1px 2px rgba(0,0,0,.5)}
+.cell .pc.w{color:#fff}
+.cell .pc.b{color:#1a1a1a}
+.cell .pc.spec.w{color:#fff;text-shadow:0 0 3px #000,0 0 3px #000,0 0 3px #000}
+.cell .pc.spec.b{color:#1a1a1a;text-shadow:0 0 3px #fff,0 0 3px #fff,0 0 3px #fff}
 
-.player-header {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-bottom: 10px;
-}
-.player-dot {
-  width: 14px; height: 14px;
-  border-radius: 50%;
-  border: 2px solid rgba(255,255,255,0.4);
-  flex-shrink: 0;
-}
-.player-dot.white { background: #F5F5F5; }
-.player-dot.black { background: #1C1C1E; }
-.player-name {
-  font-size: 0.95rem;
-  font-weight: 700;
-  flex: 1;
-}
-.turn-badge {
-  font-size: 0.65rem;
-  padding: 2px 7px;
-  border-radius: 10px;
-  background: var(--gold);
-  color: #000;
-  font-weight: 700;
-  opacity: 0;
-  transition: opacity 0.2s;
-}
-.player-card.active .turn-badge { opacity: 1; }
+.coord{position:absolute;font-size:9px;font-weight:700;color:#7a5e3a;pointer-events:none;z-index:2}
+.coord.f{bottom:1px;right:3px}
+.coord.r{top:1px;left:3px}
 
-/* 체크 카운터 */
-.check-counter {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 4px 6px;
-  font-size: 0.68rem;
-  color: var(--muted);
-  margin-bottom: 8px;
-}
-.check-pips {
-  display: flex;
-  gap: 3px;
-}
-.check-pip {
-  width: 10px; height: 10px;
-  border-radius: 50%;
-  border: 1.5px solid var(--muted);
-  background: transparent;
-  transition: background 0.2s, border-color 0.2s;
-}
-.check-pip.filled { background: var(--red); border-color: var(--red); }
+.status-float{position:absolute;top:4px;left:50%;transform:translateX(-50%);
+  background:rgba(0,0,0,.7);border:1px solid var(--gold);padding:6px 14px;border-radius:8px;
+  font-size:13px;font-weight:600;z-index:5;pointer-events:none;display:none;white-space:nowrap}
+.status-float.show{display:block}
 
-/* 타이머 */
-.timer-box {
-  display: none;
-  flex-direction: column;
-  align-items: center;
-  gap: 4px;
-  padding: 10px;
-  background: rgba(255,69,58,0.15);
-  border-radius: 8px;
-  font-size: 0.75rem;
-  color: var(--muted);
-}
-.timer-box.active {
-  display: flex;
-  background: rgba(255,69,58,0.25);
-  border: 1px solid rgba(255,69,58,0.5);
-}
-.timer-display {
-  font-size: 1.4rem;
-  font-weight: 800;
-  color: var(--red);
-  font-family: 'Consolas', monospace;
-  letter-spacing: 2px;
-}
-.timer-display.warning {
-  animation: pulse-red 0.5s ease-in-out infinite;
-}
-@keyframes pulse-red { 0%,100% { opacity: 1 } 50% { opacity: 0.6 } }
+/* 채팅 */
+.chat-fab{position:fixed;bottom:14px;right:14px;width:50px;height:50px;border-radius:50%;
+  background:var(--gold);color:#1c1c1e;font-size:22px;display:flex;align-items:center;justify-content:center;
+  box-shadow:0 4px 14px rgba(0,0,0,.3);z-index:50;cursor:pointer}
+.chat-badge{position:absolute;top:-3px;right:-3px;background:var(--red);color:#fff;font-size:10px;
+  font-weight:700;padding:2px 5px;border-radius:9px;min-width:18px;text-align:center}
+.chat-panel{position:fixed;bottom:14px;right:14px;width:300px;max-width:calc(100vw - 28px);height:380px;max-height:60vh;
+  background:var(--panel);border:1px solid var(--border);border-radius:12px;display:none;flex-direction:column;
+  z-index:51;overflow:hidden;box-shadow:0 10px 30px rgba(0,0,0,.4)}
+.chat-panel.show{display:flex}
+.chat-head{padding:10px 14px;background:var(--panel2);border-bottom:1px solid var(--border);
+  display:flex;justify-content:space-between;align-items:center;font-weight:700;font-size:14px}
+.chat-msgs{flex:1;overflow-y:auto;padding:10px;display:flex;flex-direction:column;gap:6px}
+.chat-msgs::-webkit-scrollbar{width:4px}
+.cm{display:flex;flex-direction:column;gap:2px;font-size:13px;padding:6px 10px;border-radius:8px;max-width:80%;word-break:break-word}
+.cm.me{align-self:flex-end;background:var(--gold);color:#1c1c1e}
+.cm.them{align-self:flex-start;background:var(--panel2)}
+.cm.sys{align-self:center;font-size:11px;color:var(--muted);background:transparent;font-style:italic}
+.cm .who{font-size:10px;color:var(--muted);margin-bottom:1px}
+.cm.me .who{color:#5a4a16}
+.chat-input{display:flex;border-top:1px solid var(--border);padding:8px;gap:6px}
+.chat-input input{flex:1;padding:8px 10px;background:var(--panel2);border:1px solid var(--border);
+  border-radius:6px;color:var(--text);font-size:13px}
+.chat-input button{padding:8px 14px;background:var(--gold);color:#1c1c1e;border-radius:6px;font-weight:700;font-size:13px}
 
-/* 손패 */
-.hand-label {
-  font-size: 0.7rem;
-  color: var(--muted);
-  margin-bottom: 6px;
-  letter-spacing: 0.5px;
-}
-.hand-pieces {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 6px;
-}
-.hand-piece {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 2px;
-  cursor: pointer;
-  padding: 8px 4px 5px;
-  border-radius: 10px;
-  border: 1.5px solid var(--border);
-  background: rgba(255,255,255,0.05);
-  position: relative;
-  transition: background 0.15s, border-color 0.15s, transform 0.1s;
-  user-select: none;
-  min-height: 58px;
-}
-.hand-piece:hover {
-  background: rgba(245,200,66,0.12);
-  border-color: var(--gold);
-  transform: translateY(-1px);
-}
-.hand-piece.selected-hand {
-  background: rgba(245,200,66,0.28);
-  border-color: var(--gold);
-  box-shadow: 0 0 8px rgba(245,200,66,0.3);
-}
-.hand-piece .piece-icon {
-  font-size: 1.6rem;
-  line-height: 1;
-  filter: drop-shadow(0 1px 3px rgba(0,0,0,0.7));
-}
-.hand-piece .piece-label {
-  font-size: 0.58rem;
-  color: var(--muted);
-  letter-spacing: 0.3px;
-}
-.hand-piece .count-badge {
-  position: absolute;
-  top: 3px; right: 4px;
-  background: var(--gold);
-  color: #000;
-  border-radius: 50%;
-  font-size: 0.6rem;
-  width: 15px; height: 15px;
-  display: flex; align-items: center; justify-content: center;
-  font-weight: 800;
-}
+/* 모달 */
+.modal{position:fixed;inset:0;background:rgba(0,0,0,.8);display:none;align-items:center;justify-content:center;z-index:200;padding:20px}
+.modal.show{display:flex}
+.modal-card{background:var(--panel);border:1px solid var(--border);border-radius:16px;padding:24px;max-width:440px;width:100%;text-align:center}
+.modal-card h2{font-size:22px;margin-bottom:8px}
+.modal-card .icon{font-size:54px;margin-bottom:10px}
+.modal-card p{color:var(--muted);font-size:14px;line-height:1.6;margin-bottom:14px}
+.modal-card .actions{display:flex;gap:8px;justify-content:center;flex-wrap:wrap}
+.btn{padding:10px 18px;border-radius:8px;font-weight:700;font-size:14px;cursor:pointer;border:none;font-family:inherit}
+.btn-gold{background:linear-gradient(180deg,var(--gold),var(--gold2));color:#1c1c1e}
+.btn-ghost{background:var(--panel2);color:var(--text);border:1px solid var(--border)}
+.btn-blue{background:var(--blue);color:#fff}
 
-/* ── 상태창 ── */
-#status-box {
-  background: var(--panel2);
-  border-radius: 10px;
-  padding: 10px 12px;
-  font-size: 0.82rem;
-  text-align: center;
-  min-height: 38px;
-  color: var(--gold);
-  font-weight: 700;
-  border: 1px solid var(--border);
-  line-height: 1.4;
-}
+.elo-change{font-size:18px;margin:14px 0;padding:10px;background:var(--panel2);border-radius:8px;font-weight:700}
+.elo-change.up{color:var(--green)}
+.elo-change.dn{color:var(--red)}
 
-/* ── 이동 기록 ── */
-#move-history {
-  background: var(--black-side);
-  border-radius: 10px;
-  padding: 10px;
-  font-size: 0.75rem;
-  max-height: 220px;
-  overflow-y: auto;
-  color: var(--muted);
-  border: 1px solid var(--border);
-  flex: 1;
-  scrollbar-width: thin;
-  scrollbar-color: var(--border) transparent;
-}
-#move-history h3 {
-  color: var(--muted);
-  font-size: 0.72rem;
-  font-weight: 600;
-  letter-spacing: 1px;
-  margin-bottom: 6px;
-  text-transform: uppercase;
-}
-.move-entry {
-  padding: 3px 2px;
-  border-bottom: 1px solid rgba(255,255,255,0.05);
-  display: flex;
-  gap: 5px;
-}
-.move-entry:last-child { border-bottom: none; }
-.move-white { color: #E5E5EA; }
-.move-black { color: #8E8E93; }
+/* 프로모션 */
+.promo-opts{display:flex;gap:10px;justify-content:center;margin:12px 0}
+.promo-opt{width:60px;height:60px;background:var(--panel2);border:2px solid var(--border);border-radius:10px;
+  display:flex;align-items:center;justify-content:center;font-size:38px;cursor:pointer}
+.promo-opt:hover{border-color:var(--gold);background:var(--panel)}
+.promo-opt.w{color:#fff;text-shadow:0 1px 2px rgba(0,0,0,.5)}
+.promo-opt.b{color:#1a1a1a}
 
-/* ── 보드 컨테이너 ── */
-#board-container {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 4px;
-}
-#board-wrap {
-  display: flex;
-  align-items: flex-start;
-  gap: 6px;
-}
-.axis-labels {
-  display: flex;
-  flex-direction: column;
-  justify-content: space-around;
-  height: calc(var(--cell) * 8);
-  font-size: 0.72rem;
-  color: var(--muted);
-  padding: 0 2px;
-  width: 18px;
-  text-align: center;
-}
-.file-labels {
-  display: flex;
-  justify-content: space-around;
-  width: calc(var(--cell) * 8);
-  font-size: 0.72rem;
-  color: var(--muted);
-}
+/* 모바일 */
+.mobile-only{display:none}
 
-/* ── 보드 ── */
-#board {
-  display: grid;
-  grid-template-columns: repeat(8, var(--cell));
-  grid-template-rows: repeat(8, var(--cell));
-  border: 3px solid #222;
-  border-radius: 4px;
-  overflow: hidden;
-  box-shadow: 0 8px 32px rgba(0,0,0,0.6);
-  cursor: pointer;
+@media (max-width:820px){
+  .app{grid-template-columns:1fr;grid-template-rows:auto auto 1fr auto;padding:6px;gap:6px}
+  .topbar{padding:6px 10px}
+  .tb-mid{font-size:14px;letter-spacing:2px}
+  .side.left{grid-row:2}
+  .side.right{grid-row:4;flex-direction:row;align-items:stretch}
+  .side.right .pcard{flex:0 0 auto}
+  .side.right .hand-card{flex:1}
+  .side.left{flex-direction:row;align-items:stretch}
+  .side.left .pcard{flex:1}
+  .side.left .hand-card{display:none}
+  .board-wrap{grid-row:3}
+  .hand-list{flex-direction:row;overflow-x:auto;overflow-y:hidden}
+  .hp{flex:0 0 auto;min-width:60px;padding:8px}
+  .pcard .timer{font-size:14px}
 }
-.cell {
-  width: var(--cell);
-  height: var(--cell);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: calc(var(--cell) * 0.60);
-  position: relative;
-  user-select: none;
-  transition: filter 0.12s;
-}
-.cell.light { background: var(--light); }
-.cell.dark  { background: var(--dark); }
-
-/* 배치 구역 파란 도트 패턴 */
-.cell.zone::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background: var(--zone-tint);
-  pointer-events: none;
-}
-.cell.zone::after {
-  content: '';
-  position: absolute;
-  bottom: 3px; right: 3px;
-  width: 5px; height: 5px;
-  border-radius: 50%;
-  background: rgba(10,132,255,0.45);
-  pointer-events: none;
-}
-
-/* 이동 가능 — 녹색 원 */
-.cell.highlight::before {
-  content: '';
-  position: absolute;
-  top: 32%;
-  left: 32%;
-  width: 36%;
-  height: 36%;
-  border-radius: 50%;
-  background: var(--highlight);
-  pointer-events: none;
-  box-shadow: 0 0 0 2px rgba(48,209,88,0.25);
-}
-/* 폰 배치 시 원과 방향 점 */
-.cell.highlight.pawn-north::after {
-  content: '';
-  position: absolute;
-  top: 2px;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 6px;
-  height: 6px;
-  background: var(--green);
-  border-radius: 50%;
-  z-index: 4;
-}
-.cell.highlight.pawn-south::after {
-  content: '';
-  position: absolute;
-  bottom: 2px;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 6px;
-  height: 6px;
-  background: var(--green);
-  border-radius: 50%;
-  z-index: 4;
-}
-/* 캡처 가능 — 빨간 링 */
-.cell.highlight-capture::before {
-  content: '';
-  position: absolute;
-  inset: 8px;
-  border-radius: 50%;
-  border: 3px solid rgba(255,69,58,0.8);
-  pointer-events: none;
-}
-/* 위험한 체크 — 빨간 원 */
-.cell.highlight-danger::after {
-  content: '';
-  position: absolute;
-  top: 32%;
-  left: 32%;
-  width: 36%;
-  height: 36%;
-  border-radius: 50%;
-  background: rgba(255,69,58,0.65);
-  pointer-events: none;
-  box-shadow: 0 0 0 2px rgba(255,69,58,0.4);
-}
-.cell.selected  { background: var(--selected)  !important; }
-.cell.last-move { background: var(--last-move)  !important; }
-.cell.light.last-move {
-  background: rgba(245,200,66,0.4) !important;
-  border: 2px solid #D4AF37 !important;
-}
-.cell.dark.last-move {
-  background: rgba(245,200,66,0.6) !important;
-  border: 2px solid #F5C842 !important;
-}
-.cell.in-check  { background: var(--check-bg)   !important; }
-
-.piece {
-  position: relative;
-  z-index: 1;
-  filter: drop-shadow(0 1px 3px rgba(0,0,0,0.7));
-  line-height: 1;
-}
-.piece::after {
-  content: '';
-  position: absolute;
-  width: 0;
-  height: 0;
-  border-radius: 50%;
-  background: currentColor;
-  opacity: 0;
-}
-.piece.pawn-white::after,
-.piece.pawn-black::after {
-  width: 4px;
-  height: 4px;
-  opacity: 0.95;
-}
-.piece.pawn-white::after {
-  top: -8px;
-  left: 50%;
-  transform: translateX(-50%);
-}
-.piece.pawn-black::after {
-  bottom: -8px;
-  left: 50%;
-  transform: translateX(-50%);
-}
-
-/* ── 규칙 패널 ── */
-#rules-section {
-  width: 100%;
-  max-width: 1160px;
-}
-#rules-box {
-  display: none;
-  background: var(--panel);
-  border-radius: 14px;
-  padding: 20px 24px;
-  border: 1px solid var(--border);
-  margin-top: 4px;
-}
-#rules-box.open { display: block; }
-#rules-box h2 { color: var(--gold); font-size: 1rem; margin-bottom: 12px; }
-.rules-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
-  gap: 8px 20px;
-}
-.rule-item {
-  display: flex;
-  gap: 8px;
-  align-items: flex-start;
-  font-size: 0.8rem;
-  color: #C7C7CC;
-  line-height: 1.5;
-}
-.rule-num {
-  background: var(--gold);
-  color: #000;
-  border-radius: 50%;
-  min-width: 18px;
-  height: 18px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 0.65rem;
-  font-weight: 800;
-  margin-top: 1px;
-  flex-shrink: 0;
-}
-
-/* ── 프로모션 모달 ── */
-#modal-overlay {
-  display: none;
-  position: fixed;
-  inset: 0;
-  background: rgba(0,0,0,0.78);
-  z-index: 100;
-  align-items: center;
-  justify-content: center;
-}
-#modal-overlay.show { display: flex; }
-#modal-box {
-  background: var(--panel);
-  border: 2px solid var(--gold);
-  border-radius: 18px;
-  padding: 28px 32px;
-  text-align: center;
-  min-width: 280px;
-  box-shadow: 0 20px 60px rgba(0,0,0,0.6);
-}
-#modal-box h2 { font-size: 1.1rem; margin-bottom: 18px; color: var(--gold); }
-.modal-btns { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }
-.modal-btn {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 5px;
-  font-size: 2rem;
-  padding: 14px 18px;
-  border-radius: 12px;
-  border: 2px solid var(--border);
-  background: var(--panel2);
-  color: #fff;
-  cursor: pointer;
-  transition: background 0.15s, border-color 0.15s, transform 0.1s;
-  min-width: 64px;
-}
-.modal-btn span { font-size: 0.7rem; color: var(--muted); }
-.modal-btn:hover {
-  background: rgba(245,200,66,0.2);
-  border-color: var(--gold);
-  transform: scale(1.05);
-}
-
-/* ── 게임 종료 오버레이 ── */
-#end-overlay {
-  display: none;
-  position: fixed;
-  inset: 0;
-  background: rgba(0,0,0,0.85);
-  z-index: 200;
-  align-items: center;
-  justify-content: center;
-  flex-direction: column;
-}
-#end-overlay.show { display: flex; }
-#end-box {
-  background: var(--panel);
-  border: 2px solid var(--gold);
-  border-radius: 22px;
-  padding: 44px 52px;
-  text-align: center;
-  box-shadow: 0 24px 80px rgba(0,0,0,0.7);
-  max-width: 360px;
-  width: 90%;
-}
-#end-box .end-emoji { font-size: 3rem; margin-bottom: 12px; }
-#end-box h2 { font-size: 1.8rem; color: var(--gold); margin-bottom: 8px; font-weight: 800; }
-#end-box p  { font-size: 0.95rem; color: var(--muted); margin-bottom: 28px; }
-#restart-btn {
-  padding: 14px 36px;
-  background: var(--gold);
-  color: #000;
-  border: none;
-  border-radius: 12px;
-  font-size: 1rem;
-  font-weight: 700;
-  cursor: pointer;
-  transition: background 0.15s, transform 0.1s;
-}
-#restart-btn:hover { background: var(--gold2); transform: scale(1.02); }
-
-/* ── 반응형 ── */
-@media (max-width: 820px) {
-  :root { --cell: 52px; }
-  .side-panel { width: 100%; flex-direction: row; flex-wrap: wrap; gap: 10px; }
-  .player-card { flex: 1; min-width: 200px; }
-  #move-history { max-height: 100px; }
-  .hand-pieces { grid-template-columns: repeat(6, 1fr); }
-}
-@media (max-width: 520px) {
-  :root { --cell: 42px; }
-  .hand-piece .piece-icon { font-size: 1.2rem; }
+@media (max-width:600px){
+  .mobile-only{display:flex}
+  .app{grid-template-rows:auto auto 1fr auto;gap:4px;padding:4px}
+  .side.left{grid-row:2}
+  .side.left .pcard{padding:6px 8px}
+  .side.left .pcard .av{width:22px;height:22px;font-size:11px}
+  .side.left .pcard .pn{font-size:11px}
+  .side.left .pcard .pe{font-size:10px}
+  .side.left .hand-card{display:none}
+  .side.right{grid-row:4;flex-direction:column;gap:4px}
+  .side.right .pcard{padding:8px}
+  .side.right .hand-list{flex-direction:row}
+  .opp-toggle{position:fixed;top:50px;right:8px;z-index:30;background:var(--panel);border:1px solid var(--gold);
+    color:var(--gold);width:40px;height:40px;border-radius:50%;font-size:18px;display:flex;align-items:center;justify-content:center}
+  .opp-sheet{position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:60;display:none;align-items:flex-end}
+  .opp-sheet.show{display:flex}
+  .opp-sheet-card{background:var(--panel);border-top-left-radius:14px;border-top-right-radius:14px;
+    width:100%;max-height:60vh;padding:14px;overflow-y:auto}
+  .opp-sheet-card .hp{flex-direction:row;width:100%;margin-bottom:6px}
 }
 </style>
 </head>
 <body>
-
-<header>
-  <h1>프론티어</h1>
-  <p class="header-sub">FRONTIER — 체스 × 오목 하이브리드</p>
-  <div class="header-btns">
-    <button class="hdr-btn" id="btn-lobby" onclick="goLobby()">← 로비 & 항복</button>
-    <button class="hdr-btn primary" id="restart-side-btn">⟳ 새 게임</button>
-    <button class="hdr-btn" id="toggle-rules-btn">규칙 보기</button>
-    <span id="ai-badge" style="display:none;background:rgba(10,132,255,0.18);color:#0A84FF;border:1px solid rgba(10,132,255,0.5);border-radius:20px;padding:4px 12px;font-size:0.75rem;font-weight:700;">🤖 AI</span>
-  </div>
-</header>
-
-<div id="app">
-
-  <!-- 백 패널 -->
-  <div class="side-panel" id="white-panel">
-    <div class="player-card white-side" id="white-info">
-      <div class="player-header">
-        <div class="player-dot white"></div>
-        <span class="player-name">백 진영</span>
-        <span class="turn-badge">내 턴</span>
-      </div>
-      <div class="check-counter">
-        <span>연속</span>
-        <div class="check-pips" id="white-check-pips"></div>
-        <span id="white-check-count">0/3</span>
-        <span style="margin-left:6px">총합</span>
-        <div class="check-pips" id="white-total-pips"></div>
-        <span id="white-total-count">0/5</span>
-      </div>
-      <div class="hand-label">보유 기물 (미배치)</div>
-      <div class="hand-pieces" id="white-hand"></div>
-      <div class="timer-box" id="white-timer">
-        <span style="font-size:0.7rem">남은 시간</span>
-        <div class="timer-display" id="white-timer-display">∞</div>
-      </div>
+<div class="app">
+  <div class="topbar">
+    <div class="tb-left">
+      <button class="tb-btn" onclick="confirmLeave()">← 로비</button>
     </div>
-    <div id="status-box">게임 시작!</div>
-    <div id="move-history">
-      <h3>이동 기록</h3>
-      <div id="history-list"></div>
+    <div class="tb-mid">FRONTIER</div>
+    <div class="tb-right">
+      <span id="modeLbl" style="font-size:11px;color:var(--muted)"></span>
+      <button class="tb-btn danger" onclick="confirmForfeit()" id="forfeitBtn" style="display:none">기권</button>
+    </div>
+  </div>
+
+  <!-- 왼쪽 (데스크탑) / 위쪽 (모바일) - 상대 -->
+  <div class="side left">
+    <div class="pcard" id="oppCard">
+      <div class="ph">
+        <div class="av b" id="oppAv">B</div>
+        <div class="pn" id="oppName">상대</div>
+      </div>
+      <div class="pe" id="oppMeta">—</div>
+      <div class="ck" id="oppCheck"></div>
+      <div class="timer" id="oppTimer" style="display:none">--:--</div>
+    </div>
+    <div class="hand-card">
+      <h4>상대 손패</h4>
+      <div class="hand-list" id="oppHand"></div>
     </div>
   </div>
 
   <!-- 보드 -->
-  <div id="board-container">
-    <div class="file-labels" id="file-labels-top"></div>
-    <div id="board-wrap">
-      <div class="axis-labels" id="rank-labels"></div>
-      <div id="board"></div>
-      <div class="axis-labels" id="rank-labels-right"></div>
-    </div>
-    <div class="file-labels" id="file-labels"></div>
-  </div>
-
-  <!-- 흑 패널 -->
-  <div class="side-panel" id="black-panel">
-    <div class="player-card black-side" id="black-info">
-      <div class="player-header">
-        <div class="player-dot black"></div>
-        <span class="player-name">흑 진영</span>
-        <span class="turn-badge">내 턴</span>
-      </div>
-      <div class="check-counter">
-        <span>연속</span>
-        <div class="check-pips" id="black-check-pips"></div>
-        <span id="black-check-count">0/3</span>
-        <span style="margin-left:6px">총합</span>
-        <div class="check-pips" id="black-total-pips"></div>
-        <span id="black-total-count">0/5</span>
-      </div>
-      <div class="hand-label">보유 기물 (미배치)</div>
-      <div class="hand-pieces" id="black-hand"></div>
-      <div class="timer-box" id="black-timer">
-        <span style="font-size:0.7rem">남은 시간</span>
-        <div class="timer-display" id="black-timer-display">∞</div>
-      </div>
+  <div class="board-wrap">
+    <div class="board-outer">
+      <div class="status-float" id="statusFloat"></div>
+      <div class="board" id="board"></div>
     </div>
   </div>
 
+  <!-- 오른쪽 (데스크탑) / 아래쪽 (모바일) - 나 -->
+  <div class="side right">
+    <div class="pcard active" id="myCard">
+      <div class="ph">
+        <div class="av" id="myAv">W</div>
+        <div class="pn" id="myName">나</div>
+      </div>
+      <div class="pe" id="myMeta">—</div>
+      <div class="ck" id="myCheck"></div>
+      <div class="timer" id="myTimer" style="display:none">--:--</div>
+    </div>
+    <div class="hand-card">
+      <h4>내 손패</h4>
+      <div class="hand-list" id="myHand"></div>
+    </div>
+  </div>
 </div>
 
-<!-- 규칙 섹션 -->
-<div id="rules-section">
-  <div id="rules-box">
-    <h2>게임 규칙</h2>
-    <div class="rules-grid">
-      <div class="rule-item"><div class="rule-num">1</div><span>체크메이트 혹은 자신의 기물 5개를 가로·세로·대각선으로 연속 배치하면 승리.</span></div>
-      <div class="rule-item"><div class="rule-num">2</div><span>각 진영은 첫 번째 턴에 반드시 킹을 배치해야 함.</span></div>
-      <div class="rule-item"><div class="rule-num">3</div><span>기물 배치는 행 3-6, 열 b-g 구역(파란 점 표시)에만 가능. 이동은 자유.</span></div>
-      <div class="rule-item"><div class="rule-num">4</div><span>킹은 4*4 구역에만 배치 가능.</span></div>
-      <div class="rule-item"><div class="rule-num">5</div><span>매 턴 손패에서 기물을 배치하거나, 보드 위 기물을 체스 규칙대로 이동.</span></div>
-      <div class="rule-item"><div class="rule-num">6</div><span>폰이 상대 진영 끝 행에 도달하면 퀸·룩·비숍·나이트 중 하나로 프로모션.</span></div>
-      <div class="rule-item"><div class="rule-num">7</div><span>체크 상태에서는 반드시 체크를 해결하는 행동만 가능.</span></div>
-      <div class="rule-item"><div class="rule-num">8</div><span>3회 연속 체크를 걸면 패배.</span></div>
-      <div class="rule-item"><div class="rule-num">9</div><span>한 게임 동안 최대 5회 까지만 체크를 걸 수 있음.</span></div>
-      <div class="rule-item"><div class="rule-num">10</div><span>스테일메이트 / 3수 동행 / 기물 부족 시 무승부.</span></div>
-    </div>
+<!-- 모바일: 상대 손패 보기 버튼 -->
+<button class="opp-toggle mobile-only" onclick="toggleOppSheet()">👁</button>
+<div class="opp-sheet" id="oppSheet" onclick="if(event.target.id==='oppSheet') toggleOppSheet()">
+  <div class="opp-sheet-card">
+    <h4 style="margin-bottom:10px;color:var(--muted);font-size:12px">상대 손패</h4>
+    <div id="oppHandSheet"></div>
+  </div>
+</div>
+
+<!-- 채팅 -->
+<button class="chat-fab" id="chatFab" onclick="toggleChat()" style="display:none">
+  💬<span class="chat-badge" id="chatBadge" style="display:none">0</span>
+</button>
+<div class="chat-panel" id="chatPanel">
+  <div class="chat-head">
+    <span>채팅</span>
+    <button onclick="toggleChat()" style="font-size:18px;color:var(--muted)">×</button>
+  </div>
+  <div class="chat-msgs" id="chatMsgs"></div>
+  <div class="chat-input">
+    <input type="text" id="chatInput" placeholder="메시지 입력..." maxlength="100">
+    <button onclick="sendChat()">전송</button>
   </div>
 </div>
 
 <!-- 프로모션 모달 -->
-<div id="modal-overlay">
-  <div id="modal-box">
-    <h2>프로모션 선택</h2>
-    <div class="modal-btns" id="promo-btns"></div>
+<div class="modal" id="promoModal">
+  <div class="modal-card">
+    <h2>폰 프로모션</h2>
+    <p>승급할 기물을 선택하세요</p>
+    <div class="promo-opts" id="promoOpts"></div>
   </div>
 </div>
 
-<!-- 온라인 배지 -->
-<div id="online-badge" style="display:none;position:fixed;top:12px;right:12px;z-index:50;background:var(--panel);border:1px solid var(--border);border-radius:20px;padding:5px 14px;font-size:0.75rem;color:var(--muted);gap:7px;align-items:center;">
-  <span id="ob-dot" style="width:8px;height:8px;border-radius:50%;background:var(--green);display:inline-block;animation:obpulse 1.5s ease infinite;"></span>
-  <span id="ob-label">온라인</span>
-  <span id="ob-color" style="color:var(--text);font-weight:700;margin-left:2px"></span>
-</div>
-<style>
-@keyframes obpulse{0%,100%{opacity:1}50%{opacity:0.3}}
-#online-badge.show{display:flex!important;}
-
-/* ── 채팅 버튼 ── */
-#btn-chat {
-  position: fixed; bottom: 24px; right: 24px; z-index: 60;
-  width: 52px; height: 52px; border-radius: 50%;
-  background: var(--blue); color: #fff; border: none;
-  font-size: 1.3rem; cursor: pointer;
-  box-shadow: 0 4px 16px rgba(10,132,255,0.45);
-  display: none; align-items: center; justify-content: center;
-  transition: transform 0.15s, background 0.15s;
-}
-#btn-chat.show { display: flex; }
-#btn-chat:hover { transform: scale(1.08); background: #0070d8; }
-#btn-chat .chat-unread {
-  position: absolute; top: -2px; right: -2px;
-  background: var(--red); color: #fff;
-  border-radius: 50%; width: 18px; height: 18px;
-  font-size: 0.65rem; font-weight: 800;
-  display: none; align-items: center; justify-content: center;
-}
-#btn-chat .chat-unread.show { display: flex; }
-
-/* ── 채팅 패널 ── */
-#chat-panel {
-  position: fixed; bottom: 88px; right: 24px; z-index: 60;
-  width: 300px; max-width: calc(100vw - 48px);
-  background: var(--panel); border: 1px solid var(--border);
-  border-radius: 16px; display: none; flex-direction: column;
-  box-shadow: 0 8px 32px rgba(0,0,0,0.5);
-  overflow: hidden;
-}
-#chat-panel.show { display: flex; }
-.chat-header {
-  padding: 12px 16px; font-size: 0.82rem; font-weight: 700;
-  color: var(--muted); border-bottom: 1px solid var(--border);
-  display: flex; align-items: center; justify-content: space-between;
-}
-.chat-close {
-  background: none; border: none; color: var(--muted);
-  cursor: pointer; font-size: 1rem; padding: 0 4px;
-  transition: color 0.15s;
-}
-.chat-close:hover { color: var(--text); }
-#chat-messages {
-  flex: 1; overflow-y: auto; padding: 10px 12px;
-  display: flex; flex-direction: column; gap: 6px;
-  max-height: 240px; min-height: 100px;
-  scrollbar-width: thin; scrollbar-color: var(--border) transparent;
-}
-.chat-msg {
-  max-width: 85%; padding: 7px 11px;
-  border-radius: 12px; font-size: 0.82rem; line-height: 1.4; word-break: break-word;
-}
-.chat-msg.mine {
-  background: var(--blue); color: #fff;
-  align-self: flex-end; border-bottom-right-radius: 4px;
-}
-.chat-msg.theirs {
-  background: var(--panel2); color: var(--text);
-  align-self: flex-start; border-bottom-left-radius: 4px;
-}
-.chat-msg.system {
-  align-self: center; background: transparent;
-  color: var(--muted); font-size: 0.72rem; font-style: italic;
-}
-.chat-input-row {
-  display: flex; gap: 8px; padding: 10px 12px;
-  border-top: 1px solid var(--border);
-}
-#chat-input {
-  flex: 1; background: var(--panel2); border: 1px solid var(--border);
-  border-radius: 8px; color: var(--text); font-size: 0.85rem;
-  font-family: inherit; padding: 8px 10px; outline: none;
-  transition: border-color 0.15s;
-}
-#chat-input:focus { border-color: var(--blue); }
-#chat-input::placeholder { color: var(--muted); }
-#btn-chat-send {
-  background: var(--blue); color: #fff; border: none;
-  border-radius: 8px; padding: 8px 12px; cursor: pointer;
-  font-size: 0.85rem; font-weight: 700; font-family: inherit;
-  transition: opacity 0.15s;
-}
-#btn-chat-send:hover { opacity: 0.85; }
-
-/* ── 리매치 모달 ── */
-#rematch-overlay {
-  display: none; position: fixed; inset: 0;
-  background: rgba(0,0,0,0.75); z-index: 250;
-  align-items: center; justify-content: center;
-}
-#rematch-overlay.show { display: flex; }
-#rematch-box {
-  background: var(--panel); border: 2px solid var(--gold);
-  border-radius: 18px; padding: 32px 36px; text-align: center;
-  max-width: 320px; width: 90%;
-  box-shadow: 0 20px 60px rgba(0,0,0,0.6);
-  display: flex; flex-direction: column; gap: 14px;
-}
-#rematch-box h3 { font-size: 1.1rem; color: var(--gold); }
-#rematch-box p  { font-size: 0.85rem; color: var(--muted); }
-.rematch-btns { display: flex; gap: 10px; justify-content: center; }
-.btn-rematch-yes {
-  padding: 11px 24px; border-radius: 10px; border: none;
-  background: var(--gold); color: #000; font-size: 0.9rem;
-  font-weight: 700; cursor: pointer; font-family: inherit;
-  transition: opacity 0.15s;
-}
-.btn-rematch-yes:hover { opacity: 0.85; }
-.btn-rematch-no {
-  padding: 11px 24px; border-radius: 10px;
-  border: 1.5px solid var(--border); background: var(--panel2);
-  color: var(--text); font-size: 0.9rem; font-weight: 700;
-  cursor: pointer; font-family: inherit; transition: opacity 0.15s;
-}
-.btn-rematch-no:hover { opacity: 0.85; }
-</style>
-
-<!-- 게임 종료 오버레이 -->
-<div id="end-overlay">
-  <div id="end-box">
-    <div class="end-emoji" id="end-emoji">🏆</div>
-    <h2 id="end-title"></h2>
-    <p  id="end-desc"></p>
-    <p  id="end-rating-delta" style="display:none;font-size:1.05rem;font-weight:800;margin:-16px 0 12px;"></p>
-    <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap;">
-      <button id="restart-btn">재시작</button>
-      <button id="rematch-btn" style="display:none;padding:14px 36px;background:var(--blue);color:#fff;border:none;border-radius:12px;font-size:1rem;font-weight:700;cursor:pointer;font-family:inherit;" onclick="requestRematch()">🔄 리매치 요청</button>
-      <button id="exit-btn" style="display:none;padding:14px 36px;background:var(--panel2);color:var(--text);border:1.5px solid var(--border);border-radius:12px;font-size:1rem;font-weight:700;cursor:pointer;font-family:inherit;" onclick="exitToLobby()">← 로비로</button>
+<!-- 종료 모달 -->
+<div class="modal" id="endModal">
+  <div class="modal-card">
+    <div class="icon" id="endIcon">🏆</div>
+    <h2 id="endTitle">승리!</h2>
+    <p id="endDesc">—</p>
+    <div id="endElo" style="display:none"></div>
+    <div class="actions">
+      <button class="btn btn-ghost" onclick="goLobby()">← 로비로</button>
+      <button class="btn btn-blue" onclick="requestRematch()" id="rematchBtn" style="display:none">🔄 리매치</button>
     </div>
   </div>
 </div>
 
-<!-- 채팅 플로팅 버튼 -->
-<button id="btn-chat" onclick="toggleChat()" title="채팅">
-  💬
-  <span class="chat-unread" id="chat-unread">0</span>
-</button>
-
-<!-- 채팅 패널 -->
-<div id="chat-panel">
-  <div class="chat-header">
-    <span>💬 채팅</span>
-    <button class="chat-close" onclick="toggleChat()">✕</button>
-  </div>
-  <div id="chat-messages"></div>
-  <div class="chat-input-row">
-    <input id="chat-input" placeholder="메시지 입력..." maxlength="100">
-    <button id="btn-chat-send" onclick="sendChat()">전송</button>
+<!-- 리매치 수락 모달 -->
+<div class="modal" id="rematchAskModal">
+  <div class="modal-card">
+    <div class="icon">🔄</div>
+    <h2>리매치 요청</h2>
+    <p id="rematchAskMsg">상대가 리매치를 요청했습니다.</p>
+    <div class="actions">
+      <button class="btn btn-ghost" onclick="rematchReply(false)">거절</button>
+      <button class="btn btn-gold" onclick="rematchReply(true)">수락</button>
+    </div>
   </div>
 </div>
 
-<!-- 리매치 모달 -->
-<div id="rematch-overlay">
-  <div id="rematch-box">
-    <h3 id="rematch-title">리매치 요청</h3>
-    <p  id="rematch-desc">상대방이 리매치를 요청했습니다.</p>
-    <div class="rematch-btns">
-      <button class="btn-rematch-yes" onclick="answerRematch(true)">✓ 수락</button>
-      <button class="btn-rematch-no"  onclick="answerRematch(false)">✕ 거절</button>
+<!-- 확인 모달 -->
+<div class="modal" id="confirmModal">
+  <div class="modal-card">
+    <h2 id="confirmTitle">확인</h2>
+    <p id="confirmMsg">—</p>
+    <div class="actions">
+      <button class="btn btn-ghost" onclick="closeConfirm()">취소</button>
+      <button class="btn btn-gold" id="confirmYes">확인</button>
+    </div>
+  </div>
+</div>
+
+<!-- 연결 대기 -->
+<div class="modal" id="connectModal">
+  <div class="modal-card">
+    <h2>연결 중...</h2>
+    <p id="connectMsg">상대와 연결을 시도합니다.</p>
+    <div class="actions">
+      <button class="btn btn-ghost" onclick="goLobby()">취소</button>
     </div>
   </div>
 </div>
 
 <script>
-/* ============================================================
-   ▼▼▼ Firebase 설정 — index.html과 동일한 값을 여기도 넣어주세요 ▼▼▼
-============================================================ */
-const FIREBASE_CONFIG = {
-  apiKey:            "AIzaSyD_bv9vLqcMDMZgGHNLS2A94INXqkO8XX8",
-  authDomain:        "ooooomok-285e6.firebaseapp.com",
-  databaseURL:       "https://ooooomok-285e6-default-rtdb.asia-southeast1.firebasedatabase.app",
-  projectId:         "ooooomok-285e6",
-  storageBucket:     "ooooomok-285e6.firebasestorage.app",
-  messagingSenderId: "764275385569",
-  appId:             "1:764275385569:web:44cecc18de9aef4d9a43a0",
+'use strict';
+
+// ===================================================================
+// 1. URL 파라미터 파싱 + 글로벌 상태
+// ===================================================================
+const Q = new URLSearchParams(location.search);
+const MODE      = Q.get('mode') || 'online';   // local | ai | online
+const NET_ROLE  = Q.get('role') || null;       // host | guest | spectator
+const ROOM_CODE = (Q.get('room') || '').toUpperCase();
+const DIFF      = Q.get('difficulty') || 'normal';
+const TIME_LIMIT_RAW = Q.get('time') || 'unlimited';
+const MY_UID    = Q.get('uid') || ('local-' + Math.random().toString(36).slice(2,8));
+const MY_NICK_P = Q.get('nick') || (MODE==='ai' ? '플레이어' : '나');
+const MY_ELO_P  = parseInt(Q.get('elo') || '1200');
+
+// INIT_HAND must be declared BEFORE parsing _handParam to avoid ReferenceError
+const DEFAULT_HAND = {K:1, Q:1, R:2, B:2, N:2, P:8, SH:0, SN:0, JP:0};
+function parseHandStr(s){
+  if(!s) return {...DEFAULT_HAND};
+  const out = {...DEFAULT_HAND};
+  // Format: K1Q1R2B2N2P8SH1SN0JP0
+  const re = /([A-Z]{1,2})(\d+)/g;
+  let m;
+  while((m = re.exec(s)) !== null){
+    if(out.hasOwnProperty(m[1])) out[m[1]] = parseInt(m[2]);
+  }
+  return out;
+}
+const INIT_HAND = parseHandStr(Q.get('hand'));
+
+// 색 결정
+//   local: 화면 항상 백 시점, 백/흑 번갈아 둠
+//   ai:    플레이어=백, AI=흑
+//   online host: 백
+//   online guest: 흑
+//   spectator: 백 시점
+let MY_COLOR = 'w';
+if(NET_ROLE === 'guest') MY_COLOR = 'b';
+const IS_LOCAL = (MODE === 'local');
+const IS_AI    = (MODE === 'ai');
+const IS_NET   = (NET_ROLE === 'host' || NET_ROLE === 'guest');
+const IS_SPEC  = (NET_ROLE === 'spectator');
+
+// 시간 제한
+const TIME_LIMIT = TIME_LIMIT_RAW === 'unlimited' || TIME_LIMIT_RAW === '0'
+  ? 0 : parseInt(TIME_LIMIT_RAW);
+
+// ===================================================================
+// 2. 기물 정의
+// ===================================================================
+const SYMBOLS = {
+  w:{K:'♔',Q:'♕',R:'♖',B:'♗',N:'♘',P:'♙',SH:'۩',SN:'፬',JP:'Ꮇ'},
+  b:{K:'♚',Q:'♛',R:'♜',B:'♝',N:'♞',P:'♟',SH:'۩',SN:'፬',JP:'ᎇ'}
 };
-/* ▲▲▲ Firebase 설정 끝 ▲▲▲ */
+const PIECE_NAMES = {K:'킹',Q:'퀸',R:'룩',B:'비숍',N:'나이트',P:'폰',SH:'방패',SN:'스나이퍼',JP:'어쌔신'};
+const SPECIAL_KINDS = ['SH','SN','JP'];
 
-const _urlParams     = new URLSearchParams(window.location.search);
-const NET_ROLE       = _urlParams.get('role');
-const NET_ROOM       = _urlParams.get('room');
-const MY_UID         = _urlParams.get('uid') || null;
-const IS_ONLINE      = NET_ROLE === 'host' || NET_ROLE === 'guest';
-const IS_SPECTATOR   = NET_ROLE === 'spectator';
-const IS_AI          = _urlParams.get('mode') === 'ai';
-const AI_COLOR       = 'b';
-const AI_DIFF        = _urlParams.get('difficulty') || 'easy';
+// ===================================================================
+// 3. 게임 상태
+// ===================================================================
+let board = makeEmptyBoard();
+let hands = { w:{...INIT_HAND}, b:{...INIT_HAND} };
+let turn = 'w';                 // 현재 차례
+let kingPlaced = { w:false, b:false };  // 킹 배치 여부
+let lastMove = null;            // {fr, fc, tr, tc} 강조용
+let moveHistory = [];           // 무승부 판정용 (직렬화 상태 리스트)
+let snapshots = [];             // undo 또는 5회 체크 초과 시 복원용
+let checkStreak = { w:0, b:0 }; // 연속 체크 (이쪽이 받은)
+let totalChecks = { w:0, b:0 }; // 총 체크 (이쪽이 건)
+let gameOver = false;
+let myRoomCode = null;          // 페이지 이탈 시 정리할 방 코드
 
-// 커스텀 기물 설정 (create-room.html에서 전달)
-// ?hand=K1Q1R2B2N2P8SH1SN0JP0 형태
+function makeEmptyBoard(){
+  const b = [];
+  for(let r=0;r<8;r++){ b.push(new Array(8).fill(null)); }
+  return b;
+}
 
-/* 온라인 모드에서 내 진영 */
-let myColor = null;
+// ===================================================================
+// 4. 좌표 / 헬퍼
+// ===================================================================
+const inBounds = (r,c)=> r>=0 && r<8 && c>=0 && c<8;
+const fileLabel = c => 'abcdefgh'[c];
+const rankLabel = r => '87654321'[r];   // row 0 = rank 8 (top)
+const algebraic = (r,c) => fileLabel(c) + rankLabel(r);
+const opp = c => c === 'w' ? 'b' : 'w';
 
-/* PeerJS 연결 객체 */
-let netConn   = null;   // DataConnection
-let netPeer   = null;   // 내 Peer 인스턴스
-let netReady  = false;  // 연결 확립 여부
+// 일반 배치 영역: 6x4 (b~g, 3~6행) = cols 1-6, rows 2-5
+function inGeneralZone(r,c){ return r>=2 && r<=5 && c>=1 && c<=6; }
+// 킹 배치 영역: 4x4 (c~f, 3~6행) = cols 2-5, rows 2-5
+function inKingZone(r,c){ return r>=2 && r<=5 && c>=2 && c<=5; }
+// 스나이퍼 배치: 4꼭짓점
+function inCornerZone(r,c){ return (r===0||r===7) && (c===0||c===7); }
 
-/* 원격 상태 적용 중 루프 방지 플래그 */
-let applyingRemote = false;
+// ===================================================================
+// 5. 기물 이동 / 공격 가능 좌표
+// ===================================================================
+// 한 기물에 대해 (이동 가능 좌표, 공격 가능 좌표) 반환
+//  - 이동: 그 칸이 비어있어야 갈 수 있음
+//  - 공격: 그 칸에 상대 기물이 있어야 잡을 수 있음
+function pieceMoves(r, c, piece){
+  const moves = [];   // 빈 칸 이동
+  const attacks = []; // 적 기물 공격
+  const k = piece.kind;
+  const col = piece.color;
 
-/* ============================================================
-   상수
-============================================================ */
-const PIECE_SYMBOLS = {
-  wK:'♔', wQ:'♕', wR:'♖', wB:'♗', wN:'♘', wP:'♙',
-  bK:'♚', bQ:'♛', bR:'♜', bB:'♝', bN:'♞', bP:'♟',
-  wSH:'白🛡', bSH:'黒🛡',
-  wSN:'白🎯', bSN:'黒🎯',
-  wJP:'白🦘', bJP:'黒🦘',
-};
-const INIT_HAND_DEFAULT = { K:1, Q:1, R:2, B:2, N:2, P:8 };
-let   INIT_HAND         = { ...INIT_HAND_DEFAULT };
-
-// URL ?hand= 파라미터로 기물 설정 덮어쓰기 (create-room.html에서 전달)
-(function() {
-  const hp = _urlParams.get('hand');
-  if (!hp) return;
-  for (const [, type, cnt] of hp.matchAll(/([A-Z]+)(\d+)/g)) {
-    if (Object.prototype.hasOwnProperty.call(INIT_HAND_DEFAULT, type)
-        || ['SH','SN','JP'].includes(type)) {
-      INIT_HAND[type] = parseInt(cnt, 10);
+  if(k === 'K'){
+    for(let dr=-1; dr<=1; dr++){
+      for(let dc=-1; dc<=1; dc++){
+        if(dr===0&&dc===0) continue;
+        const nr=r+dr, nc=c+dc;
+        if(!inBounds(nr,nc)) continue;
+        const t = board[nr][nc];
+        if(!t) moves.push([nr,nc]);
+        else if(t.color !== col) attacks.push([nr,nc]);
+      }
+    }
+  } else if(k === 'Q' || k === 'R' || k === 'B'){
+    const dirs = [];
+    if(k!=='B') dirs.push([-1,0],[1,0],[0,-1],[0,1]);
+    if(k!=='R') dirs.push([-1,-1],[-1,1],[1,-1],[1,1]);
+    for(const [dr,dc] of dirs){
+      let nr=r+dr, nc=c+dc;
+      while(inBounds(nr,nc)){
+        const t = board[nr][nc];
+        if(!t){ moves.push([nr,nc]); }
+        else { if(t.color !== col) attacks.push([nr,nc]); break; }
+        nr+=dr; nc+=dc;
+      }
+    }
+  } else if(k === 'N'){
+    const offs = [[-2,-1],[-2,1],[-1,-2],[-1,2],[1,-2],[1,2],[2,-1],[2,1]];
+    for(const [dr,dc] of offs){
+      const nr=r+dr, nc=c+dc;
+      if(!inBounds(nr,nc)) continue;
+      const t = board[nr][nc];
+      if(!t) moves.push([nr,nc]);
+      else if(t.color !== col) attacks.push([nr,nc]);
+    }
+  } else if(k === 'P'){
+    const dy = (col === 'w') ? -1 : 1;
+    const startRow = (col === 'w') ? 6 : 1;
+    const r1 = r+dy;
+    if(inBounds(r1,c) && !board[r1][c]){
+      moves.push([r1,c]);
+      const r2 = r+2*dy;
+      if(r === startRow && inBounds(r2,c) && !board[r2][c]){
+        moves.push([r2,c]);
+      }
+    }
+    for(const dc of [-1,1]){
+      const nr=r+dy, nc=c+dc;
+      if(!inBounds(nr,nc)) continue;
+      const t = board[nr][nc];
+      if(t && t.color !== col) attacks.push([nr,nc]);
+    }
+  } else if(k === 'SH'){
+    // 방패: 앞/뒤 1칸만, 공격 불가, 이동 방향 기물 밀기
+    const dy = (col === 'w') ? -1 : 1;
+    for(const ddy of [dy, -dy]){
+      const nr = r+ddy;
+      if(!inBounds(nr,c)) continue;
+      const t = board[nr][c];
+      if(!t){
+        moves.push([nr,c]);
+      } else {
+        // 밀기 가능 여부 검사: 그 다음 칸이 비어있고 보드 안이면 밀기 가능
+        const pr = nr + ddy;
+        // 밀기는 항상 가능 (밀린 기물이 사망할 수도 있음, 판 끝 또는 다른 기물)
+        // 밀기는 '이동'으로 처리 → moves에 마킹 (특수)
+        moves.push([nr,c]); // 처리는 applyMove에서
+      }
+    }
+  } else if(k === 'SN'){
+    // 스나이퍼: 이동 불가, 직선 정확히 3칸 거리 공격 (중간 무시)
+    const dirs = [[-3,0],[3,0],[0,-3],[0,3]];
+    for(const [dr,dc] of dirs){
+      const nr=r+dr, nc=c+dc;
+      if(!inBounds(nr,nc)) continue;
+      const t = board[nr][nc];
+      if(t && t.color !== col) attacks.push([nr,nc]);
+    }
+  } else if(k === 'JP'){
+    // 어쌔신: 상하좌우 2칸 점프
+    const offs = [[-2,0],[2,0],[0,-2],[0,2]];
+    for(const [dr,dc] of offs){
+      const nr=r+dr, nc=c+dc;
+      if(!inBounds(nr,nc)) continue;
+      const t = board[nr][nc];
+      if(!t) moves.push([nr,nc]);
+      else if(t.color !== col) attacks.push([nr,nc]);
     }
   }
-})();
-const PIECE_NAMES  = { K:'킹', Q:'퀸', R:'룩', B:'비숍', N:'나이트', P:'폰',
-                        SH:'방패병', SN:'저격수', JP:'캥거루' };
-const PROMO_PIECES = ['Q','R','B','N'];
-const MAX_CONSEC_CHECK = 3; // 이 횟수 연속 체크 시 체크 건 쪽 패배
-const MAX_TOTAL_CHECK  = 5; // 한 판 동안 한 진영이 걸 수 있는 체크 최대 횟수
 
-/* ============================================================
-   게임 상태
-============================================================ */
-let board, turn, hand, selectedHandPiece, selectedCell, highlights, gameOver;
-let lastMove, positionHistory, checkState;
-// consecCheckBy[color] = 내가 상대에게 연속으로 걸고 있는 체크 횟수
-let consecCheckBy;
-// totalCheckBy[color] = 한 판 통틀어 내가 건 체크 총 횟수
-let totalCheckBy;
-// 이전 상태 저장 (5회 체크 시 복원용)
-let prevBoard, prevHand, prevTurn, prevLastMove;
-// 채팅 상태
-let chatVisible = false;
-let unreadCount = 0;
-// 리매치 상태
-let rematchPending = false;
-// 타이머 상태
-// URL ?time=60 파라미터에서 시간제한 읽기 (없으면 'unlimited')
-const _timeParam = _urlParams.get('time');
-let roomTimeLimit = (_timeParam && _timeParam !== 'unlimited') ? parseInt(_timeParam) : 'unlimited';
-let timerInterval = null;
-let whiteTimeRemaining = 0; // 초
-let blackTimeRemaining = 0; // 초
-
-let rulesOpen = false;
-
-/* ============================================================
-   셀 크기 반응형
-============================================================ */
-function setCellSize() {
-  const vw = Math.min(window.innerWidth, 620);
-  const size = Math.floor((vw - 72) / 8);
-  const cell = Math.max(42, Math.min(size, 76));
-  document.documentElement.style.setProperty('--cell', cell + 'px');
-}
-setCellSize();
-window.addEventListener('resize', setCellSize);
-
-/* ============================================================
-   유틸
-============================================================ */
-const inBounds = (r,c) => r>=0&&r<8&&c>=0&&c<8;
-const fileChar  = col => 'abcdefgh'[col];
-const rankNum   = row => 8 - row;
-
-function isPlacementZone(row, col) {
-  // 행 3-6, 열 b-g 배치 구역
-  return row>=2 && row<=5 && col>=1 && col<=6;
-}
-function isKingPlacementZone(row, col) {
-  // 킹 배치용 4×4 구역: 가운데 (row 2-5, col 2-5)
-  return row>=2 && row<=5 && col>=2 && col<=5;
-}
-function copyBoard(b) {
-  return b.map(r => r.map(c => c ? {...c} : null));
-}
-function serializeState(board, turn) {
-  return board.map(r=>r.map(c=>c?c.color+c.type:'.')).join(',')+'|'+turn;
+  return { moves, attacks };
 }
 
-/* ============================================================
-   체스 이동 규칙
-============================================================ */
-function rawMoves(board, row, col, attackOnly=false) {
-  const p = board[row][col];
-  if (!p) return [];
-  const {color, type} = p;
-  const moves = [];
-  const opp = color==='w'?'b':'w';
-  const add = (r,c) => {
-    if (!inBounds(r,c)) return false;
-    const t = board[r][c];
-    if (t && t.color===color) return false;
-    moves.push({row:r, col:c});
-    return !t;
-  };
-  const slide = (dr,dc) => {
-    let r=row+dr, c=col+dc;
-    while(inBounds(r,c)) {
-      const t=board[r][c];
-      if(t&&t.color===color) break;
-      moves.push({row:r,col:c});
-      if(t) break;
-      r+=dr; c+=dc;
-    }
-  };
-  switch(type) {
-    case 'K': [[-1,-1],[-1,0],[-1,1],[0,-1],[0,1],[1,-1],[1,0],[1,1]].forEach(([dr,dc])=>add(row+dr,col+dc)); break;
-    case 'Q': [[-1,0],[1,0],[0,-1],[0,1],[-1,-1],[-1,1],[1,-1],[1,1]].forEach(d=>slide(d[0],d[1])); break;
-    case 'R': [[-1,0],[1,0],[0,-1],[0,1]].forEach(d=>slide(d[0],d[1])); break;
-    case 'B': [[-1,-1],[-1,1],[1,-1],[1,1]].forEach(d=>slide(d[0],d[1])); break;
-    case 'N': [[-2,-1],[-2,1],[-1,-2],[-1,2],[1,-2],[1,2],[2,-1],[2,1]].forEach(([dr,dc])=>add(row+dr,col+dc)); break;
-    case 'P': {
-      const dir = color==='w' ? -1 : 1;
-      if (!attackOnly) {
-        if (inBounds(row+dir,col) && !board[row+dir][col]) moves.push({row:row+dir,col:col});
-        const startRow = color==='w' ? 6 : 1;
-        if (row===startRow && !board[row+dir][col] && !board[row+2*dir][col]) moves.push({row:row+2*dir,col:col});
+// 단순히 "그 칸을 공격할 수 있는가"만 체크 (체크 판정용)
+function canAttack(byColor, tr, tc){
+  for(let r=0;r<8;r++){
+    for(let c=0;c<8;c++){
+      const p = board[r][c];
+      if(!p || p.color !== byColor) continue;
+      const {attacks} = pieceMoves(r, c, p);
+      for(const [ar,ac] of attacks){
+        if(ar===tr && ac===tc) return true;
       }
-      [[dir,-1],[dir,1]].forEach(([dr,dc])=>{
-        if(!inBounds(row+dr,col+dc)) return;
-        if(attackOnly) moves.push({row:row+dr,col:col+dc});
-        else if(board[row+dr][col+dc]?.color===opp) moves.push({row:row+dr,col:col+dc});
-      });
-      break;
     }
-    case 'SH': {
-      // 방패병: 앞/뒤 1칸 이동 (공격 불가, 밀기는 doMove에서 처리)
-      const dirs = color==='w' ? [-1, 1] : [1, -1];
-      if (!attackOnly) {
-        dirs.forEach(dr => {
-          const nr = row + dr;
-          if (!inBounds(nr, col)) return;
-          // 빈 칸이거나 상대 기물(밀기 가능)이면 이동 후보
-          if (!board[nr][col] || board[nr][col].color === opp) {
-            moves.push({row:nr, col, push: !!board[nr][col]});
-          }
-        });
-      }
-      // 방패병은 공격 불가 — attackOnly면 빈 배열
-      break;
-    }
-    case 'SN': {
-      // 저격수: 직선 3칸 거리 공격 (이동 불가)
-      if (!attackOnly) break; // 이동 없음
-      [[-3,0],[3,0],[0,-3],[0,3]].forEach(([dr,dc]) => {
-        const nr = row+dr, nc = col+dc;
-        if (!inBounds(nr,nc)) return;
-        // 중간 기물 무시하고 공격 가능
-        if (!board[nr][nc] || board[nr][nc].color === opp) {
-          moves.push({row:nr, col:nc});
-        }
-      });
-      break;
-    }
-    case 'JP': {
-      // 캥거루: 상하좌우 1칸 건너뛴 2번째 칸 이동/공격
-      [[-2,0],[2,0],[0,-2],[0,2]].forEach(([dr,dc]) => {
-        const nr = row+dr, nc = col+dc;
-        if (!inBounds(nr,nc)) return;
-        // 중간 기물 무시 (점프)
-        if (!board[nr][nc] || board[nr][nc].color === opp) {
-          moves.push({row:nr, col:nc});
-        }
-      });
-      break;
-    }
-  }
-  return moves;
-}
-
-function isAttackedBy(board, r, c, byColor) {
-  for(let dr=0;dr<8;dr++) for(let dc=0;dc<8;dc++) {
-    const p=board[dr][dc];
-    if(!p||p.color!==byColor) continue;
-    if(rawMoves(board,dr,dc,true).some(m=>m.row===r&&m.col===c)) return true;
   }
   return false;
 }
-function findKing(board, color) {
-  for(let r=0;r<8;r++) for(let c=0;c<8;c++)
-    if(board[r][c]?.color===color&&board[r][c]?.type==='K') return {row:r,col:c};
+
+function findKing(color){
+  for(let r=0;r<8;r++) for(let c=0;c<8;c++){
+    const p = board[r][c];
+    if(p && p.color===color && p.kind==='K') return [r,c];
+  }
   return null;
 }
-function isInCheck(board, color) {
-  const k=findKing(board,color);
+
+function isInCheck(color){
+  const k = findKing(color);
   if(!k) return false;
-  return isAttackedBy(board,k.row,k.col,color==='w'?'b':'w');
-}
-function legalMoves(board, row, col) {
-  const p=board[row][col];
-  if(!p) return [];
-  const color=p.color;
-  return rawMoves(board,row,col).filter(({row:r,col:c})=>{
-    const nb=copyBoard(board);
-    nb[r][c]=nb[row][col]; nb[row][col]=null;
-    // 오목을 완성하거나 체크를 해결하면 허용
-    return checkOmok(nb,color) || !isInCheck(nb,color);
-  });
-}
-function legalPlacements(board, type, color) {
-  const result = [];
-  // 저격수: 꼭짓점(0,0),(0,7),(7,0),(7,7)만 배치 가능
-  const corners = [[0,0],[0,7],[7,0],[7,7]];
-  const isKing = type === 'K';
-  const isSniper = type === 'SN';
-
-  const candidates = isSniper
-    ? corners
-    : Array.from({length:8}, (_,r) => Array.from({length:8}, (_,c) => [r,c])).flat();
-
-  for (const [r, c] of candidates) {
-    if (board[r][c]) continue;
-    const zone = isKing ? isKingPlacementZone(r,c)
-               : isSniper ? true  // 꼭짓점은 배치 구역 무관
-               : isPlacementZone(r,c);
-    if (!zone) continue;
-    const nb = copyBoard(board);
-    nb[r][c] = {color, type};
-    if (checkOmok(nb,color) || !isInCheck(nb,color)) result.push({row:r, col:c});
-  }
-  return result;
-}
-function hasAnyLegalAction(board, color, hand) {
-  for(let r=0;r<8;r++) for(let c=0;c<8;c++)
-    if(board[r][c]?.color===color && legalMoves(board,r,c).length>0) return true;
-  for(const type of Object.keys(hand[color]))
-    if(hand[color][type]>0 && legalPlacements(board,type,color).length>0) return true;
-  return false;
-}
-function isCheckMove(board, fromRow, fromCol, toRow, toCol, color) {
-  const nb=copyBoard(board);
-  const piece=nb[fromRow][fromCol];
-  nb[toRow][toCol]=piece;
-  nb[fromRow][fromCol]=null;
-  const opp=color==='w'?'b':'w';
-  return isInCheck(nb,opp);
-}
-function isCheckPlacement(board, type, row, col, color) {
-  const nb=copyBoard(board);
-  nb[row][col]={color,type};
-  const opp=color==='w'?'b':'w';
-  return isInCheck(nb,opp);
+  return canAttack(opp(color), k[0], k[1]);
 }
 
-/* ============================================================
-   오목 판정
-============================================================ */
-function checkOmok(board, color) {
-  const dirs=[[0,1],[1,0],[1,1],[1,-1]];
-  for(let r=0;r<8;r++) for(let c=0;c<8;c++) {
-    if(!board[r][c]||board[r][c].color!==color) continue;
-    for(const [dr,dc] of dirs) {
-      const pr=r-dr, pc=c-dc;
-      if(inBounds(pr,pc)&&board[pr][pc]?.color===color) continue;
-      let cnt=1, nr=r+dr, nc=c+dc;
-      while(inBounds(nr,nc)&&board[nr][nc]?.color===color){cnt++;nr+=dr;nc+=dc;}
-      if(cnt>=5) return true;
+// ===================================================================
+// 6. 5연속 (오목) 검출
+// ===================================================================
+function checkFiveInRow(){
+  const dirs = [[0,1],[1,0],[1,1],[1,-1]];
+  for(let r=0;r<8;r++){
+    for(let c=0;c<8;c++){
+      const p = board[r][c];
+      if(!p) continue;
+      for(const [dr,dc] of dirs){
+        let count = 1;
+        let nr=r+dr, nc=c+dc;
+        while(inBounds(nr,nc) && board[nr][nc] && board[nr][nc].color===p.color){
+          count++;
+          nr+=dr; nc+=dc;
+        }
+        if(count >= 5) return p.color;
+      }
     }
   }
-  return false;
+  return null;
 }
 
-/* ============================================================
-   이동 / 배치 수행
-============================================================ */
-let pendingPromo = null;
+// ===================================================================
+// 7. 직렬화 / 스냅샷 (반복 검출 + 5회 체크 복원)
+// ===================================================================
+function serializeBoard(){
+  let s = turn + '|';
+  for(let r=0;r<8;r++) for(let c=0;c<8;c++){
+    const p = board[r][c];
+    s += p ? (p.color + p.kind + ',') : '.';
+  }
+  s += '|h:' + ['w','b'].map(col =>
+    Object.entries(hands[col]).map(([k,v])=>k+v).join('')
+  ).join('/');
+  return s;
+}
+function snapshotState(){
+  return {
+    board: board.map(row => row.map(c => c ? {...c} : null)),
+    hands: { w:{...hands.w}, b:{...hands.b} },
+    turn, kingPlaced:{...kingPlaced},
+    lastMove: lastMove ? {...lastMove} : null,
+    checkStreak:{...checkStreak},
+    totalChecks:{...totalChecks},
+    moveHistory:[...moveHistory]
+  };
+}
+function restoreState(s){
+  board = s.board.map(row => row.map(c => c ? {...c} : null));
+  hands = { w:{...s.hands.w}, b:{...s.hands.b} };
+  turn = s.turn;
+  kingPlaced = {...s.kingPlaced};
+  lastMove = s.lastMove ? {...s.lastMove} : null;
+  checkStreak = {...s.checkStreak};
+  totalChecks = {...s.totalChecks};
+  moveHistory = [...s.moveHistory];
+}
 
-function doMove(fromRow, fromCol, toRow, toCol) {
-  prevBoard = copyBoard(board);
-  prevHand = {w:{...hand.w}, b:{...hand.b}};
-  prevTurn = turn;
-  prevLastMove = lastMove ? {...lastMove} : null;
+// ===================================================================
+// 8. 액션 (place, move, push, snipe) 실행
+// ===================================================================
+//   action: { type:'place', kind, r, c, color, [promote] }
+//           { type:'move',  fr, fc, tr, tc, [promote] }
+function applyAction(action, opts={}){
+  const { silent = false } = opts;
+  // 스냅샷 (체크 카운팅 5회 초과 시 복원용)
+  const snap = snapshotState();
 
-  const nb = copyBoard(board);
-  const piece = nb[fromRow][fromCol];
-  let captured = nb[toRow][toCol];
+  if(action.type === 'place'){
+    const { kind, r, c, color } = action;
+    if(!hands[color][kind] || hands[color][kind] <= 0) return { ok:false, err:'손패 없음' };
+    if(board[r][c]) return { ok:false, err:'점유됨' };
+    // 첫 수: 반드시 킹부터
+    if(!kingPlaced[color] && kind !== 'K') return { ok:false, err:'첫 수는 킹' };
+    // 킹은 4x4
+    if(kind === 'K' && !inKingZone(r,c)) return { ok:false, err:'킹 영역 밖' };
+    // 스나이퍼: 4꼭짓점
+    if(kind === 'SN' && !inCornerZone(r,c)) return { ok:false, err:'꼭짓점만' };
+    // 그 외 일반: 6x4 영역
+    if(kind !== 'K' && kind !== 'SN' && !inGeneralZone(r,c)) return { ok:false, err:'배치 영역 밖' };
 
-  // 방패병(SH) 밀기 처리
-  if (piece.type === 'SH' && captured) {
-    const dr = toRow - fromRow;
-    const pushRow = toRow + dr;
-    if (!inBounds(pushRow, toCol) || nb[pushRow][toCol]) {
-      // 밀린 기물 사망 (판 끝 또는 다른 기물)
-      // 상대 기물이면 손패로 돌아오지 않고 그냥 제거
-      captured = null;
+    board[r][c] = { color, kind };
+    hands[color][kind]--;
+    if(kind === 'K') kingPlaced[color] = true;
+    lastMove = { fr:-1, fc:-1, tr:r, tc:c, type:'place' };
+  } else if(action.type === 'move'){
+    const { fr, fc, tr, tc } = action;
+    const p = board[fr][fc];
+    if(!p) return { ok:false, err:'기물 없음' };
+    if(p.color !== turn) return { ok:false, err:'본인 기물 아님' };
+    // 양쪽 킹 모두 배치 안 됨 → 이동 불가
+    if(!kingPlaced.w || !kingPlaced.b) return { ok:false, err:'킹 미배치' };
+
+    // 방패는 별도 처리 (밀기 가능)
+    if(p.kind === 'SH'){
+      const result = trySHMove(fr, fc, tr, tc, p.color);
+      if(!result.ok) return result;
+    } else if(p.kind === 'SN'){
+      // 스나이퍼는 이동 불가, 공격만
+      const { attacks } = pieceMoves(fr, fc, p);
+      const isAtk = attacks.some(([r,c]) => r===tr && c===tc);
+      if(!isAtk) return { ok:false, err:'공격 불가 위치' };
+      const target = board[tr][tc];
+      // SN 자신은 그대로, 타깃만 제거
+      board[tr][tc] = null;
+      // 공격당한 기물 → 손패 회수 (단 K, SN은 제외)
+      if(target && target.kind !== 'K' && target.kind !== 'SN'){
+        hands[p.color][target.kind] = (hands[p.color][target.kind] || 0) + 1;
+      }
+      lastMove = { fr, fc, tr, tc, type:'snipe' };
     } else {
-      // 빈 칸으로 밀기
-      nb[pushRow][toCol] = nb[toRow][toCol];
-      captured = null;
+      const { moves, attacks } = pieceMoves(fr, fc, p);
+      const isMove = moves.some(([r,c]) => r===tr && c===tc);
+      const isAtk  = attacks.some(([r,c]) => r===tr && c===tc);
+      if(!isMove && !isAtk) return { ok:false, err:'이동 불가' };
+      const target = board[tr][tc];
+      // 이동
+      board[tr][tc] = p;
+      board[fr][fc] = null;
+      if(target && target.color !== p.color){
+        if(target.kind !== 'K' && target.kind !== 'SN'){
+          hands[p.color][target.kind] = (hands[p.color][target.kind] || 0) + 1;
+        }
+      }
+      // 폰 프로모션
+      if(p.kind === 'P'){
+        if((p.color === 'w' && tr === 0) || (p.color === 'b' && tr === 7)){
+          const promoTo = action.promote || 'Q';
+          board[tr][tc] = { color: p.color, kind: promoTo };
+        }
+      }
+      lastMove = { fr, fc, tr, tc, type:'move' };
+    }
+  } else {
+    return { ok:false, err:'알 수 없는 액션' };
+  }
+
+  // 자기 킹 체크 노출 금지
+  if(kingPlaced[turn] && isInCheck(turn)){
+    restoreState(snap);
+    return { ok:false, err:'자기 킹이 체크됨' };
+  }
+
+  // 체크 부여 처리: 상대가 체크에 빠짐 → 체크한 쪽 totalChecks 증가, 받은 쪽 streak 증가
+  const next = opp(turn);
+  let opponentInCheck = false;
+  if(kingPlaced[next] && isInCheck(next)){
+    opponentInCheck = true;
+    totalChecks[turn]++;
+    checkStreak[next]++;
+    // 5회 체크 초과 → 이 수 무효 (스냅샷 복원)
+    if(totalChecks[turn] > 5){
+      restoreState(snap);
+      return { ok:false, err:'5회 체크 한도 초과 (이전 턴으로 복원)' };
+    }
+    // 3회 연속 체크 → 체크 건 쪽 자멸
+    if(checkStreak[next] >= 3){
+      // 자멸: turn이 패배
+      moveHistory.push(serializeBoard());
+      // 차례 넘기지 않고 즉시 종료
+      lastMove.causedSuicide = true;
+      finalizeAfterMove(opponentInCheck, snap);
+      if(!silent){
+        const winnerColor = next;
+        endGame('🚫', '반칙패!',
+          `${turn==='w'?'백':'흑'}이 3회 연속 체크로 자멸했습니다.`, winnerColor);
+      }
+      return { ok:true, suicide:true, winner: next };
+    }
+  } else {
+    // 체크가 안 들어갔으면 받은 쪽 streak 리셋
+    checkStreak[next] = 0;
+  }
+  // 본인이 받던 체크는 이제 풀린 셈
+  checkStreak[turn] = 0;
+
+  return finalizeAfterMove(opponentInCheck, snap);
+}
+
+function finalizeAfterMove(opponentInCheck, snap){
+  // 차례 넘김
+  turn = opp(turn);
+
+  // 5연속 검사
+  const fiveWin = checkFiveInRow();
+  if(fiveWin){
+    moveHistory.push(serializeBoard());
+    return { ok:true, fiveWin };
+  }
+
+  // 체크메이트 검사
+  if(opponentInCheck && isCheckmate(turn)){
+    moveHistory.push(serializeBoard());
+    return { ok:true, checkmate: opp(turn) };
+  }
+
+  // 무브 못 둘 수 있는 스테일메이트 → 무승부
+  if(!opponentInCheck && kingPlaced[turn] && !hasAnyLegalAction(turn)){
+    // 손패가 있으면 배치 가능, 그래서 배치 가능성 확인 후 판정
+    moveHistory.push(serializeBoard());
+    return { ok:true, stalemate:true };
+  }
+
+  // 직렬화 후 반복 카운트
+  const ser = serializeBoard();
+  moveHistory.push(ser);
+  // 같은 직렬화 3번 → 무승부
+  const rep = moveHistory.filter(x => x === ser).length;
+  if(rep >= 3){
+    return { ok:true, repetition:true };
+  }
+
+  return { ok:true };
+}
+
+// 방패 이동 처리 (밀기 포함)
+function trySHMove(fr, fc, tr, tc, color){
+  // 앞/뒤 1칸
+  const dy = (color === 'w') ? -1 : 1;
+  const allowedRows = [fr+dy, fr-dy];
+  if(!allowedRows.includes(tr)) return { ok:false, err:'방패는 앞/뒤만' };
+  if(tc !== fc) return { ok:false, err:'방패는 직진만' };
+  const ddy = tr - fr; // +1 or -1
+  const target = board[tr][tc];
+  if(!target){
+    // 단순 이동
+    board[tr][tc] = board[fr][fc];
+    board[fr][fc] = null;
+    lastMove = { fr, fc, tr, tc, type:'move' };
+    return { ok:true };
+  }
+  // 밀기: 다음 칸 검사
+  const pr = tr + ddy;
+  if(!inBounds(pr, tc)){
+    // 판 끝 → 밀린 기물 사망
+    if(target.kind !== 'K' && target.kind !== 'SN'){
+      hands[color][target.kind] = (hands[color][target.kind] || 0) + 1;
+    }
+    board[tr][tc] = board[fr][fc];
+    board[fr][fc] = null;
+    lastMove = { fr, fc, tr, tc, type:'push' };
+    return { ok:true };
+  }
+  const beyond = board[pr][tc];
+  if(beyond){
+    // 다른 기물에 닿음 → 밀린 기물 사망, beyond는 그대로
+    if(target.kind !== 'K' && target.kind !== 'SN'){
+      hands[color][target.kind] = (hands[color][target.kind] || 0) + 1;
+    }
+    board[tr][tc] = board[fr][fc];
+    board[fr][fc] = null;
+    lastMove = { fr, fc, tr, tc, type:'push' };
+    return { ok:true };
+  }
+  // 밀기 성공: target → beyond, SH → target
+  board[pr][tc] = target;
+  board[tr][tc] = board[fr][fc];
+  board[fr][fc] = null;
+  lastMove = { fr, fc, tr, tc, type:'push' };
+  return { ok:true };
+}
+
+// 모든 합법 액션 수집 (체크 검증 포함)
+function allLegalActions(color){
+  const list = [];
+  const handHasPieces = Object.values(hands[color]).some(v => v > 0);
+  // 킹 미배치면 킹 배치만 가능
+  if(!kingPlaced[color]){
+    if(hands[color].K > 0){
+      for(let r=2;r<=5;r++) for(let c=2;c<=5;c++){
+        if(!board[r][c]) list.push({type:'place', kind:'K', r, c, color});
+      }
+    }
+    return list;
+  }
+  // 손패 배치
+  for(const [kind, n] of Object.entries(hands[color])){
+    if(n <= 0) continue;
+    if(kind === 'K') continue; // K 추가 배치 불가 (이미 배치됨)
+    if(kind === 'SN'){
+      [[0,0],[0,7],[7,0],[7,7]].forEach(([r,c]) => {
+        if(!board[r][c]) list.push({type:'place', kind, r, c, color});
+      });
+    } else {
+      for(let r=2;r<=5;r++) for(let c=1;c<=6;c++){
+        if(!board[r][c]) list.push({type:'place', kind, r, c, color});
+      }
+    }
+  }
+  // 보드상 기물 이동
+  for(let r=0;r<8;r++) for(let c=0;c<8;c++){
+    const p = board[r][c];
+    if(!p || p.color !== color) continue;
+    if(p.kind === 'SN'){
+      const { attacks } = pieceMoves(r, c, p);
+      for(const [tr,tc] of attacks){
+        list.push({type:'move', fr:r, fc:c, tr, tc});
+      }
+    } else if(p.kind === 'SH'){
+      const dy = (color === 'w') ? -1 : 1;
+      for(const ddy of [dy, -dy]){
+        const nr = r+ddy;
+        if(!inBounds(nr,c)) continue;
+        list.push({type:'move', fr:r, fc:c, tr:nr, tc:c});
+      }
+    } else {
+      const { moves, attacks } = pieceMoves(r, c, p);
+      for(const [tr,tc] of moves) list.push({type:'move', fr:r, fc:c, tr, tc});
+      for(const [tr,tc] of attacks) list.push({type:'move', fr:r, fc:c, tr, tc});
     }
   }
 
-  const capturedStr = captured ? `×${PIECE_NAMES[captured.type]}` : '';
-  addHistory(turn, `${PIECE_NAMES[piece.type]} ${fileChar(fromCol)}${rankNum(fromRow)}→${fileChar(toCol)}${rankNum(toRow)}${capturedStr}`);
+  // 자기 킹 체크 노출되는 수 제거 + 5회 체크 한도 검증
+  const filtered = list.filter(a => {
+    const snap = snapshotState();
+    const r = applyAction(a, {silent:true});
+    const isLegal = r.ok && !r.suicide;
+    restoreState(snap);
+    return isLegal;
+  });
+  return filtered;
+}
 
-  nb[toRow][toCol] = piece;
-  nb[fromRow][fromCol] = null;
+function hasAnyLegalAction(color){
+  // 빠른 검증 (전체 수집은 비싸지만 정확함)
+  // 일단 모두 수집
+  const list = allLegalActions(color);
+  return list.length > 0;
+}
 
-  // 잡은 기물 손패에 추가 (킹·저격수·방패병 제외)
-  if (captured && captured.type !== 'K' && captured.type !== 'SN') {
-    hand[turn][captured.type] = (hand[turn][captured.type] || 0) + 1;
+function isCheckmate(color){
+  if(!kingPlaced[color]) return false;
+  if(!isInCheck(color)) return false;
+  return !hasAnyLegalAction(color);
+}
+
+// ===================================================================
+// 9. UI 렌더링
+// ===================================================================
+const boardEl = document.getElementById('board');
+
+function setBoardSize(){
+  const ww = window.innerWidth;
+  const wh = window.innerHeight;
+  let cellSize;
+  if(ww >= 821){
+    // 데스크탑: 좌우 패널 240*2 + 패딩
+    const avail = Math.min(ww - 540, wh - 100);
+    cellSize = Math.max(40, Math.min(72, Math.floor(avail / 8)));
+  } else if(ww > 600){
+    // 태블릿
+    const avail = Math.min(ww - 40, wh - 280);
+    cellSize = Math.max(36, Math.min(64, Math.floor(avail / 8)));
+  } else {
+    // 모바일
+    const avail = Math.min(ww - 16, wh - 320);
+    cellSize = Math.max(32, Math.min(52, Math.floor(avail / 8)));
   }
+  document.documentElement.style.setProperty('--cs', cellSize + 'px');
+}
+window.addEventListener('resize', setBoardSize);
 
-  if (piece.type === 'P') {
-    if ((piece.color==='w'&&toRow===0)||(piece.color==='b'&&toRow===7)) {
-      board = nb;
-      lastMove = {fromRow,fromCol,toRow,toCol};
-      pendingPromo = {row:toRow, col:toCol, color:piece.color};
-      showPromoModal(piece.color);
+let SEL = null;             // 선택 상태: {kind:'place'|'board', ...}
+let HIGHLIGHTS = [];        // 표시할 [r,c, type] 좌표 리스트
+
+function flipped(){ return MY_COLOR === 'b'; }
+function displayCoords(r, c){
+  // 흑 시점이면 보드 회전
+  return flipped() ? [7-r, 7-c] : [r, c];
+}
+function logicalCoords(dr, dc){
+  return flipped() ? [7-dr, 7-dc] : [dr, dc];
+}
+
+function renderBoard(){
+  boardEl.innerHTML = '';
+  for(let dr=0; dr<8; dr++){
+    for(let dc=0; dc<8; dc++){
+      const [r,c] = logicalCoords(dr, dc);
+      const cell = document.createElement('div');
+      cell.className = 'cell ' + ((r+c)%2===0 ? 'lt' : 'dk');
+      cell.dataset.r = r;
+      cell.dataset.c = c;
+
+      // 좌표 라벨 (시점 기준)
+      if(dc === 0){
+        const lab = document.createElement('span');
+        lab.className = 'coord r';
+        lab.textContent = rankLabel(r);
+        cell.appendChild(lab);
+      }
+      if(dr === 7){
+        const lab = document.createElement('span');
+        lab.className = 'coord f';
+        lab.textContent = fileLabel(c);
+        cell.appendChild(lab);
+      }
+
+      // 배치 영역 표시 (선택된 손패에 따라)
+      if(SEL && SEL.kind === 'place' && !board[r][c] && canPlaceHere(SEL.color, SEL.piece, r, c)){
+        if(SEL.piece === 'K') cell.classList.add('king-zone');
+        else if(SEL.piece === 'SN') cell.classList.add('corner-zone');
+        else cell.classList.add('place-zone');
+      }
+
+      // 기물
+      const p = board[r][c];
+      if(p){
+        const span = document.createElement('span');
+        const isSpec = SPECIAL_KINDS.includes(p.kind);
+        span.className = 'pc ' + p.color + (isSpec?' spec':'');
+        span.textContent = SYMBOLS[p.color][p.kind];
+        cell.appendChild(span);
+      }
+
+      // 마지막 수 강조
+      if(lastMove){
+        if((lastMove.fr === r && lastMove.fc === c) || (lastMove.tr === r && lastMove.tc === c)){
+          cell.classList.add('last');
+        }
+      }
+
+      // 선택된 칸
+      if(SEL && SEL.kind === 'board' && SEL.r === r && SEL.c === c){
+        cell.classList.add('sel');
+      }
+
+      // 이동/공격 표시
+      for(const h of HIGHLIGHTS){
+        if(h.r === r && h.c === c){
+          cell.classList.add(h.type);
+        }
+      }
+
+      // 체크된 킹
+      if(p && p.kind === 'K' && isInCheck(p.color)){
+        cell.classList.add('check');
+      }
+
+      cell.addEventListener('click', onCellClick);
+      boardEl.appendChild(cell);
+    }
+  }
+}
+
+function canPlaceHere(color, kind, r, c){
+  if(!kingPlaced[color]){ return kind === 'K' && inKingZone(r,c); }
+  if(kind === 'K') return false; // 이미 배치됨
+  if(kind === 'SN') return inCornerZone(r,c);
+  return inGeneralZone(r,c);
+}
+
+function renderHands(){
+  const myHandEl = document.getElementById('myHand');
+  const oppHandEl = document.getElementById('oppHand');
+  const oppSheetEl = document.getElementById('oppHandSheet');
+
+  myHandEl.innerHTML = renderHandList(MY_COLOR, true);
+  const oppHandHTML = renderHandList(opp(MY_COLOR), false);
+  oppHandEl.innerHTML = oppHandHTML;
+  oppSheetEl.innerHTML = oppHandHTML;
+}
+function renderHandList(color, interactive){
+  const order = ['K','Q','R','B','N','P','SH','SN','JP'];
+  return order.map(k => {
+    const n = hands[color][k] || 0;
+    const sym = SYMBOLS[color][k];
+    const name = PIECE_NAMES[k];
+    const dis = !interactive || n <= 0 || isMyTurnLocked() === false || gameOver;
+    const isSel = SEL && SEL.kind === 'place' && SEL.piece === k;
+    return `<button class="hp ${isSel?'sel':''} ${dis?'dis':''}"
+              ${interactive && !dis ? `onclick="selectHand('${k}')"` : ''}>
+              <span class="sym ${SPECIAL_KINDS.includes(k)?'spec':''}" style="color:${color==='w'?'#fff':'#1a1a1a'};${SPECIAL_KINDS.includes(k)?`text-shadow:0 0 2px ${color==='w'?'#000':'#fff'},0 0 2px ${color==='w'?'#000':'#fff'}`:''}">${sym}</span>
+              <span class="nm">${name}</span>
+              <span class="ct">${n}</span>
+            </button>`;
+  }).join('');
+}
+
+function renderStatus(){
+  // 체크 표시
+  document.getElementById('myCheck').textContent = isInCheck(MY_COLOR) ? '⚠ 체크!' : '';
+  document.getElementById('oppCheck').textContent = isInCheck(opp(MY_COLOR)) ? '⚠ 체크!' : '';
+
+  // 활성 표시
+  document.getElementById('myCard').classList.toggle('active', turn === MY_COLOR && !gameOver);
+  document.getElementById('oppCard').classList.toggle('active', turn !== MY_COLOR && !gameOver);
+
+  // 상태 플로팅
+  const sf = document.getElementById('statusFloat');
+  let msg = '';
+  if(gameOver){
+    msg = '';
+  } else if(IS_SPEC){
+    msg = `${turn==='w'?'백':'흑'} 차례`;
+  } else if(turn === MY_COLOR){
+    if(!kingPlaced[MY_COLOR]){
+      msg = '⚠ 킹부터 배치하세요 (4×4 영역)';
+    } else if(SEL && SEL.kind === 'place'){
+      msg = `${PIECE_NAMES[SEL.piece]} 배치할 곳 선택`;
+    } else if(SEL && SEL.kind === 'board'){
+      msg = '이동할 칸 선택';
+    } else {
+      msg = `${turn==='w'?'백':'흑'} 차례 - 손패 또는 기물 선택`;
+    }
+  } else {
+    msg = `${turn==='w'?'백':'흑'} 차례 (대기 중)`;
+  }
+  if(msg){ sf.textContent = msg; sf.classList.add('show'); }
+  else sf.classList.remove('show');
+}
+
+function isMyTurnLocked(){
+  if(IS_SPEC) return false;
+  if(IS_LOCAL) return true; // 로컬은 양쪽 다 조작
+  return turn === MY_COLOR;
+}
+
+function renderAll(){
+  setBoardSize();
+  renderBoard();
+  renderHands();
+  renderStatus();
+}
+
+// ===================================================================
+// 10. 클릭 처리
+// ===================================================================
+function selectHand(kind){
+  if(gameOver) return;
+  if(!isMyTurnLocked()) return;
+  if(IS_LOCAL){
+    if(hands[turn][kind] <= 0) return;
+    SEL = { kind:'place', piece:kind, color:turn };
+  } else {
+    if(hands[MY_COLOR][kind] <= 0) return;
+    SEL = { kind:'place', piece:kind, color:MY_COLOR };
+  }
+  HIGHLIGHTS = [];
+  renderAll();
+}
+
+function onCellClick(e){
+  if(gameOver) return;
+  if(IS_SPEC) return;
+  if(!isMyTurnLocked()) return;
+
+  const r = parseInt(e.currentTarget.dataset.r);
+  const c = parseInt(e.currentTarget.dataset.c);
+  const myCol = IS_LOCAL ? turn : MY_COLOR;
+
+  // 손패 배치 모드
+  if(SEL && SEL.kind === 'place'){
+    if(canPlaceHere(SEL.color, SEL.piece, r, c) && !board[r][c]){
+      submitAction({ type:'place', kind:SEL.piece, r, c, color:SEL.color });
+      SEL = null; HIGHLIGHTS = [];
       return;
     }
-  }
-  board = nb;
-  lastMove = {fromRow,fromCol,toRow,toCol};
-  if (IS_ONLINE && NET_ROLE === 'host') pushStateToFirebase();
-  finishTurn();
-}
-
-function doPlace(type, row, col) {
-  // 이전 상태 저장 (5회 체크 시 복원용)
-  prevBoard = copyBoard(board);
-  prevHand = {w:{...hand.w}, b:{...hand.b}};
-  prevTurn = turn;
-  prevLastMove = lastMove ? {...lastMove} : null;
-
-  const nb=copyBoard(board);
-  nb[row][col]={color:turn,type};
-  hand[turn][type]--;
-  board=nb;
-  lastMove=null;
-  addHistory(turn, `P ${PIECE_NAMES[type]} → ${fileChar(col)}${rankNum(row)}`);
-  if (IS_ONLINE && NET_ROLE === 'host') pushStateToFirebase();
-  finishTurn();
-}
-
-/* ============================================================
-   턴 종료 & 승패 판정
-============================================================ */
-function finishTurn() {
-  const opp = turn==='w'?'b':'w';
-
-  // 오목 승리
-  if(checkOmok(board,turn)) {
-    endGame('🎉', (turn==='w'?'백':'흑')+' 승리!', '오목 완성');
+    // 배치 실패: 다른 칸 클릭으로 취소
+    SEL = null; HIGHLIGHTS = []; renderAll();
     return;
   }
 
-  // 체크 상태 판정
-  const oppInCheck = isInCheck(board,opp);
-  checkState[opp] = oppInCheck;
-  checkState[turn] = false;
+  // 보드 기물 선택
+  if(!SEL){
+    const p = board[r][c];
+    if(p && p.color === myCol && kingPlaced.w && kingPlaced.b){
+      SEL = { kind:'board', r, c };
+      HIGHLIGHTS = computeHighlights(r, c, p);
+      renderAll();
+    }
+    return;
+  }
 
-  // 체크 카운터 갱신 — 5회 초과 여부를 먼저 체크해서 연속 카운터가 잘못 오르는 버그 방지
-  if(oppInCheck) {
-    // 총 횟수 초과 시: 카운터 올리지 말고 바로 복원
-    if(totalCheckBy[turn] >= MAX_TOTAL_CHECK) {
-      board = prevBoard;
-      hand = {w:{...prevHand.w}, b:{...prevHand.b}};
-      turn = prevTurn;
-      lastMove = prevLastMove ? {...prevLastMove} : null;
-      setStatus((prevTurn==='w'?'백':'흑')+' 진영: 체크 5회 소진! 이전 턴으로 돌아갔습니다.');
-      selectedHandPiece=null; selectedCell=null; highlights=[];
-      const hl = document.getElementById('history-list');
-      if(hl.lastChild) hl.removeChild(hl.lastChild);
+  // 보드 기물 선택됨 → 클릭한 칸이 이동/공격 대상인지
+  if(SEL.kind === 'board'){
+    if(SEL.r === r && SEL.c === c){
+      // 동일 칸 → 선택 해제
+      SEL = null; HIGHLIGHTS = []; renderAll();
+      return;
+    }
+    const p = board[SEL.r][SEL.c];
+    // 같은 색 기물 클릭 → 다른 기물로 선택 변경
+    if(board[r][c] && board[r][c].color === myCol){
+      SEL = { kind:'board', r, c };
+      HIGHLIGHTS = computeHighlights(r, c, board[r][c]);
       renderAll();
       return;
     }
-    consecCheckBy[turn]++;
-    totalCheckBy[turn]++;
-    consecCheckBy[opp] = 0;
-  } else {
-    consecCheckBy[turn] = 0;
-  }
-
-  // 3회 연속 체크 패배 룰
-  if(consecCheckBy[turn] >= MAX_CONSEC_CHECK) {
-    endGame('⚠️', (turn==='w'?'백':'흑')+' 자멸!', '반칙패 — 3회 연속 체크');
-    return;
-  }
-
-
-  // 체크메이트 / 스테일메이트
-  const oppHasAction = hasAnyLegalAction(board,opp,hand);
-  if(!oppHasAction) {
-    if(oppInCheck) endGame('🏆', (turn==='w'?'백':'흑')+' 승리!', '체크메이트');
-    else            endGame('🤝', '무승부', '스테일메이트');
-    return;
-  }
-
-  // 3회 반복
-  const state=serializeState(board,opp);
-  positionHistory.push(state);
-  if(positionHistory.filter(s=>s===state).length>=3) {
-    endGame('🤝','무승부','3수 동행');
-    return;
-  }
-
-  turn=opp;
-  selectedHandPiece=null;
-  selectedCell=null;
-  highlights=[];
-
-  const kingNeeded = findKing(board,turn)===null;
-  let statusMsg;
-  if (IS_ONLINE) {
-    statusMsg = (turn === myColor) ? '내 턴!' : '상대방 턴 대기 중...';
-    if (turn === myColor && kingNeeded)         statusMsg = '내 턴 — 킹 배치';
-    if (turn === myColor && isInCheck(board,turn)) statusMsg = '내 턴 ⚠ 체크!';
-    // 내 행동이 끝났으면 상대에게 상태 전송
-    netSend({ type: 'STATE', payload: serializeGameState() });
-  } else {
-    statusMsg = (turn==='w'?'백':'흑')+' 턴';
-    if(kingNeeded) statusMsg += ' — 킹 배치';
-    else if(isInCheck(board,turn)) statusMsg += ' ⚠ 체크!';
-  }
-  setStatus(statusMsg);
-  renderAll();
-
-  // 호스트: Firebase에 게임 상태 업로드 (관전자용)
-  if (IS_ONLINE && NET_ROLE === 'host') pushStateToFirebase();
-
-  // AI 모드: 흑 턴이면 자동 실행
-  if (IS_AI && turn === AI_COLOR && !gameOver) {
-    aiDoMove();
-  }
-}
-
-function endGame(emoji, title, desc) {
-  gameOver=true;
-  stopTimer();
-  document.getElementById('end-emoji').textContent=emoji;
-  document.getElementById('end-title').textContent=title;
-  document.getElementById('end-desc').textContent=desc;
-  document.getElementById('end-overlay').classList.add('show');
-  if (IS_ONLINE && netReady) {
-    document.getElementById('rematch-btn').style.display = 'block';
-    document.getElementById('exit-btn').style.display    = 'block';
-  } else if (IS_ONLINE) {
-    document.getElementById('exit-btn').style.display    = 'block';
-  }
-  netSend({ type: 'STATE', payload: serializeGameState() });
-  cleanupRoom(NET_ROOM);
-
-  // 레이팅 업데이트 (온라인 대전만)
-  if (IS_ONLINE && MY_UID && _gameRatingInfo) {
-    // 승패 판정: myColor가 승리한 쪽인지 판단
-    const iWin  = desc.includes(myColor === 'w' ? '백' : '흑') &&
-                  (emoji === '🏆' || desc.includes('승리'));
-    const iLose = desc.includes(myColor === 'w' ? '흑' : '백') &&
-                  (emoji === '🏆' || desc.includes('승리'));
-    const isDraw = emoji === '🤝';
-    const myScore = iWin ? 1 : isDraw ? 0.5 : iLose ? 0 : null;
-
-    if (myScore !== null) {
-      updateRating(myScore).then(() => {
-        // 레이팅 변동 표시
-        if (ratingDelta !== null) {
-          const sign  = ratingDelta >= 0 ? '+' : '';
-          const color = ratingDelta >= 0 ? '#30D158' : '#FF453A';
-          const rEl   = document.getElementById('end-rating-delta');
-          if (rEl) {
-            rEl.textContent = `레이팅 ${sign}${ratingDelta} → ${_gameRatingInfo.myElo + ratingDelta}`;
-            rEl.style.color = color;
-            rEl.style.display = 'block';
-          }
-        }
-      });
-    }
-  }
-  renderAll();
-}
-
-/* ============================================================
-   프로모션 모달
-============================================================ */
-function showPromoModal(color) {
-  const btns=document.getElementById('promo-btns');
-  btns.innerHTML='';
-  PROMO_PIECES.forEach(type=>{
-    const btn=document.createElement('button');
-    btn.className='modal-btn';
-    const icon=document.createElement('span');
-    icon.style.fontSize='2rem';
-    icon.textContent=PIECE_SYMBOLS[color+type];
-    icon.style.color=color==='w'?'#fff':'#111';
-    const label=document.createElement('span');
-    label.textContent=PIECE_NAMES[type];
-    btn.appendChild(icon);
-    btn.appendChild(label);
-    btn.onclick=()=>{
-      board[pendingPromo.row][pendingPromo.col].type=type;
-      pendingPromo=null;
-      document.getElementById('modal-overlay').classList.remove('show');
-      finishTurn();
-    };
-    btns.appendChild(btn);
-  });
-  document.getElementById('modal-overlay').classList.add('show');
-}
-
-/* ============================================================
-   클릭 핸들러
-============================================================ */
-function onCellClick(row, col) {
-  if(gameOver||pendingPromo) return;
-  // 온라인: 내 턴이 아니면 차단
-  if(IS_ONLINE && turn !== myColor) { setStatus('상대방 턴 대기 중...'); return; }
-  const kingPlaced = findKing(board,turn)!==null;
-
-  if(!kingPlaced) {
-    if(selectedHandPiece!=='K') { setStatus('첫 번째 턴: 킹을 먼저 배치해야 합니다!'); return; }
-    if(!isKingPlacementZone(row,col)) { setStatus('킹은 중앙 4×4 구역에만 배치 가능합니다!'); return; }
-    if(board[row][col]) { setStatus('이미 기물이 있는 칸입니다!'); return; }
-    doPlace('K',row,col); return;
-  }
-
-  if(selectedHandPiece) {
-    // highlights에 포함된 칸인지 확인 (legalPlacements 결과 기반)
-    const isHighlighted = highlights.some(h => h.row===row && h.col===col);
-    if(!isHighlighted || board[row][col]) {
-      selectedHandPiece=null; highlights=[]; renderBoard(); return;
-    }
-    if(isInCheck(board,turn)) {
-      const nb=copyBoard(board); nb[row][col]={color:turn,type:selectedHandPiece};
-      if(!checkOmok(nb,turn) && isInCheck(nb,turn)) { setStatus('체크 상태 — 체크를 해결해야 합니다!'); return; }
-    }
-    doPlace(selectedHandPiece,row,col); return;
-  }
-
-  if(selectedCell) {
-    const {row:fr,col:fc}=selectedCell;
-    if(fr===row&&fc===col) { selectedCell=null; highlights=[]; renderBoard(); return; }
-    if(highlights.some(h=>h.row===row&&h.col===col)) { doMove(fr,fc,row,col); return; }
-    if(board[row][col]?.color===turn) {
-      selectedCell={row,col};
-      const isInDanger = totalCheckBy[turn]>=MAX_TOTAL_CHECK || consecCheckBy[turn]>=2;
-      highlights=legalMoves(board,row,col).map(m=>{
-        let type='move';
-        if(board[m.row][m.col]) type='capture';
-        else if(isInDanger && isCheckMove(board,row,col,m.row,m.col,turn)) type='danger';
-        return {...m,type};
-      });
-      renderBoard(); return;
-    }
-    selectedCell=null; highlights=[]; renderBoard(); return;
-  }
-
-  if(board[row][col]?.color===turn) {
-    selectedCell={row,col};
-    const isInDanger = totalCheckBy[turn]>=MAX_TOTAL_CHECK || consecCheckBy[turn]>=2;
-    highlights=legalMoves(board,row,col).map(m=>{
-      let type='move';
-      if(board[m.row][m.col]) type='capture';
-      else if(isInDanger && isCheckMove(board,row,col,m.row,m.col,turn)) type='danger';
-      return {...m,type};
-    });
-    renderBoard();
-  }
-}
-
-function onHandClick(color, type) {
-  if(gameOver||color!==turn||hand[color][type]<=0) return;
-  if(IS_ONLINE && turn !== myColor) { setStatus('상대방 턴 대기 중...'); return; }
-  const kingPlaced=findKing(board,turn)!==null;
-  if(!kingPlaced&&type!=='K') { setStatus('첫 번째 턴: 킹을 먼저 배치해야 합니다!'); return; }
-
-  if(selectedHandPiece===type) { selectedHandPiece=null; highlights=[]; }
-  else {
-    selectedHandPiece=type; selectedCell=null;
-    const isInDanger = totalCheckBy[turn]>=MAX_TOTAL_CHECK || consecCheckBy[turn]>=2;
-    highlights=legalPlacements(board,type,turn).map(m=>{
-      let hlType='place';
-      if(isInDanger && isCheckPlacement(board,type,m.row,m.col,turn)) hlType='danger';
-      const obj = {...m,type:hlType};
-      if(type === 'P') obj.direction = turn === 'w' ? 'north' : 'south';
-      return obj;
-    });
-  }
-  renderAll();
-}
-
-/* ============================================================
-   렌더링
-============================================================ */
-function renderBoard() {
-  const boardEl=document.getElementById('board');
-  for(let r=0;r<8;r++) for(let c=0;c<8;c++) {
-    const cell=boardEl.children[r*8+c];
-    const isLight=(r+c)%2===0;
-    cell.className='cell '+(isLight?'light':'dark');
-    if(isPlacementZone(r,c)) cell.classList.add('zone');
-    if(lastMove&&((r===lastMove.fromRow&&c===lastMove.fromCol)||(r===lastMove.toRow&&c===lastMove.toCol)))
-      cell.classList.add('last-move');
-    if(selectedCell&&selectedCell.row===r&&selectedCell.col===c) cell.classList.add('selected');
-    const hl=highlights.find(h=>h.row===r&&h.col===c);
-    if(hl) {
-      if(hl.type==='capture') cell.classList.add('highlight-capture');
-      else if(hl.type==='danger') cell.classList.add('highlight-danger');
-      else cell.classList.add('highlight');
-      if(hl.direction) cell.classList.add(`pawn-${hl.direction}`);
-    }
-    const piece=board[r][c];
-    if(piece?.type==='K'&&checkState[piece.color]) cell.classList.add('in-check');
-    const pieceEl=cell.querySelector('.piece');
-    pieceEl.className='piece';
-    if(piece) {
-      pieceEl.textContent=PIECE_SYMBOLS[piece.color+piece.type];
-      // 특수기물은 심볼에 색상 구분 포함(白/黒), 일반 기물은 CSS color로 구분
-      if(['SH','SN','JP'].includes(piece.type)) {
-        pieceEl.style.color='';
-        pieceEl.style.fontSize='0.9rem';
-      } else {
-        pieceEl.style.color=piece.color==='w'?'#FAFAFA':'#0A0A0A';
-        pieceEl.style.fontSize='';
-      }
-      if(piece.type==='P') {
-        pieceEl.classList.add(piece.color==='w' ? 'pawn-white' : 'pawn-black');
-      }
-    } else {
-      pieceEl.textContent='';
-      pieceEl.style.color='';
-      pieceEl.style.fontSize='';
-    }
-  }
-}
-
-function renderHand(color) {
-  const el = document.getElementById(color==='w'?'white-hand':'black-hand');
-  el.innerHTML = '';
-  const ALL_TYPES = ['K','Q','R','B','N','P','SH','SN','JP'];
-  ALL_TYPES.forEach(type => {
-    const cnt = hand[color][type] || 0;
-    if (cnt <= 0) return;
-    const span = document.createElement('span');
-    span.className = 'hand-piece';
-    if (selectedHandPiece===type && color===turn) span.classList.add('selected-hand');
-
-    const icon = document.createElement('span');
-    icon.className = 'piece-icon';
-    const sym = PIECE_SYMBOLS[color+type];
-    if (['SH','SN','JP'].includes(type)) {
-      icon.textContent = sym;
-      icon.style.fontSize = '0.85rem';
-      icon.style.lineHeight = '1';
-    } else {
-      icon.textContent = sym;
-      icon.style.color = color==='w' ? '#FAFAFA' : '#1a1a1a';
-    }
-
-    const lbl = document.createElement('span');
-    lbl.className = 'piece-label';
-    lbl.textContent = PIECE_NAMES[type];
-
-    span.appendChild(icon);
-    span.appendChild(lbl);
-
-    if (cnt > 1) {
-      const badge = document.createElement('span');
-      badge.className = 'count-badge';
-      badge.textContent = cnt;
-      span.appendChild(badge);
-    }
-    span.title = PIECE_NAMES[type];
-    span.addEventListener('click', () => onHandClick(color, type));
-    el.appendChild(span);
-  });
-}
-
-function renderCheckCounters() {
-  ['w','b'].forEach(color=>{
-    const pre = color==='w' ? 'white' : 'black';
-    // 연속 체크 pip
-    const pipsEl   = document.getElementById(`${pre}-check-pips`);
-    const countEl  = document.getElementById(`${pre}-check-count`);
-    const n = consecCheckBy[color];
-    pipsEl.innerHTML='';
-    for(let i=0;i<MAX_CONSEC_CHECK;i++){
-      const pip=document.createElement('div');
-      pip.className='check-pip'+(i<n?' filled':'');
-      pipsEl.appendChild(pip);
-    }
-    countEl.textContent=`${n}/${MAX_CONSEC_CHECK}`;
-    countEl.style.color = n>=2 ? '#FF453A' : '';
-
-    // 총합 체크 pip
-    const totalPipsEl  = document.getElementById(`${pre}-total-pips`);
-    const totalCountEl = document.getElementById(`${pre}-total-count`);
-    const t = totalCheckBy[color];
-    totalPipsEl.innerHTML='';
-    for(let i=0;i<MAX_TOTAL_CHECK;i++){
-      const pip=document.createElement('div');
-      pip.className='check-pip'+(i<t?' filled':'');
-      // 총합은 주황색으로 구분
-      if(i<t) pip.style.cssText='background:#FF9500;border-color:#FF9500';
-      totalPipsEl.appendChild(pip);
-    }
-    totalCountEl.textContent=`${t}/${MAX_TOTAL_CHECK}`;
-    totalCountEl.style.color = t>=4 ? '#FF453A' : '';
-  });
-}
-
-function renderPlayerInfo() {
-  document.getElementById('white-info').classList.toggle('active',turn==='w');
-  document.getElementById('black-info').classList.toggle('active',turn==='b');
-  updateTimerDisplay();
-  // 턴이 바뀔 때마다 타이머 재시작
-  if (roomTimeLimit !== 'unlimited' && !gameOver) {
-    pauseTimer();
-    setTimeout(startTimer, 50);
-  }
-}
-
-function renderAll() {
-  renderBoard();
-  renderHand('w');
-  renderHand('b');
-  renderPlayerInfo();
-  renderCheckCounters();
-}
-
-function setStatus(msg) { document.getElementById('status-box').textContent=msg; }
-
-function addHistory(color, text) {
-  const list=document.getElementById('history-list');
-  const entry=document.createElement('div');
-  entry.className='move-entry '+(color==='w'?'move-white':'move-black');
-  const prefix=color==='w'?'⬜':'⬛';
-  entry.textContent=`${prefix} ${text}`;
-  list.appendChild(entry);
-  list.parentElement.scrollTop=list.parentElement.scrollHeight;
-}
-
-/* ============================================================
-   보드 DOM 구축
-============================================================ */
-function buildBoardDOM() {
-  const boardEl=document.getElementById('board');
-  boardEl.innerHTML='';
-  for(let r=0;r<8;r++) for(let c=0;c<8;c++) {
-    const cell=document.createElement('div');
-    cell.className='cell';
-    cell.dataset.row=r; cell.dataset.col=c;
-    const piece=document.createElement('span');
-    piece.className='piece';
-    cell.appendChild(piece);
-    cell.addEventListener('click',()=>onCellClick(r,c));
-    boardEl.appendChild(cell);
-  }
-  // 행 레이블
-  const rankEl=document.getElementById('rank-labels');
-  const rankR =document.getElementById('rank-labels-right');
-  rankEl.innerHTML=''; rankR.innerHTML='';
-  for(let r=0;r<8;r++) {
-    [rankEl,rankR].forEach(el=>{
-      const d=document.createElement('div');
-      d.textContent=8-r;
-      el.appendChild(d);
-    });
-  }
-  // 열 레이블
-  ['file-labels-top','file-labels'].forEach(id=>{
-    const el=document.getElementById(id);
-    el.innerHTML='';
-    'abcdefgh'.split('').forEach(ch=>{
-      const d=document.createElement('div'); d.textContent=ch; el.appendChild(d);
-    });
-  });
-}
-
-/* ============================================================
-   게임 초기화
-============================================================ */
-function initGame() {
-  board=Array.from({length:8},()=>Array(8).fill(null));
-  turn='w';
-  hand={ w:{...INIT_HAND}, b:{...INIT_HAND} };
-  selectedHandPiece=null; selectedCell=null; highlights=[];
-  gameOver=false; lastMove=null; positionHistory=[];
-  checkState={w:false,b:false};
-  consecCheckBy={w:0,b:0};
-  totalCheckBy={w:0,b:0};
-  prevBoard=null; prevHand=null; prevTurn=null; prevLastMove=null;
-  rematchPending = false;
-  document.getElementById('history-list').innerHTML='';
-  stopTimer();
-  resetTimers();
-  renderAll();
-  if (roomTimeLimit !== 'unlimited') startTimer();
-  if (IS_ONLINE) {
-    const msg = netReady
-      ? (turn === myColor ? '내 턴 — 킹 배치' : '상대방 턴 대기 중...')
-      : '상대방 연결 대기 중...';
-    setStatus(msg);
-  } else if (IS_AI) {
-    const diffNames = { easy:'쉬움', normal:'보통', hard:'어려움' };
-    setStatus(`AI 대전 [${diffNames[AI_DIFF]||AI_DIFF}] — 백 턴 (킹 배치)`);
-  } else {
-    setStatus('백 턴 — 킹 배치');
-  }
-}
-
-/* ============================================================
-   이벤트 연결
-============================================================ */
-document.getElementById('restart-btn').addEventListener('click',()=>{
-  document.getElementById('end-overlay').classList.remove('show');
-  if (IS_ONLINE) netSend({ type: 'RESTART' });
-  initGame();
-});
-document.getElementById('restart-side-btn').addEventListener('click',()=>{
-  document.getElementById('end-overlay').classList.remove('show');
-  if (IS_ONLINE) netSend({ type: 'RESTART' });
-  initGame();
-});
-document.getElementById('toggle-rules-btn').addEventListener('click',()=>{
-  rulesOpen=!rulesOpen;
-  document.getElementById('rules-box').classList.toggle('open',rulesOpen);
-  document.getElementById('toggle-rules-btn').textContent=rulesOpen?'규칙 숨기기':'규칙 보기';
-});
-
-/* ============================================================
-   로비로 돌아가기
-============================================================ */
-function goLobby() {
-  if (IS_ONLINE && !gameOver) {
-    // 게임 중: 기권 → 종료 화면 표시 (리매치 기회 제공), 로비 이동 안 함
-    const loserName  = myColor === 'w' ? '백' : '흑';
-    const winnerName = myColor === 'w' ? '흑' : '백';
-    netSend({ type: 'FORFEIT', loser: loserName, winner: winnerName });
-    endGame('🏳', loserName + ' 기권', '로비 버튼을 눌러 기권했습니다.');
-  } else {
-    // 게임 종료 후 또는 로컬: 바로 로비로
-    cleanupRoom(NET_ROOM);
-    if (netConn) { try { netConn.close();  } catch(e) {} netConn = null; }
-    if (netPeer) { try { netPeer.destroy(); } catch(e) {} netPeer = null; }
-    window.location.href = 'index.html';
-  }
-}
-
-/* 종료 화면에서 로비로 나가는 버튼용 함수 */
-function exitToLobby() {
-  // 페이지 이동 전 즉시 방 삭제 (setTimeout은 이동 후 실행 안 됨)
-  cleanupRoom(NET_ROOM);
-  if (netConn) { try { netConn.close();  } catch(e) {} netConn = null; }
-  if (netPeer) { try { netPeer.destroy(); } catch(e) {} netPeer = null; }
-  window.location.href = 'index.html';
-}
-
-/* ============================================================
-   시작
-============================================================ */
-buildBoardDOM();
-initGame();
-
-// 온라인 모드: 새 게임 버튼 숨기기 (이미 IS_ONLINE 블록에서도 하지만 초기화 후 재확인)
-if (IS_ONLINE) {
-  document.getElementById('restart-side-btn').style.display = 'none';
-  document.getElementById('restart-btn').style.display      = 'none';
-}
-
-// AI 모드: 배지 표시
-if (IS_AI) {
-  const badge = document.getElementById('ai-badge');
-  const diffNames = { easy:'쉬움', normal:'보통', hard:'어려움' };
-  badge.textContent = `🤖 AI — ${diffNames[AI_DIFF] || AI_DIFF}`;
-  badge.style.display = 'inline-flex';
-  badge.style.alignItems = 'center';
-}
-
-/* ============================================================
-   👁 관전자 모드
-============================================================ */
-if (IS_SPECTATOR && NET_ROOM) {
-  // UI — 모든 상호작용 비활성화
-  document.getElementById('restart-side-btn').style.display = 'none';
-  document.getElementById('restart-btn').style.display      = 'none';
-  document.getElementById('btn-lobby').textContent = '← 로비';
-  document.getElementById('board').style.pointerEvents = 'none';
-  document.querySelectorAll('.hand-piece').forEach(el => el.style.pointerEvents = 'none');
-
-  // 관전 배지
-  const specBadge = document.getElementById('ai-badge');
-  specBadge.textContent = '👁 관전 중';
-  specBadge.style.cssText += ';background:rgba(255,149,0,0.15);color:#FF9500;border:1px solid rgba(255,149,0,0.4);display:inline-flex;align-items:center;';
-
-  // 채팅 읽기 전용
-  document.getElementById('btn-chat').classList.add('show');
-  const chatInput = document.getElementById('chat-input');
-  if (chatInput) { chatInput.disabled = true; chatInput.placeholder = '관전자는 채팅에 참여할 수 없습니다'; }
-  const sendBtn = document.getElementById('btn-chat-send');
-  if (sendBtn) sendBtn.disabled = true;
-
-  setStatus('👁 관전 중...');
-
-  const db = getFbDb();
-  console.log('[관전] getFbDb 결과:', db ? 'OK' : 'null (Firebase 미설정 또는 초기화 실패)');
-  if (db) {
-    const roomRef = db.ref('rooms/' + NET_ROOM);
-    console.log('[관전] 구독 시작: rooms/' + NET_ROOM);
-
-    // 방 존재 확인
-    roomRef.once('value', snap => {
-      console.log('[관전] 방 데이터:', snap.exists() ? JSON.stringify(Object.keys(snap.val())) : '없음');
-      if (!snap.exists()) setStatus('❌ 방을 찾을 수 없거나 이미 종료된 게임입니다.');
-    });
-
-    // 게임 상태 실시간 구독
-    roomRef.child('gameState').on('value', snap => {
-      console.log('[관전] gameState 수신:', snap.val() ? '있음' : 'null');
-      if (!snap.val()) {
-        setStatus('👁 게임 시작 대기 중... (아직 수가 없습니다)');
-        return;
-      }
-      try {
-        const state = JSON.parse(snap.val());
-        applyRemoteGameState(state);
-        if (state.gameOver) {
-          // 관전자: 종료 오버레이에서 리매치/재시작 버튼 숨기고 로비 버튼만 표시
-          const rematchBtn = document.getElementById('rematch-btn');
-          const restartBtn = document.getElementById('restart-btn');
-          const exitBtn    = document.getElementById('exit-btn');
-          if (rematchBtn) rematchBtn.style.display = 'none';
-          if (restartBtn) restartBtn.style.display = 'none';
-          if (exitBtn)    exitBtn.style.display    = 'block';
-          setStatus('게임이 종료되었습니다. ← 로비 버튼으로 돌아가세요.');
-        } else {
-          setStatus(`👁 관전 중 — ${state.turn === 'w' ? '백' : '흑'} 턴`);
-        }
-      } catch(e) { console.warn('관전 상태 파싱 오류:', e); }
-    });
-
-    // 채팅 구독 (읽기 전용)
-    roomRef.child('chatLog').on('value', snap => {
-      if (!snap.val()) return;
-      try {
-        const msgs = JSON.parse(snap.val());
-        const container = document.getElementById('chat-messages');
-        if (!container) return;
-        container.innerHTML = '';
-        msgs.forEach(m => {
-          const el = document.createElement('div');
-          el.className = m.cls.includes('system') ? 'chat-msg system'
-                       : m.cls.includes('mine')   ? 'chat-msg mine'
-                       :                            'chat-msg theirs';
-          el.textContent = m.txt;
-          container.appendChild(el);
-        });
-        container.scrollTop = container.scrollHeight;
-      } catch(e) {}
-    });
-
-    // 방 삭제 감지 (게임 종료)
-    roomRef.on('value', snap => {
-      if (!snap.exists()) {
-        setStatus('게임이 종료되었습니다. ← 로비 버튼으로 돌아가세요.');
-        roomRef.off();
-      }
-    });
-  } else {
-    setStatus('❌ Firebase 미연결 — 관전 불가 (F12 콘솔 확인)');
-  }
-}
-
-/* ============================================================
-   온라인 시스템 (로컬 모드면 아무것도 하지 않음)
-============================================================ */
-if (IS_ONLINE) {
-  /* ── 온라인 UI 초기 설정 ── */
-  document.getElementById('online-badge').classList.add('show');
-  document.getElementById('btn-chat').classList.add('show');
-  // 온라인 모드: "새 게임" 버튼 숨김
-  document.getElementById('restart-side-btn').style.display = 'none';
-  setStatus('연결 중...');
-
-  /* ── 연결 타임아웃 (30초) ── */
-  const connTimeout = setTimeout(() => {
-    if (!netReady) {
-      setStatus('❌ 연결 시간 초과. ← 로비 버튼으로 돌아가서 다시 시도하세요.');
-    }
-  }, 30000);
-
-  if (NET_ROLE === 'host') {
-    /* 호스트: 방 코드(NET_ROOM)를 PeerID로 Peer 생성
-       index.html에서는 Peer를 전혀 만들지 않으므로 ID 충돌 없음 */
-    netPeer = new Peer(NET_ROOM, { debug: 0 });
-    netPeer.on('open', () => {
-      setStatus('게스트 연결 대기 중... (방 코드: ' + NET_ROOM + ')');
-    });
-    netPeer.on('connection', conn => {
-      if (!netConn) { clearTimeout(connTimeout); setupConn(conn, 'host'); }
-    });
-    netPeer.on('error', err => {
-      clearTimeout(connTimeout);
-      setStatus('❌ 오류(' + err.type + '). ← 로비로 돌아가서 방을 다시 만들어주세요.');
-    });
-
-  } else {
-    /* 게스트: 익명 Peer로 접속 후 방 코드(NET_ROOM)에 연결
-       호스트가 아직 준비 중일 수 있으므로 자동 재시도 */
-    netPeer = new Peer(undefined, { debug: 0 });
-    netPeer.on('open', () => {
-      setStatus('호스트에 연결 중...');
-      let retryCount = 0;
-      const MAX_RETRY = 6;
-
-      function tryConnect() {
-        if (netReady || retryCount >= MAX_RETRY) return;
-
-        const conn = netPeer.connect(NET_ROOM, { reliable: true });
-
-        // 연결 성공
-        conn.on('open', () => {
-          clearTimeout(connTimeout);
-          setupConn(conn, 'guest');
-        });
-
-        // 연결 실패 시 재시도
-        conn.on('error', () => {
-          retryCount++;
-          if (retryCount < MAX_RETRY) {
-            setStatus(`호스트 연결 대기 중... (${retryCount}/${MAX_RETRY})`);
-            setTimeout(tryConnect, 1500);
-          } else {
-            setStatus('❌ 호스트에 연결할 수 없습니다. 로비로 돌아가 다시 시도해주세요.');
-          }
-        });
-      }
-
-      tryConnect();
-
-      // peer-unavailable은 netPeer 레벨에서도 발생 — 재시도로 처리
-      netPeer.on('error', err => {
-        if (err.type === 'peer-unavailable') {
-          retryCount++;
-          if (retryCount < MAX_RETRY) {
-            setStatus(`호스트 준비 대기 중... (${retryCount}/${MAX_RETRY})`);
-            setTimeout(tryConnect, 1500);
-          } else {
-            clearTimeout(connTimeout);
-            setStatus('❌ 호스트를 찾을 수 없습니다. 로비로 돌아가 다시 시도해주세요.');
-          }
-        } else {
-          clearTimeout(connTimeout);
-          setStatus('❌ 연결 오류: ' + (err.type || err.message));
-        }
-      });
-    });
-  }
-}
-
-/* ============================================================
-   DataConnection 공통 설정
-============================================================ */
-function setupConn(conn, role) {
-  netConn = conn;
-  conn.on('open', () => {
-    if (role === 'host') {
-      myColor = Math.random() < 0.5 ? 'w' : 'b';
-      // 호스트: Firebase에서 방의 timeLimit 읽기
-      const db = getFbDb();
-      if (db && NET_ROOM) {
-        db.ref('rooms/' + NET_ROOM).once('value', snap => {
-          const room = snap.val();
-          if (room && room.timeLimit) {
-            roomTimeLimit = room.timeLimit;
-          }
-          conn.send({ type: 'HELLO', role: role, color: myColor, timeLimit: roomTimeLimit });
-        }).catch(err => {
-          console.warn('Firebase 읽기 실패:', err);
-          conn.send({ type: 'HELLO', role: role, color: myColor, timeLimit: roomTimeLimit });
+    const isHL = HIGHLIGHTS.some(h => h.r === r && h.c === c);
+    if(isHL){
+      // 이동 시도
+      // 폰 프로모션 체크
+      if(p.kind === 'P' && ((p.color==='w' && r===0)||(p.color==='b' && r===7))){
+        promptPromotion(p.color).then(promo => {
+          submitAction({ type:'move', fr:SEL.r, fc:SEL.c, tr:r, tc:c, promote: promo });
+          SEL = null; HIGHLIGHTS = [];
         });
       } else {
-        conn.send({ type: 'HELLO', role: role, color: myColor, timeLimit: roomTimeLimit });
+        submitAction({ type:'move', fr:SEL.r, fc:SEL.c, tr:r, tc:c });
+        SEL = null; HIGHLIGHTS = [];
       }
     } else {
-      conn.send({ type: 'HELLO', role: role });
+      // 외곽 클릭 → 선택 해제
+      SEL = null; HIGHLIGHTS = []; renderAll();
     }
-  });
-
-  conn.on('data', data => {
-    if (!data || !data.type) return;
-    if (data.type === 'HELLO') {
-      // 상대방 HELLO 수신 → 연결 확립
-      if (NET_ROLE === 'guest') {
-        myColor = data.color === 'w' ? 'b' : 'w';
-        if (data.timeLimit) {
-          roomTimeLimit = data.timeLimit;
-        }
-      }
-      netReady = true;
-      document.getElementById('ob-dot').style.background = 'var(--green)';
-      document.getElementById('ob-label').textContent = '연결됨';
-      document.getElementById('ob-color').textContent = myColor === 'w' ? '(백)' : '(흑)';
-      setStatus(turn === myColor ? '내 턴 — 킹 배치' : '상대방 턴 대기 중...');
-      // 레이팅 정보 캐시 (방 삭제 전에 미리)
-      cacheRatingInfo();
-      if (NET_ROLE === 'host') {
-        netSend({ type: 'STATE', payload: serializeGameState() });
-        pushStateToFirebase();
-      }
-      return;
-    }
-    switch (data.type) {
-      case 'STATE':
-        applyRemoteGameState(data.payload);
-        // 호스트: 게스트에게서 받은 상태도 Firebase에 올려서 관전자에게 반영
-        if (NET_ROLE === 'host') pushStateToFirebase();
-        break;
-      case 'RESTART':
-        document.getElementById('end-overlay').classList.remove('show');
-        initGame();
-        if (NET_ROLE === 'host') {
-          netSend({ type: 'STATE', payload: serializeGameState() });
-        }
-        break;
-      case 'FORFEIT':
-        // 상대방이 로비로 나감 → 내가 승리
-        endGame('🏆', data.winner + ' 승리!', data.loser + ' 진영이 기권했습니다.');
-        break;
-      case 'REMATCH_REQUEST':
-        showRematchModal();
-        break;
-      case 'REMATCH_RESPONSE':
-        if (data.accepted) {
-          // 리매치 수락 → 게임 재시작
-          document.getElementById('rematch-overlay').classList.remove('show');
-          document.getElementById('end-overlay').classList.remove('show');
-          initGame();
-          if (NET_ROLE === 'host') {
-            netSend({ type: 'STATE', payload: serializeGameState() });
-          }
-        } else {
-          // 리매치 거절
-          document.getElementById('rematch-overlay').classList.remove('show');
-          setStatus('리매치가 거절되었습니다.');
-          rematchPending = false;
-        }
-        break;
-      case 'CHAT':
-        addChatMessage(data.msg, 'theirs');
-        break;
-    }
-  });
-
-  conn.on('close', () => {
-    netReady = false;
-    document.getElementById('ob-dot').style.background = 'var(--red)';
-    document.getElementById('ob-label').textContent = '연결 끊김';
-
-    // 게임 진행 중이면 상대 나감으로 종료 화면 표시
-    if (!gameOver) {
-      endGame('🚪', '상대방이 나갔습니다', '상대방과의 연결이 끊겼습니다.');
-      // 연결이 끊긴 상태이므로 리매치 버튼은 숨김
-      document.getElementById('rematch-btn').style.display = 'none';
-    } else {
-      setStatus('⚠ 상대방 연결이 끊겼습니다.');
-      // 이미 종료 화면이 떠 있으면 리매치 버튼만 숨김
-      document.getElementById('rematch-btn').style.display = 'none';
-    }
-  });
-
-  conn.on('error', err => {
-    setStatus('❌ 연결 오류: ' + (err.message || err.type));
-  });
-}
-
-/* ============================================================
-   데이터 전송 (연결 없으면 무시)
-============================================================ */
-function netSend(data) {
-  if (netConn && netConn.open) {
-    try { netConn.send(data); } catch(e) { console.warn('netSend 실패:', e); }
   }
 }
 
-/* 호스트가 Firebase에 게임 상태 업로드 (관전자용) */
-function pushStateToFirebase() {
-  if (!IS_ONLINE || NET_ROLE !== 'host' || !NET_ROOM) return;
-  const db = getFbDb();
-  if (!db) return;
-  try {
-    const state = serializeGameState();
-    const chatMsgs = [];
-    document.querySelectorAll('#chat-messages .chat-msg').forEach(el => {
-      chatMsgs.push({ cls: el.className, txt: el.textContent });
+function computeHighlights(r, c, p){
+  const out = [];
+  if(p.kind === 'SN'){
+    const { attacks } = pieceMoves(r, c, p);
+    for(const [tr,tc] of attacks) out.push({r:tr, c:tc, type:'attack'});
+  } else if(p.kind === 'SH'){
+    const dy = (p.color === 'w') ? -1 : 1;
+    for(const ddy of [dy, -dy]){
+      const nr = r+ddy;
+      if(!inBounds(nr,c)) continue;
+      const t = board[nr][c];
+      if(!t) out.push({r:nr, c, type:'move'});
+      else out.push({r:nr, c, type:'attack'}); // 밀기
+    }
+  } else {
+    const { moves, attacks } = pieceMoves(r, c, p);
+    for(const [tr,tc] of moves) out.push({r:tr, c:tc, type:'move'});
+    for(const [tr,tc] of attacks) out.push({r:tr, c:tc, type:'attack'});
+  }
+  // 자기 킹 노출되는 수 제거
+  return out.filter(h => {
+    const snap = snapshotState();
+    const a = { type:'move', fr:r, fc:c, tr:h.r, tc:h.c };
+    if(p.kind === 'P' && ((p.color==='w' && h.r===0)||(p.color==='b' && h.r===7))){
+      a.promote = 'Q';
+    }
+    const res = applyAction(a, {silent:true});
+    restoreState(snap);
+    return res.ok;
+  });
+}
+
+// 프로모션 모달
+function promptPromotion(color){
+  return new Promise(resolve => {
+    const opts = ['Q','R','B','N'];
+    document.getElementById('promoOpts').innerHTML = opts.map(k =>
+      `<button class="promo-opt ${color}" data-k="${k}">${SYMBOLS[color][k]}</button>`
+    ).join('');
+    document.getElementById('promoModal').classList.add('show');
+    document.querySelectorAll('.promo-opt').forEach(b => {
+      b.onclick = () => {
+        document.getElementById('promoModal').classList.remove('show');
+        resolve(b.dataset.k);
+      };
     });
-    db.ref('rooms/' + NET_ROOM).update({
-      gameActive: true,
-      gameState:  JSON.stringify(state),
-      chatLog:    JSON.stringify(chatMsgs),
-      updatedAt:  Date.now(),
-    }).catch(e => console.warn('Firebase 업로드 실패:', e));
-  } catch(e) { console.warn('pushStateToFirebase 오류:', e); }
+  });
 }
 
-/* Firebase DB 인스턴스 (싱글턴) */
-var _fbDbInst = null;
-function getFbDb() {
-  if (_fbDbInst) return _fbDbInst;
-  try {
-    if (!FIREBASE_CONFIG.apiKey || FIREBASE_CONFIG.apiKey.includes('여기에')) return null;
-    const app = firebase.apps.length > 0 ? firebase.apps[0] : firebase.initializeApp(FIREBASE_CONFIG);
-    _fbDbInst = firebase.database(app);
-  } catch(e) { console.warn('Firebase DB 초기화 실패:', e); }
-  return _fbDbInst;
+// ===================================================================
+// 11. submitAction (로컬/AI/네트워크 분기)
+// ===================================================================
+function submitAction(action){
+  const myCol = IS_LOCAL ? turn : MY_COLOR;
+  // 액션 컬러 보장
+  if(action.type === 'place') action.color = myCol;
+  
+  const snap = snapshotState();
+  const r = applyAction(action);
+  if(!r.ok){ 
+    // 복원되어있을 것
+    showFlash('❌ ' + r.err);
+    SEL=null; HIGHLIGHTS=[]; renderAll();
+    return;
+  }
+  // 사운드
+  if(action.type === 'place') playSnd('place');
+  else if(lastMove && lastMove.type === 'snipe') playSnd('capture');
+  else if(action.type === 'move'){
+    // 잡힌 기물 있었나?
+    // 간단히: 사운드 항상 move
+    playSnd('move');
+  }
+
+  renderAll();
+  postMoveCheck(r);
+
+  // 네트워크 전송
+  if(IS_NET){
+    sendToPeer({ t:'MOVE', action });
+    if(NET_ROLE === 'host') publishGameState();
+  }
+
+  // AI 차례
+  if(IS_AI && !gameOver && turn === 'b'){
+    setTimeout(()=> aiTurn(), 250);
+  }
 }
 
-/* ============================================================
-   🏆 ELO 레이팅 시스템
-============================================================ */
-const ELO_K       = 32;
-const ELO_DEFAULT = 1200;
-let   ratingDelta = null;
-let _gameRatingInfo = null;
-
-function eloExpected(myElo, oppElo) {
-  return 1 / (1 + Math.pow(10, (oppElo - myElo) / 400));
+function postMoveCheck(r){
+  if(r.fiveWin){
+    endGame('🏆','5연속 승리!', `${r.fiveWin==='w'?'백':'흑'}이 5연속을 완성했습니다.`, r.fiveWin);
+    return;
+  }
+  if(r.checkmate){
+    endGame('👑','체크메이트!', `${r.checkmate==='w'?'백':'흑'}의 승리.`, r.checkmate);
+    return;
+  }
+  if(r.stalemate){
+    endGame('🤝','스테일메이트', '둘 곳이 없어 무승부.', 'draw');
+    return;
+  }
+  if(r.repetition){
+    endGame('🔁','3수 동형','동일 형국이 3번 반복되어 무승부.', 'draw');
+    return;
+  }
+  // 체크 알림
+  if(isInCheck(turn)){
+    showFlash(`⚠ ${turn==='w'?'백':'흑'} 체크! (${checkStreak[turn]}연속, 상대 ${totalChecks[opp(turn)]}/5)`);
+  }
 }
-function eloNewRating(myElo, oppElo, score) {
-  return Math.round(myElo + ELO_K * (score - eloExpected(myElo, oppElo)));
+
+let _flashTimer = null;
+function showFlash(msg, ms=2000){
+  const el = document.getElementById('statusFloat');
+  el.textContent = msg;
+  el.classList.add('show');
+  clearTimeout(_flashTimer);
+  _flashTimer = setTimeout(()=> renderStatus(), ms);
 }
 
-/* 연결 확립 시 레이팅 정보 캐시 (방 삭제 전에 미리) */
-async function cacheRatingInfo() {
-  if (!IS_ONLINE || !NET_ROOM || !MY_UID) return;
-  const db = getFbDb();
-  if (!db) return;
-  try {
-    const snap = await db.ref('rooms/' + NET_ROOM).once('value');
-    if (!snap.exists()) return;
-    const r = snap.val();
-    const isHost = NET_ROLE === 'host';
-    _gameRatingInfo = {
-      myElo:  isHost ? (r.hostElo  || ELO_DEFAULT) : (r.guestElo || ELO_DEFAULT),
-      oppElo: isHost ? (r.guestElo || ELO_DEFAULT) : (r.hostElo  || ELO_DEFAULT),
+// ===================================================================
+// 12. 게임 종료 + ELO
+// ===================================================================
+let _gameRatingInfo = null; // {whiteUid, whiteElo, blackUid, blackElo, whiteNick, blackNick}
+
+function endGame(emoji, title, desc, winner /* 'w'|'b'|'draw' */){
+  if(gameOver) return;
+  gameOver = true;
+  document.getElementById('endIcon').textContent = emoji;
+  document.getElementById('endTitle').textContent = title;
+  document.getElementById('endDesc').textContent = desc;
+  playSnd('end');
+  const eloEl = document.getElementById('endElo');
+  eloEl.style.display = 'none';
+
+  const rematchBtn = document.getElementById('rematchBtn');
+  rematchBtn.style.display = (IS_NET && !IS_SPEC) ? '' : 'none';
+
+  // ELO 적용 (온라인만)
+  if(IS_NET && !IS_SPEC && _gameRatingInfo && winner){
+    applyEloChange(winner).then(diff => {
+      if(diff !== null){
+        const sign = diff > 0 ? '+' : '';
+        eloEl.className = 'elo-change ' + (diff>0?'up':diff<0?'dn':'');
+        eloEl.innerHTML = `레이팅 ${sign}${diff} → ${MY_ELO_P + diff}`;
+        eloEl.style.display = '';
+      }
+    }).catch(e => console.error(e));
+  }
+
+  document.getElementById('endModal').classList.add('show');
+
+  // 호스트만 방 상태 업데이트
+  if(IS_NET){
+    if(NET_ROLE === 'host'){
+      _fbDb && _fbDb.ref('rooms/'+ROOM_CODE).update({ gameActive:false }).catch(()=>{});
+    }
+    sendToPeer({ t:'END', winner });
+  }
+}
+
+async function applyEloChange(winner){
+  if(!_gameRatingInfo || !_fbDb) return null;
+  const myCol = MY_COLOR;
+  const myInfo = myCol === 'w'
+    ? {uid:_gameRatingInfo.whiteUid, elo:_gameRatingInfo.whiteElo}
+    : {uid:_gameRatingInfo.blackUid, elo:_gameRatingInfo.blackElo};
+  const oppInfo = myCol === 'w'
+    ? {uid:_gameRatingInfo.blackUid, elo:_gameRatingInfo.blackElo}
+    : {uid:_gameRatingInfo.whiteUid, elo:_gameRatingInfo.whiteElo};
+  if(!myInfo.uid || !oppInfo.uid) return null;
+
+  const score = winner === 'draw' ? 0.5 : (winner === myCol ? 1 : 0);
+  const K = 32;
+  const expected = 1 / (1 + Math.pow(10, (oppInfo.elo - myInfo.elo)/400));
+  const diff = Math.round(K * (score - expected));
+  const newElo = myInfo.elo + diff;
+
+  // 본인 데이터만 업데이트 (보안 규칙상)
+  try{
+    const ref = _fbDb.ref('users/'+myInfo.uid);
+    const snap = await ref.once('value');
+    const cur = snap.val() || {};
+    const upd = {
+      elo: newElo,
+      w: (cur.w||0) + (score===1?1:0),
+      l: (cur.l||0) + (score===0?1:0),
+      d: (cur.d||0) + (score===0.5?1:0)
     };
-    console.log('[레이팅] 캐시:', _gameRatingInfo);
-  } catch(e) { console.warn('레이팅 캐시 오류:', e); }
-}
-
-/* 게임 종료 후 레이팅 업데이트 */
-async function updateRating(myScore) {
-  // myScore: 1=승, 0.5=무, 0=패
-  if (!IS_ONLINE || !MY_UID || !_gameRatingInfo) return;
-  const db = getFbDb();
-  if (!db) return;
-  try {
-    const { myElo, oppElo } = _gameRatingInfo;
-    const newElo = eloNewRating(myElo, oppElo, myScore);
-    ratingDelta  = newElo - myElo;
-
-    const myRef  = db.ref('users/' + MY_UID);
-    const mySnap = await myRef.once('value');
-    const myData = mySnap.val() || {};
-    const updated = {
-      ...myData,
-      uid:    MY_UID,
-      elo:    newElo,
-      wins:   (myData.wins   || 0) + (myScore === 1   ? 1 : 0),
-      losses: (myData.losses || 0) + (myScore === 0   ? 1 : 0),
-      draws:  (myData.draws  || 0) + (myScore === 0.5 ? 1 : 0),
-      updatedAt: Date.now(),
-    };
-    await myRef.update(updated);
-    db.ref('leaderboard/' + MY_UID).update({
-      nickname:  updated.nickname || '익명',
-      elo:       newElo,
-      wins:      updated.wins,
-      losses:    updated.losses,
-      draws:     updated.draws,
-      updatedAt: Date.now(),
+    await ref.update(upd);
+    await _fbDb.ref('leaderboard/'+myInfo.uid).update({
+      nick: cur.nick || MY_NICK_P,
+      elo: newElo, w: upd.w, l: upd.l, d: upd.d
     });
-  } catch(e) { console.warn('레이팅 업데이트 오류:', e); }
+  }catch(e){ console.error('ELO update failed',e); }
+  return diff;
 }
 
-/* 호스트가 방을 Firebase에서 삭제 */
-function cleanupRoom(code) {
-  if (!code || !IS_ONLINE) return;
-  const db = getFbDb();
-  if (db) db.ref('rooms/' + code).remove().catch(() => {});
+// ===================================================================
+// 13. AI
+// ===================================================================
+const PIECE_VALUES = { K:0, Q:90, R:50, B:35, N:30, P:10, SH:25, SN:60, JP:35 };
+
+function aiTurn(){
+  if(gameOver) return;
+  if(turn !== 'b') return;
+  const list = allLegalActions('b');
+  if(!list.length){
+    // 합법수 없음 = 패배 상황 (이미 finalize에서 처리됐을 수 있음)
+    return;
+  }
+  let best;
+  if(DIFF === 'easy') best = aiEasy(list);
+  else if(DIFF === 'hard') best = aiHard(list);
+  else best = aiNormal(list);
+
+  if(!best) best = list[Math.floor(Math.random()*list.length)];
+  // 폰 프로모션 처리
+  if(best.type === 'move'){
+    const p = board[best.fr][best.fc];
+    if(p && p.kind === 'P' && best.tr === 7) best.promote = 'Q';
+  }
+  submitAction(best);
 }
 
-/* ============================================================
-   게임 상태 직렬화 (전송용)
-============================================================ */
-function serializeGameState() {
-  const list = document.getElementById('history-list');
-  const log = [];
-  if (list) list.querySelectorAll('.move-entry').forEach(el =>
-    log.push({ cls: el.className, txt: el.textContent })
-  );
-  return {
-    board:         JSON.stringify(board),
-    turn,
-    handW:         JSON.stringify(hand.w),
-    handB:         JSON.stringify(hand.b),
-    consecW:       consecCheckBy.w,  consecB:  consecCheckBy.b,
-    totalW:        totalCheckBy.w,   totalB:   totalCheckBy.b,
-    checkW:        checkState.w,     checkB:   checkState.b,
-    posHistory:    JSON.stringify(positionHistory),
-    lastMove:      JSON.stringify(lastMove),
-    gameOver,
-    pendingPromo:  JSON.stringify(pendingPromo),
-    moveLog:       JSON.stringify(log),
-    endEmoji:      document.getElementById('end-emoji').textContent,
-    endTitle:      document.getElementById('end-title').textContent,
-    endDesc:       document.getElementById('end-desc').textContent,
-  };
+function aiEasy(list){
+  // 1. 즉시 5연속
+  for(const a of list){
+    const snap = snapshotState();
+    const r = applyAction(a, {silent:true});
+    if(r.ok && r.fiveWin === 'b'){ restoreState(snap); return a; }
+    restoreState(snap);
+  }
+  // 2. 상대 4연속 차단
+  const block = findBlock4(list, 'w');
+  if(block) return block;
+  // 3. 30% 확률 체크
+  if(Math.random() < 0.3){
+    for(const a of list){
+      const snap = snapshotState();
+      applyAction(a, {silent:true});
+      const giveCheck = isInCheck('w');
+      restoreState(snap);
+      if(giveCheck) return a;
+    }
+  }
+  return list[Math.floor(Math.random()*list.length)];
 }
 
-/* ============================================================
-   🤖 AI 엔진 — 휴리스틱 (미니맥스 업그레이드 예정)
-   AI는 항상 흑(b) 진영
-============================================================ */
-
-/* ── 평가 함수 ── */
-function countLine(board, color, r, c, dr, dc) {
-  // (r,c)에서 (dr,dc) 방향으로 연속된 color 기물 수와 양끝 열린 공간 반환
-  let cnt = 0, nr = r, nc = c;
-  while (inBounds(nr, nc) && board[nr][nc]?.color === color) { cnt++; nr+=dr; nc+=dc; }
-  const openFront = inBounds(nr, nc) && !board[nr][nc];
-  nr = r - dr; nc = c - dc;
-  while (inBounds(nr, nc) && board[nr][nc]?.color === color) { cnt++; nr-=dr; nc-=dc; }
-  const openBack  = inBounds(nr, nc) && !board[nr][nc];
-  return { cnt, open: (openFront ? 1 : 0) + (openBack ? 1 : 0) };
+function aiNormal(list){
+  // 1. 즉시 승
+  for(const a of list){
+    const snap = snapshotState();
+    const r = applyAction(a, {silent:true});
+    if(r.ok && (r.fiveWin === 'b' || r.checkmate === 'b')){ restoreState(snap); return a; }
+    restoreState(snap);
+  }
+  // 2. 상대 위협 차단
+  const block = findBlock4(list, 'w');
+  if(block) return block;
+  // 3. 평가 점수 상위 35% 중 랜덤
+  const scored = list.map(a => ({a, s: evaluateAction(a, 'b')}));
+  scored.sort((x,y)=> y.s - x.s);
+  const top = scored.slice(0, Math.max(1, Math.ceil(scored.length * 0.35)));
+  return top[Math.floor(Math.random()*top.length)].a;
 }
 
-function omokThreat(board, color) {
-  // 오목 위협 점수: 4연속=1000, 3연속=100, 2연속=10
+function aiHard(list){
+  // 1. 즉시 승
+  for(const a of list){
+    const snap = snapshotState();
+    const r = applyAction(a, {silent:true});
+    if(r.ok && (r.fiveWin === 'b' || r.checkmate === 'b')){ restoreState(snap); return a; }
+    restoreState(snap);
+  }
+  // 2. 상대 위협 차단
+  const block = findBlock4(list, 'w');
+  if(block) return block;
+  // 3. 2수 lookahead
+  const scored = [];
+  // 가지치기: 먼저 1수 평가로 상위 12개만 lookahead
+  const initial = list.map(a => ({a, s: evaluateAction(a, 'b')}));
+  initial.sort((x,y)=> y.s - x.s);
+  const cands = initial.slice(0, Math.min(12, initial.length));
+
+  for(const {a, s:s1} of cands){
+    const snap = snapshotState();
+    const r1 = applyAction(a, {silent:true});
+    if(!r1.ok){ restoreState(snap); continue; }
+    if(r1.fiveWin === 'b' || r1.checkmate === 'b'){ restoreState(snap); return a; }
+    // 상대 최선
+    const oppList = allLegalActions('w');
+    let worstForMe = -Infinity;
+    let bestOppScore = -Infinity;
+    let cutEarly = false;
+    for(const oa of oppList.slice(0, 18)){
+      const snap2 = snapshotState();
+      const r2 = applyAction(oa, {silent:true});
+      if(r2.ok){
+        let s2 = -evaluatePosition('b'); // 상대 입장 점수의 반대
+        // 상대가 즉시 승리하면 매우 안 좋음
+        if(r2.fiveWin === 'w' || r2.checkmate === 'w') s2 = -100000;
+        if(s2 > bestOppScore){ bestOppScore = s2; }
+      }
+      restoreState(snap2);
+      if(bestOppScore < -50000){ cutEarly=true; break; }
+    }
+    restoreState(snap);
+    const finalScore = s1 - (bestOppScore === -Infinity ? 0 : Math.max(0, -bestOppScore - s1));
+    // 단순 결합: 1수 평가 - 상대 최선 응수
+    const combined = s1 + (bestOppScore === -Infinity ? 0 : (-bestOppScore) * 0.5);
+    scored.push({a, s: combined});
+  }
+  scored.sort((x,y)=> y.s - x.s);
+  return scored.length ? scored[0].a : list[0];
+}
+
+// 4연속 위협 차단할 수 찾기
+function findBlock4(list, threatColor){
+  // 적이 4연속을 만들어두었는지 검사 → 있으면 그 자리에 둘 수 있는 액션 찾기
+  // 단순 휴리스틱: 적 색깔로 4연 + 양옆 빈칸 패턴 검사
   const dirs = [[0,1],[1,0],[1,1],[1,-1]];
-  const visited = new Set();
-  let score = 0;
-  for (let r=0; r<8; r++) for (let c=0; c<8; c++) {
-    if (!board[r][c] || board[r][c].color !== color) continue;
-    for (const [dr, dc] of dirs) {
-      const key = `${r},${c},${dr},${dc}`;
-      if (visited.has(key)) continue;
-      const { cnt, open } = countLine(board, color, r, c, dr, dc);
-      // 선분 위 모든 셀 visited 처리
-      for (let k=0; k<cnt; k++) visited.add(`${r+dr*k},${c+dc*k},${dr},${dc}`);
-      if (cnt >= 5) { score += 100000; continue; }
-      if (open === 0) continue; // 막힌 선은 위협 아님
-      if (cnt === 4) score += open === 2 ? 2000 : 800;
-      else if (cnt === 3) score += open === 2 ? 200  : 60;
-      else if (cnt === 2) score += open === 2 ? 20   : 5;
+  const threats = [];
+  for(let r=0;r<8;r++){
+    for(let c=0;c<8;c++){
+      for(const [dr,dc] of dirs){
+        // 4 연속 검사
+        const cells = [];
+        for(let i=0;i<4;i++){
+          const nr=r+dr*i, nc=c+dc*i;
+          if(!inBounds(nr,nc)) break;
+          cells.push([nr,nc]);
+        }
+        if(cells.length<4) continue;
+        const allMy = cells.every(([nr,nc]) => board[nr][nc] && board[nr][nc].color===threatColor);
+        if(!allMy) continue;
+        // 양 끝 빈칸
+        const before = [r-dr, c-dc];
+        const after = [r+dr*4, c+dc*4];
+        for(const [tr,tc] of [before, after]){
+          if(inBounds(tr,tc) && !board[tr][tc]) threats.push([tr,tc]);
+        }
+      }
     }
   }
+  if(!threats.length) return null;
+  // 위협 자리에 둘 수 있는 액션
+  for(const [tr,tc] of threats){
+    for(const a of list){
+      if(a.type === 'place' && a.r === tr && a.c === tc) return a;
+      if(a.type === 'move' && a.tr === tr && a.tc === tc) return a;
+    }
+  }
+  return null;
+}
+
+function evaluateAction(a, color){
+  const snap = snapshotState();
+  const r = applyAction(a, {silent:true});
+  let score = 0;
+  if(!r.ok){ restoreState(snap); return -99999; }
+  score = evaluatePosition(color);
+  // 즉시 승
+  if(r.fiveWin === color) score += 100000;
+  if(r.fiveWin === opp(color)) score -= 100000;
+  if(r.checkmate === color) score += 100000;
+  // 체크 보너스
+  if(isInCheck(opp(color))) score += 50;
+  // 자기 노출
+  if(isInCheck(color)) score -= 80;
+  restoreState(snap);
   return score;
 }
 
-function boardScore(board, hand, color) {
-  const opp = color === 'w' ? 'b' : 'w';
-  // 기물 가치
-  const VAL = { K:0, Q:90, R:50, B:35, N:30, P:10 };
-  let pieceScore = 0;
-  for (let r=0; r<8; r++) for (let c=0; c<8; c++) {
+function evaluatePosition(color){
+  let score = 0;
+  // 보드 기물
+  for(let r=0;r<8;r++) for(let c=0;c<8;c++){
     const p = board[r][c];
-    if (!p) continue;
-    const v = VAL[p.type] || 0;
-    pieceScore += p.color === color ? v : -v;
+    if(!p) continue;
+    const v = PIECE_VALUES[p.kind] || 0;
+    score += (p.color === color) ? v : -v;
   }
-  // 손패 가치 (배치 안 된 기물도 자산)
-  for (const [t, n] of Object.entries(hand[color]  || {})) pieceScore += (VAL[t]||0) * n * 0.5;
-  for (const [t, n] of Object.entries(hand[opp] || {})) pieceScore -= (VAL[t]||0) * n * 0.5;
+  // 손패
+  for(const k of Object.keys(hands.w)){
+    const v = (PIECE_VALUES[k] || 0) * 0.5;
+    score += hands[color][k] * v - hands[opp(color)][k] * v;
+  }
   // 오목 위협
-  const omokMy  = omokThreat(board, color);
-  const omokOpp = omokThreat(board, opp);
-  // 체크 보너스
-  const checkBonus = isInCheck(board, opp)  ?  50 : 0;
-  const checkPenal = isInCheck(board, color) ? -80 : 0;
-  return pieceScore + (omokMy - omokOpp * 1.2) + checkBonus + checkPenal;
+  score += countLineThreats(color) - countLineThreats(opp(color));
+  return score;
 }
 
-/* ── 모든 가능한 액션 수집 ── */
-function allActions(board, hand, color) {
-  const opp = color === 'w' ? 'b' : 'w';
-  const actions = [];
-
-  // 이동
-  for (let r=0; r<8; r++) for (let c=0; c<8; c++) {
-    if (!board[r][c] || board[r][c].color !== color) continue;
-    for (const {row:tr, col:tc} of legalMoves(board, r, c)) {
-      actions.push({ kind:'move', fromRow:r, fromCol:c, toRow:tr, toCol:tc });
-    }
-  }
-
-  // 배치
-  const kingOnBoard = !!findKing(board, color);
-  if (!kingOnBoard && hand[color]['K'] > 0) {
-    for (const {row, col} of legalPlacements(board, 'K', color)) {
-      actions.push({ kind:'place', type:'K', row, col });
-    }
-  } else if (kingOnBoard) {
-    for (const [type, cnt] of Object.entries(hand[color])) {
-      if (cnt <= 0 || type === 'K') continue;
-      for (const {row, col} of legalPlacements(board, type, color)) {
-        actions.push({ kind:'place', type, row, col });
+function countLineThreats(col){
+  const dirs = [[0,1],[1,0],[1,1],[1,-1]];
+  let total = 0;
+  for(let r=0;r<8;r++){
+    for(let c=0;c<8;c++){
+      for(const [dr,dc] of dirs){
+        let count=0;
+        for(let i=0;i<5;i++){
+          const nr=r+dr*i, nc=c+dc*i;
+          if(!inBounds(nr,nc)){ count=-99; break; }
+          const p = board[nr][nc];
+          if(!p){ continue; }
+          if(p.color===col) count++;
+          else { count=-99; break; }
+        }
+        if(count<0) continue;
+        if(count>=5) total += 100000;
+        else if(count===4) total += 2000;
+        else if(count===3) total += 200;
+        else if(count===2) total += 20;
       }
     }
   }
+  return total;
+}
 
-  // AI 자멸 방지: 연속 체크 한도 초과 수 및 자기 킹 위험 수 제거
-  return actions.filter(a => {
-    const { nb } = applyAction(board, hand, color, a);
-    // 자기 킹이 체크에 노출되면 제외 (오목 완성 제외)
-    if (isInCheck(nb, color) && !checkOmok(nb, color)) return false;
-    // 상대 킹에게 체크를 거는 수 — 연속 체크 초과 여부 확인
-    if (isInCheck(nb, opp)) {
-      const curConsec = consecCheckBy[color] || 0;
-      const curTotal  = totalCheckBy[color]  || 0;
-      // 3연속 체크 자멸 방지
-      if (curConsec + 1 >= MAX_CONSEC_CHECK) return false;
-      // 5회 총 체크 한도 방지
-      if (curTotal + 1 > MAX_TOTAL_CHECK) return false;
-    }
-    return true;
+// ===================================================================
+// 14. 사운드 (Web Audio)
+// ===================================================================
+let _audCtx = null;
+function audio(){
+  if(!_audCtx){ try{ _audCtx = new (window.AudioContext||window.webkitAudioContext)(); }catch(e){return null;} }
+  return _audCtx;
+}
+function playSnd(type){
+  const ctx = audio(); if(!ctx) return;
+  if(ctx.state === 'suspended') ctx.resume();
+  const now = ctx.currentTime;
+  const o = ctx.createOscillator();
+  const g = ctx.createGain();
+  o.connect(g); g.connect(ctx.destination);
+  if(type === 'move' || type === 'place'){
+    o.type = 'square';
+    o.frequency.setValueAtTime(220, now);
+    g.gain.setValueAtTime(0.18, now);
+    g.gain.exponentialRampToValueAtTime(0.001, now + 0.07);
+    o.start(now); o.stop(now + 0.08);
+  } else if(type === 'capture'){
+    o.type = 'square';
+    o.frequency.setValueAtTime(180, now);
+    g.gain.setValueAtTime(0.22, now);
+    g.gain.exponentialRampToValueAtTime(0.001, now + 0.1);
+    o.start(now); o.stop(now + 0.11);
+    const o2 = ctx.createOscillator();
+    const g2 = ctx.createGain();
+    o2.connect(g2); g2.connect(ctx.destination);
+    o2.type='square'; o2.frequency.setValueAtTime(150, now+0.06);
+    g2.gain.setValueAtTime(0.18, now+0.06);
+    g2.gain.exponentialRampToValueAtTime(0.001, now+0.16);
+    o2.start(now+0.06); o2.stop(now+0.17);
+  } else if(type === 'end'){
+    o.type='triangle';
+    o.frequency.setValueAtTime(330, now);
+    o.frequency.exponentialRampToValueAtTime(110, now+0.4);
+    g.gain.setValueAtTime(0.2, now);
+    g.gain.exponentialRampToValueAtTime(0.001, now+0.5);
+    o.start(now); o.stop(now+0.5);
+  } else if(type === 'chat'){
+    o.type='sine';
+    o.frequency.setValueAtTime(660, now);
+    g.gain.setValueAtTime(0.1, now);
+    g.gain.exponentialRampToValueAtTime(0.001, now+0.15);
+    o.start(now); o.stop(now+0.16);
+  }
+}
+
+// ===================================================================
+// 15. 네트워크 (Firebase + PeerJS)
+// ===================================================================
+const FB_CONFIG = {
+  apiKey: "AIzaSyB1xN9bp9HsmVmGTHwTIEzKxlbS0RhuwLY",
+  authDomain: "ooooomok-285e6.firebaseapp.com",
+  databaseURL: "https://ooooomok-285e6-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId: "ooooomok-285e6",
+  appId: "1:1:web:1"
+};
+var _fbDb = null;
+var _fbAuth = null;
+function fbInit(){
+  if(_fbDb) return;
+  const app = firebase.apps.length ? firebase.app() : firebase.initializeApp(FB_CONFIG);
+  _fbDb = firebase.database();
+  _fbAuth = firebase.auth();
+}
+
+let _peer = null;
+let _peerConn = null;
+let _specWatcher = null;
+
+function netInit(){
+  if(!IS_NET && !IS_SPEC) return;
+  fbInit();
+
+  if(IS_SPEC){
+    initSpectator();
+    return;
+  }
+
+  myRoomCode = ROOM_CODE; // 이탈 시 방 정리
+
+  if(NET_ROLE === 'host'){
+    initHost();
+  } else if(NET_ROLE === 'guest'){
+    initGuest();
+  }
+}
+
+function initHost(){
+  document.getElementById('connectModal').classList.add('show');
+  document.getElementById('connectMsg').textContent = '게스트 입장을 기다립니다...';
+  // PeerID = ROOM_CODE
+  _peer = new Peer(ROOM_CODE, {
+    config:{ 'iceServers':[ {urls:'stun:stun.l.google.com:19302'}, {urls:'stun:stun1.l.google.com:19302'} ]}
+  });
+  _peer.on('open', id => {
+    console.log('Host PeerID:', id);
+  });
+  _peer.on('connection', conn => {
+    _peerConn = conn;
+    setupConn(conn);
+  });
+  _peer.on('error', e => {
+    console.error('Peer error', e);
+    showFlash('연결 오류: ' + e.type);
   });
 }
 
-/* ── 액션 적용 후 보드 반환 ── */
-function applyAction(board, hand, color, action) {
-  const nb = copyBoard(board);
-  const nh = { w: {...hand.w}, b: {...hand.b} };
-  if (action.kind === 'move') {
-    const captured = nb[action.toRow][action.toCol];
-    nb[action.toRow][action.toCol] = nb[action.fromRow][action.fromCol];
-    nb[action.fromRow][action.fromCol] = null;
-    // 잡은 기물은 내 손패로 (킹 제외)
-    if (captured && captured.type !== 'K') {
-      nh[color][captured.type] = (nh[color][captured.type] || 0) + 1;
-    }
+function initGuest(){
+  document.getElementById('connectModal').classList.add('show');
+  document.getElementById('connectMsg').textContent = '호스트와 연결을 시도합니다...';
+  _peer = new Peer({
+    config:{ 'iceServers':[ {urls:'stun:stun.l.google.com:19302'}, {urls:'stun:stun1.l.google.com:19302'} ]}
+  });
+  _peer.on('open', id => {
+    tryConnect(0);
+  });
+  _peer.on('error', e => console.error('Peer error', e));
+}
+
+function tryConnect(attempt){
+  if(attempt >= 6){
+    document.getElementById('connectMsg').textContent = '연결 실패. 호스트가 없거나 방이 닫혔습니다.';
+    return;
+  }
+  const conn = _peer.connect(ROOM_CODE, { reliable:true });
+  let opened = false;
+  conn.on('open', () => {
+    opened = true;
+    _peerConn = conn;
+    setupConn(conn);
+  });
+  setTimeout(() => {
+    if(!opened) tryConnect(attempt+1);
+  }, 1500);
+}
+
+function setupConn(conn){
+  conn.on('data', data => onPeerMessage(data));
+  conn.on('close', () => {
+    if(!gameOver) showFlash('상대 연결이 끊겼습니다');
+  });
+  conn.on('error', e => console.error('Conn error',e));
+
+  // 연결 완료 → 인사
+  document.getElementById('connectModal').classList.remove('show');
+  document.getElementById('chatFab').style.display = '';
+  document.getElementById('forfeitBtn').style.display = '';
+  // 게임 시작 시점에 myRoomCode null로 (페이지 이동 보호)
+  // 단, 이 페이지를 떠날 때 방 삭제는 여전히 필요
+
+  // 인사 교환
+  if(NET_ROLE === 'host'){
+    sendToPeer({
+      t:'HELLO',
+      hostNick: MY_NICK_P, hostElo: MY_ELO_P, hostUid: MY_UID,
+      hand: INIT_HAND
+    });
   } else {
-    nb[action.row][action.col] = { color, type: action.type };
-    nh[color][action.type]--;
+    sendToPeer({
+      t:'HELLO',
+      guestNick: MY_NICK_P, guestElo: MY_ELO_P, guestUid: MY_UID
+    });
   }
-  return { nb, nh };
+
+  // gameActive 마크 (호스트만)
+  if(NET_ROLE === 'host'){
+    _fbDb.ref('rooms/'+ROOM_CODE).update({ gameActive:true }).catch(()=>{});
+  }
 }
 
-/* ── 액션 우선순위 정렬 (pruning 효율화) ── */
-function sortActions(actions, board, hand, color) {
-  return actions.map(a => {
-    const { nb, nh } = applyAction(board, hand, color, a);
-    const s = boardScore(nb, nh, color);
-    return { a, s };
-  }).sort((x, y) => y.s - x.s).map(x => x.a);
-}
-
-/* ── 쉬움: 랜덤 + 즉각 위협만 처리 ── */
-function aiEasy(board, hand) {
-  const color = AI_COLOR;
-  const opp   = 'w';
-  const actions = allActions(board, hand, color);
-  if (actions.length === 0) return null;
-
-  // 즉시 오목 완성 가능하면 무조건 실행
-  for (const a of actions) {
-    const { nb } = applyAction(board, hand, color, a);
-    if (checkOmok(nb, color)) return a;
-  }
-  // 상대 오목 4연속 막기
-  for (const a of actions) {
-    const { nb } = applyAction(board, hand, color, a);
-    if (!checkOmok(nb, opp) && omokThreat(board, opp) >= 800) {
-      const after = applyAction(nb, hand, opp, {kind:'move',fromRow:0,fromCol:0,toRow:0,toCol:0});
-      if (omokThreat(nb, opp) < 800) return a;
-    }
-  }
-  // 체크 걸기 우선 (30% 확률)
-  if (Math.random() < 0.3) {
-    for (const a of actions) {
-      const { nb } = applyAction(board, hand, color, a);
-      if (isInCheck(nb, opp)) return a;
-    }
-  }
-  // 나머지는 랜덤
-  return actions[Math.floor(Math.random() * actions.length)];
-}
-
-/* ── 보통: 탐욕적 1수 선택 + 위협 처리 ── */
-function aiNormal(board, hand) {
-  const color = AI_COLOR;
-  const opp   = 'w';
-  const actions = allActions(board, hand, color);
-  if (actions.length === 0) return null;
-
-  // 즉시 오목
-  for (const a of actions) {
-    const { nb } = applyAction(board, hand, color, a);
-    if (checkOmok(nb, color)) return a;
-  }
-  // 즉시 체크메이트
-  for (const a of actions) {
-    const { nb, nh } = applyAction(board, hand, color, a);
-    if (!hasAnyLegalAction(nb, opp, nh)) return a;
-  }
-  // 상대 오목 위협 차단
-  const oppThreat = omokThreat(board, opp);
-  if (oppThreat >= 200) {
-    let best = null, bestBlock = -Infinity;
-    for (const a of actions) {
-      const { nb, nh } = applyAction(board, hand, color, a);
-      const afterThreat = omokThreat(nb, opp);
-      if (afterThreat < bestBlock || best === null) { bestBlock = afterThreat; best = a; }
-    }
-    if (bestBlock < oppThreat * 0.5) return best;
-  }
-  // 최고 점수 액션 (약간의 랜덤성 추가)
-  const sorted = sortActions(actions, board, hand, color);
-  const topN = sorted.slice(0, Math.max(1, Math.floor(sorted.length * 0.35)));
-  return topN[Math.floor(Math.random() * topN.length)];
-}
-
-/* ── 어려움: 2수 lookahead + 강한 위협 처리 ── */
-function aiHard(board, hand) {
-  const color = AI_COLOR;
-  const opp   = 'w';
-  const actions = allActions(board, hand, color);
-  if (actions.length === 0) return null;
-
-  // 즉시 오목
-  for (const a of actions) {
-    const { nb } = applyAction(board, hand, color, a);
-    if (checkOmok(nb, color)) return a;
-  }
-  // 즉시 체크메이트
-  for (const a of actions) {
-    const { nb, nh } = applyAction(board, hand, color, a);
-    if (!hasAnyLegalAction(nb, opp, nh)) return a;
-  }
-
-  // 2수 lookahead
-  let bestScore = -Infinity, bestAction = null;
-  const sorted = sortActions(actions, board, hand, color).slice(0, 18);
-
-  for (const a of sorted) {
-    const { nb, nh } = applyAction(board, hand, color, a);
-
-    // 상대 최선 응수 중 내게 가장 불리한 것을 상정
-    const oppActions = allActions(nb, nh, opp).slice(0, 12);
-    let worstForMe = Infinity;
-
-    if (oppActions.length === 0) {
-      // 상대 수 없음 → 매우 유리
-      worstForMe = 99999;
+function onPeerMessage(data){
+  if(!data || !data.t) return;
+  if(data.t === 'HELLO'){
+    if(NET_ROLE === 'host'){
+      // 게스트 정보 받음
+      _gameRatingInfo = {
+        whiteUid: MY_UID, whiteElo: MY_ELO_P, whiteNick: MY_NICK_P,
+        blackUid: data.guestUid, blackElo: data.guestElo, blackNick: data.guestNick
+      };
+      document.getElementById('oppName').textContent = data.guestNick + ` (${data.guestElo})`;
+      document.getElementById('oppMeta').textContent = '흑 ELO ' + data.guestElo;
     } else {
-      for (const oa of oppActions) {
-        const { nb: nb2, nh: nh2 } = applyAction(nb, nh, opp, oa);
-        const s = boardScore(nb2, nh2, color);
-        if (s < worstForMe) worstForMe = s;
+      _gameRatingInfo = {
+        whiteUid: data.hostUid, whiteElo: data.hostElo, whiteNick: data.hostNick,
+        blackUid: MY_UID, blackElo: MY_ELO_P, blackNick: MY_NICK_P
+      };
+      document.getElementById('oppName').textContent = data.hostNick + ` (${data.hostElo})`;
+      document.getElementById('oppMeta').textContent = '백 ELO ' + data.hostElo;
+      // 게스트는 호스트 손패 설정을 받음 (URL과 같지만 동기화)
+      if(data.hand){
+        hands.w = {...DEFAULT_HAND, ...data.hand};
+        hands.b = {...DEFAULT_HAND, ...data.hand};
+        renderAll();
       }
     }
-
-    if (worstForMe > bestScore) { bestScore = worstForMe; bestAction = a; }
+    publishGameState();
+    startTimerIfNeeded();
+  } else if(data.t === 'MOVE'){
+    // 상대가 둔 수 적용
+    const r = applyAction(data.action);
+    if(!r.ok){ console.error('상대 액션 실패', r); return; }
+    if(data.action.type === 'place') playSnd('place');
+    else playSnd('move');
+    renderAll();
+    if(NET_ROLE === 'host') publishGameState();
+    postMoveCheck(r);
+  } else if(data.t === 'CHAT'){
+    addChatMsg(data.from || '상대', data.msg, false);
+    playSnd('chat');
+    if(!_chatOpen){
+      _chatUnread++;
+      updateChatBadge();
+    }
+  } else if(data.t === 'REMATCH_REQ'){
+    document.getElementById('rematchAskMsg').textContent = `${data.from || '상대'}가 리매치를 요청했습니다.`;
+    document.getElementById('rematchAskModal').classList.add('show');
+  } else if(data.t === 'REMATCH_REPLY'){
+    if(data.accept) doRematch();
+    else { showFlash('상대가 리매치를 거절했습니다'); addChatMsg('시스템','상대가 리매치를 거절했습니다',null,true); }
+  } else if(data.t === 'FORFEIT'){
+    if(!gameOver){
+      const winner = MY_COLOR;
+      endGame('🏳','상대 기권', `${data.from || '상대'}가 기권했습니다.`, winner);
+    }
+  } else if(data.t === 'END'){
+    // 다른 쪽에서 종료 시 동기화 (이미 종료됐을 수 있음)
   }
-
-  return bestAction || sorted[0];
 }
 
-/* ── AI 메인 진입점 ── */
-let aiThinking = false;
+function sendToPeer(obj){
+  if(_peerConn && _peerConn.open){
+    try{ _peerConn.send(obj); }catch(e){console.error(e);}
+  }
+}
 
-function aiDoMove() {
-  if (aiThinking || gameOver || turn !== AI_COLOR) return;
-  aiThinking = true;
-  setStatus('🤖 AI 생각 중...');
+function publishGameState(){
+  if(NET_ROLE !== 'host' || !_fbDb) return;
+  const state = {
+    board: board.map(row => row.map(c => c ? {...c} : null)),
+    hands: { w:{...hands.w}, b:{...hands.b} },
+    turn, kingPlaced:{...kingPlaced},
+    lastMove: lastMove ? {...lastMove} : null,
+    checkStreak:{...checkStreak},
+    totalChecks:{...totalChecks},
+    rating: _gameRatingInfo
+  };
+  _fbDb.ref('rooms/'+ROOM_CODE+'/gameState').set(JSON.stringify(state)).catch(()=>{});
+}
 
-  setTimeout(() => {
-    let action = null;
-    try {
-      if      (AI_DIFF === 'easy')   action = aiEasy(board, hand);
-      else if (AI_DIFF === 'normal') action = aiNormal(board, hand);
-      else                           action = aiHard(board, hand);
-    } catch(e) {
-      console.error('AI 오류:', e);
-    }
-
-    aiThinking = false;
-
-    if (!action) {
-      endGame('🏆', '백 승리!', 'AI가 둘 수 없습니다.');
+// 관전자
+function initSpectator(){
+  document.getElementById('chatFab').style.display = '';
+  document.getElementById('forfeitBtn').style.display = 'none';
+  document.getElementById('chatInput').disabled = true;
+  document.getElementById('chatInput').placeholder = '관전 모드 (읽기 전용)';
+  // chatLog 구독
+  _fbDb.ref('rooms/'+ROOM_CODE+'/chatLog').on('value', snap => {
+    const log = JSON.parse(snap.val() || '[]');
+    document.getElementById('chatMsgs').innerHTML = '';
+    log.forEach(m => addChatMsg(m.from, m.msg, false, m.sys));
+  });
+  _fbDb.ref('rooms/'+ROOM_CODE+'/gameState').on('value', snap => {
+    const raw = snap.val();
+    if(!raw){
+      // 방이 사라짐 → 종료 처리
+      if(!gameOver) endGame('📛','방 종료', '방이 닫혔습니다.', null);
       return;
     }
-
-    // 선택된 수 실행 전 최종 안전 검증
-    // (lookahead 중 카운터를 실제 반영 안 하므로 여기서 재확인)
-    const { nb } = applyAction(board, hand, AI_COLOR, action);
-    const opp = 'w';
-
-    // 자기 킹 노출 확인
-    if (isInCheck(nb, AI_COLOR) && !checkOmok(nb, AI_COLOR)) {
-      // 안전한 수로 폴백
-      const safe = allActions(board, hand, AI_COLOR).find(a => {
-        const { nb: nb2 } = applyAction(board, hand, AI_COLOR, a);
-        return !isInCheck(nb2, AI_COLOR) || checkOmok(nb2, AI_COLOR);
-      });
-      if (!safe) { endGame('🏆', '백 승리!', 'AI 안전한 수 없음'); return; }
-      action = safe;
-    }
-
-    // 연속 체크 자멸 확인
-    if (isInCheck(nb, opp)) {
-      if (consecCheckBy[AI_COLOR] + 1 >= MAX_CONSEC_CHECK) {
-        // 체크 안 거는 수로 폴백
-        const noCheck = allActions(board, hand, AI_COLOR).find(a => {
-          const { nb: nb2 } = applyAction(board, hand, AI_COLOR, a);
-          return !isInCheck(nb2, opp);
-        });
-        if (noCheck) action = noCheck;
-        // 없으면 그냥 진행 (자멸 불가피)
+    try{
+      const s = JSON.parse(raw);
+      board = s.board;
+      hands = s.hands;
+      turn = s.turn;
+      kingPlaced = s.kingPlaced;
+      lastMove = s.lastMove;
+      checkStreak = s.checkStreak;
+      totalChecks = s.totalChecks;
+      _gameRatingInfo = s.rating;
+      if(_gameRatingInfo){
+        document.getElementById('myName').textContent = _gameRatingInfo.whiteNick + ` (${_gameRatingInfo.whiteElo})`;
+        document.getElementById('myMeta').textContent = '백';
+        document.getElementById('oppName').textContent = _gameRatingInfo.blackNick + ` (${_gameRatingInfo.blackElo})`;
+        document.getElementById('oppMeta').textContent = '흑';
       }
-      // 총 체크 횟수 초과 확인
-      if (totalCheckBy[AI_COLOR] >= MAX_TOTAL_CHECK) {
-        const noCheck = allActions(board, hand, AI_COLOR).find(a => {
-          const { nb: nb2 } = applyAction(board, hand, AI_COLOR, a);
-          return !isInCheck(nb2, opp);
-        });
-        if (noCheck) action = noCheck;
-      }
-    }
-
-    if (action.kind === 'move') {
-      doMove(action.fromRow, action.fromCol, action.toRow, action.toCol);
-    } else {
-      doPlace(action.type, action.row, action.col);
-    }
-  }, AI_DIFF === 'hard' ? 400 : 150);
-}
-function applyRemoteGameState(s) {
-  if (applyingRemote) return;
-  applyingRemote = true;
-
-  board            = JSON.parse(s.board);
-  turn             = s.turn;
-  hand.w           = JSON.parse(s.handW);
-  hand.b           = JSON.parse(s.handB);
-  consecCheckBy.w  = s.consecW;  consecCheckBy.b = s.consecB;
-  totalCheckBy.w   = s.totalW;   totalCheckBy.b  = s.totalB;
-  checkState.w     = s.checkW;   checkState.b    = s.checkB;
-  positionHistory  = JSON.parse(s.posHistory);
-  lastMove         = JSON.parse(s.lastMove);
-  gameOver         = s.gameOver;
-  pendingPromo     = JSON.parse(s.pendingPromo);
-
-  // 이동 기록 동기화
-  const list = document.getElementById('history-list');
-  if (list) {
-    list.innerHTML = '';
-    JSON.parse(s.moveLog).forEach(item => {
-      const el = document.createElement('div');
-      el.className = item.cls; el.textContent = item.txt;
-      list.appendChild(el);
-    });
-    list.parentElement.scrollTop = list.parentElement.scrollHeight;
-  }
-
-  // 게임 종료 처리
-  if (s.gameOver && s.endTitle) {
-    document.getElementById('end-emoji').textContent = s.endEmoji;
-    document.getElementById('end-title').textContent = s.endTitle;
-    document.getElementById('end-desc').textContent  = s.endDesc;
-    document.getElementById('end-overlay').classList.add('show');
-  }
-
-  selectedHandPiece = null; selectedCell = null; highlights = [];
-
-  // 상태 메시지
-  if (!gameOver) {
-    let msg = (turn === myColor) ? '내 턴!' : '상대방 턴 대기 중...';
-    if (turn === myColor && !findKing(board, turn))    msg = '내 턴 — 킹 배치';
-    if (turn === myColor && isInCheck(board, turn))    msg = '내 턴 ⚠ 체크!';
-    setStatus(msg);
-  }
-
-  renderAll();
-  applyingRemote = false;
+      renderAll();
+    }catch(e){ console.error(e); }
+  });
+  // 방 자체 감시 (started/gameActive)
+  _fbDb.ref('rooms/'+ROOM_CODE).on('value', snap => {
+    const r = snap.val();
+    if(!r){ if(!gameOver) endGame('📛','방 종료','게임이 종료되었습니다.', null); }
+  });
 }
 
-/* ============================================================
-   채팅 기능
-============================================================ */
-function toggleChat() {
-  chatVisible = !chatVisible;
-  document.getElementById('chat-panel').classList.toggle('show', chatVisible);
-  if (chatVisible) {
-    unreadCount = 0;
-    updateUnreadBadge();
-    document.getElementById('chat-input').focus();
-  }
-}
+// ===================================================================
+// 16. 채팅
+// ===================================================================
+let _chatOpen = false;
+let _chatUnread = 0;
+let _chatLog = [];
 
-function sendChat() {
-  const input = document.getElementById('chat-input');
-  const msg = input.value.trim();
-  if (!msg || !IS_ONLINE || !netReady) return;
-  addChatMessage(msg, 'mine');
-  netSend({ type: 'CHAT', msg });
-  input.value = '';
+function toggleChat(){
+  _chatOpen = !_chatOpen;
+  document.getElementById('chatPanel').classList.toggle('show', _chatOpen);
+  if(_chatOpen){ _chatUnread = 0; updateChatBadge(); }
 }
-
-function addChatMessage(msg, type) {
-  const container = document.getElementById('chat-messages');
+function updateChatBadge(){
+  const b = document.getElementById('chatBadge');
+  if(_chatUnread > 0){ b.textContent = _chatUnread; b.style.display=''; }
+  else b.style.display = 'none';
+}
+function addChatMsg(from, msg, mine, sys){
   const el = document.createElement('div');
-  el.className = 'chat-msg ' + type;
-  el.textContent = msg;
-  container.appendChild(el);
-  container.scrollTop = container.scrollHeight;
-  if (!chatVisible && type === 'theirs') {
-    unreadCount++;
-    updateUnreadBadge();
+  el.className = 'cm ' + (sys?'sys':(mine?'me':'them'));
+  if(sys){ el.textContent = msg; }
+  else el.innerHTML = `<span class="who">${escapeHtml(from)}</span><span>${escapeHtml(msg)}</span>`;
+  document.getElementById('chatMsgs').appendChild(el);
+  document.getElementById('chatMsgs').scrollTop = 1e9;
+  _chatLog.push({from, msg, sys});
+  if(NET_ROLE === 'host'){
+    _fbDb && _fbDb.ref('rooms/'+ROOM_CODE+'/chatLog').set(JSON.stringify(_chatLog)).catch(()=>{});
   }
 }
-
-function updateUnreadBadge() {
-  const badge = document.getElementById('chat-unread');
-  badge.textContent = unreadCount;
-  badge.classList.toggle('show', unreadCount > 0);
+function sendChat(){
+  if(IS_SPEC) return;
+  const inp = document.getElementById('chatInput');
+  const msg = inp.value.trim();
+  if(!msg) return;
+  addChatMsg(MY_NICK_P, msg, true);
+  sendToPeer({ t:'CHAT', from:MY_NICK_P, msg });
+  inp.value = '';
 }
+function escapeHtml(s){return String(s).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c]);}
+document.getElementById('chatInput').addEventListener('keydown', e => { if(e.key==='Enter') sendChat(); });
 
-// 채팅 입력 이벤트
-document.getElementById('chat-input').addEventListener('keypress', e => {
-  if (e.key === 'Enter') sendChat();
-});
+// ===================================================================
+// 17. 타이머
+// ===================================================================
+let _timerStart = 0;
+let _timerInterval = null;
+let _wTimeLeft = 0;
+let _bTimeLeft = 0;
 
-// 페이지 닫거나 이탈 시 방 삭제
-window.addEventListener('beforeunload', () => {
-  cleanupRoom(NET_ROOM);
-});
-
-/* ============================================================
-   타이머 기능
-============================================================ */
-function resetTimers() {
-  const timeLimit = parseInt(roomTimeLimit);
-  whiteTimeRemaining = timeLimit;
-  blackTimeRemaining = timeLimit;
-  updateTimerDisplay();
+function startTimerIfNeeded(){
+  if(TIME_LIMIT <= 0) return;
+  document.getElementById('myTimer').style.display = '';
+  document.getElementById('oppTimer').style.display = '';
+  _wTimeLeft = TIME_LIMIT;
+  _bTimeLeft = TIME_LIMIT;
+  _timerStart = Date.now();
+  if(_timerInterval) clearInterval(_timerInterval);
+  _timerInterval = setInterval(updateTimer, 200);
+  updateTimer();
 }
-
-function startTimer() {
-  if (roomTimeLimit === 'unlimited' || gameOver) return;
-  stopTimer();
-  timerInterval = setInterval(() => {
-    if (turn === 'w') whiteTimeRemaining--;
-    else blackTimeRemaining--;
-    updateTimerDisplay();
-    
-    // 시간 초과 → 현재 플레이어 패배
-    const timeRemaining = turn === 'w' ? whiteTimeRemaining : blackTimeRemaining;
-    if (timeRemaining <= 0) {
-      stopTimer();
-      const loser = turn === 'w' ? '백' : '흑';
-      const winner = turn === 'w' ? '흑' : '백';
-      endGame('⏱', winner + ' 승리!', loser + ' 진영의 시간이 끝났습니다.');
-      if (IS_ONLINE) netSend({ type: 'STATE', payload: serializeGameState() });
-    }
-  }, 1000);
-}
-
-function stopTimer() {
-  if (timerInterval) {
-    clearInterval(timerInterval);
-    timerInterval = null;
-  }
-}
-
-function updateTimerDisplay() {
-  const formatTime = (sec) => {
-    if (sec <= 0) return '시간초과';
-    if (sec > 3600) return '∞';
-    const h = Math.floor(sec / 3600);
-    const m = Math.floor((sec % 3600) / 60);
-    const s = sec % 60;
-    if (h > 0) return `${h}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
-    return `${m}:${String(s).padStart(2,'0')}`;
+function updateTimer(){
+  if(gameOver){ clearInterval(_timerInterval); return; }
+  const elapsed = (Date.now() - _timerStart) / 1000;
+  const myLeft = TIME_LIMIT - elapsed;
+  // 1턴당 시간 제한이라 해석 → 매 턴 시작 시 리셋
+  // (단순화: 본인 차례에서 elapsed로 카운트다운)
+  // 더 정확한 구현을 위해 turn 변경 시 _timerStart 리셋
+  const turnLeft = Math.max(0, TIME_LIMIT - elapsed);
+  const fmt = s => {
+    s = Math.max(0, Math.ceil(s));
+    const m = Math.floor(s/60), x = s%60;
+    return (m<10?'0':'')+m+':'+(x<10?'0':'')+x;
   };
-  
-  const whiteDisplay = document.getElementById('white-timer-display');
-  const blackDisplay = document.getElementById('black-timer-display');
-  const whiteTimer = document.getElementById('white-timer');
-  const blackTimer = document.getElementById('black-timer');
-  
-  whiteDisplay.textContent = roomTimeLimit === 'unlimited' ? '∞' : formatTime(whiteTimeRemaining);
-  blackDisplay.textContent = roomTimeLimit === 'unlimited' ? '∞' : formatTime(blackTimeRemaining);
-  
-  // 활성 타이머에만 warning 클래스 추가
-  if (roomTimeLimit !== 'unlimited') {
-    whiteTimer.classList.toggle('active', turn === 'w' && !gameOver);
-    blackTimer.classList.toggle('active', turn === 'b' && !gameOver);
-    if (turn === 'w' && whiteTimeRemaining <= 10) whiteDisplay.classList.add('warning');
-    else whiteDisplay.classList.remove('warning');
-    if (turn === 'b' && blackTimeRemaining <= 10) blackDisplay.classList.add('warning');
-    else blackDisplay.classList.remove('warning');
-  }
-}
-
-function pauseTimer() {
-  stopTimer();
-}
-
-function resumeTimer() {
-  if (roomTimeLimit !== 'unlimited' && !gameOver && !applyingRemote) {
-    startTimer();
-  }
-}
-
-/* ============================================================
-   리매치 기능
-============================================================ */
-function requestRematch() {
-  if (!IS_ONLINE || !netReady || rematchPending) return;
-  rematchPending = true;
-  netSend({ type: 'REMATCH_REQUEST' });
-  setStatus('리매치 요청 중...');
-}
-
-function showRematchModal() {
-  document.getElementById('rematch-title').textContent = '리매치 요청';
-  document.getElementById('rematch-desc').textContent = '상대방이 리매치를 요청했습니다.';
-  document.getElementById('rematch-overlay').classList.add('show');
-}
-
-function answerRematch(accepted) {
-  netSend({ type: 'REMATCH_RESPONSE', accepted });
-  document.getElementById('rematch-overlay').classList.remove('show');
-  if (accepted) {
-    // 수락 시 게임 재시작
-    document.getElementById('end-overlay').classList.remove('show');
-    initGame();
-    if (NET_ROLE === 'host') {
-      netSend({ type: 'STATE', payload: serializeGameState() });
-    }
+  // 본인 카드 시간만 카운트
+  if(turn === MY_COLOR || IS_LOCAL){
+    const t = document.getElementById( (IS_LOCAL ? (turn===MY_COLOR?'myTimer':'oppTimer') : 'myTimer') );
+    if(t){ t.textContent = fmt(turnLeft); t.classList.toggle('warn', turnLeft < 10); }
+    const otherT = document.getElementById( (IS_LOCAL ? (turn===MY_COLOR?'oppTimer':'myTimer') : 'oppTimer') );
+    if(otherT){ otherT.textContent = fmt(TIME_LIMIT); otherT.classList.remove('warn'); }
   } else {
-    setStatus('리매치를 거절했습니다.');
+    document.getElementById('oppTimer').textContent = fmt(turnLeft);
+    document.getElementById('oppTimer').classList.toggle('warn', turnLeft < 10);
+    document.getElementById('myTimer').textContent = fmt(TIME_LIMIT);
+  }
+  if(turnLeft <= 0){
+    clearInterval(_timerInterval);
+    const loser = turn;
+    endGame('⏱','시간 초과', `${loser==='w'?'백':'흑'}의 시간이 초과되었습니다.`, opp(loser));
   }
 }
+
+// 차례 변경 시 타이머 리셋
+const _origApply = applyAction;
+// hook은 복잡하므로 finalizeAfterMove 안에서 호출하도록 수정
+// 간단하게: turn 변경을 감지하여 리셋
+let _lastTurn = turn;
+function watchTurnForTimer(){
+  if(_lastTurn !== turn){
+    _lastTurn = turn;
+    _timerStart = Date.now();
+  }
+}
+setInterval(watchTurnForTimer, 100);
+
+// ===================================================================
+// 18. 리매치 / 기권 / 로비 이동
+// ===================================================================
+function requestRematch(){
+  if(IS_SPEC) return;
+  sendToPeer({ t:'REMATCH_REQ', from: MY_NICK_P });
+  document.getElementById('rematchBtn').textContent = '요청 보냄...';
+  document.getElementById('rematchBtn').disabled = true;
+}
+function rematchReply(accept){
+  document.getElementById('rematchAskModal').classList.remove('show');
+  sendToPeer({ t:'REMATCH_REPLY', accept });
+  if(accept) doRematch();
+}
+function doRematch(){
+  // 상태 초기화
+  board = makeEmptyBoard();
+  hands = { w:{...INIT_HAND}, b:{...INIT_HAND} };
+  turn = 'w';
+  kingPlaced = { w:false, b:false };
+  lastMove = null;
+  moveHistory = [];
+  checkStreak = { w:0, b:0 };
+  totalChecks = { w:0, b:0 };
+  gameOver = false;
+  SEL = null; HIGHLIGHTS = [];
+  document.getElementById('endModal').classList.remove('show');
+  document.getElementById('rematchBtn').disabled = false;
+  document.getElementById('rematchBtn').textContent = '🔄 리매치';
+  if(TIME_LIMIT > 0){ _wTimeLeft = _bTimeLeft = TIME_LIMIT; _timerStart = Date.now(); }
+  if(NET_ROLE === 'host'){
+    _fbDb && _fbDb.ref('rooms/'+ROOM_CODE).update({ gameActive:true }).catch(()=>{});
+    publishGameState();
+  }
+  renderAll();
+}
+
+function confirmForfeit(){
+  if(gameOver) return;
+  showConfirm('기권', '정말 기권하시겠습니까?', () => {
+    sendToPeer({ t:'FORFEIT', from: MY_NICK_P });
+    endGame('🏳','기권', '기권했습니다.', opp(MY_COLOR));
+  });
+}
+function confirmLeave(){
+  if(gameOver){ goLobby(); return; }
+  if(IS_SPEC){ goLobby(); return; }
+  showConfirm('로비 이동', '게임을 떠나면 기권 처리됩니다. 계속하시겠습니까?', () => {
+    if(IS_NET){
+      sendToPeer({ t:'FORFEIT', from: MY_NICK_P });
+      cleanupRoom();
+    }
+    goLobby();
+  });
+}
+function goLobby(){
+  cleanupRoom();
+  myRoomCode = null;
+  location.href = 'index.html';
+}
+function showConfirm(title, msg, onYes){
+  document.getElementById('confirmTitle').textContent = title;
+  document.getElementById('confirmMsg').textContent = msg;
+  document.getElementById('confirmModal').classList.add('show');
+  document.getElementById('confirmYes').onclick = () => {
+    closeConfirm(); onYes();
+  };
+}
+function closeConfirm(){ document.getElementById('confirmModal').classList.remove('show'); }
+
+function cleanupRoom(){
+  if(!IS_NET) return;
+  // 호스트/게스트 모두 방 삭제 가능
+  if(_fbDb && ROOM_CODE){
+    _fbDb.ref('rooms/'+ROOM_CODE).remove().catch(()=>{});
+  }
+  if(_peerConn) try{_peerConn.close();}catch(e){}
+  if(_peer) try{_peer.destroy();}catch(e){}
+}
+window.addEventListener('beforeunload', () => {
+  if(myRoomCode){
+    if(_fbDb) _fbDb.ref('rooms/'+myRoomCode).remove().catch(()=>{});
+  }
+});
+
+// ===================================================================
+// 19. 모바일 상대 손패 시트
+// ===================================================================
+function toggleOppSheet(){
+  document.getElementById('oppSheet').classList.toggle('show');
+}
+
+// ===================================================================
+// 20. 초기화
+// ===================================================================
+function init(){
+  // UI 초기 정보
+  document.getElementById('myName').textContent = MY_NICK_P + (IS_NET ? ` (${MY_ELO_P})` : '');
+  document.getElementById('myAv').textContent = (MY_COLOR === 'w' ? 'W' : 'B');
+  document.getElementById('myAv').className = 'av' + (MY_COLOR==='b'?' b':'');
+  document.getElementById('myMeta').textContent = MY_COLOR === 'w' ? '백' : '흑';
+
+  if(IS_AI){
+    document.getElementById('oppName').textContent = `AI (${DIFF==='easy'?'쉬움':DIFF==='hard'?'어려움':'보통'})`;
+    document.getElementById('oppMeta').textContent = '흑';
+    document.getElementById('modeLbl').textContent = 'AI 대전';
+  } else if(IS_LOCAL){
+    document.getElementById('oppName').textContent = '플레이어 2';
+    document.getElementById('oppMeta').textContent = '흑';
+    document.getElementById('modeLbl').textContent = '로컬 2인';
+  } else if(NET_ROLE === 'host'){
+    document.getElementById('oppName').textContent = '게스트 대기 중...';
+    document.getElementById('oppMeta').textContent = '흑';
+    document.getElementById('modeLbl').textContent = `방 ${ROOM_CODE} (호스트)`;
+  } else if(NET_ROLE === 'guest'){
+    document.getElementById('oppName').textContent = '호스트 연결 중...';
+    document.getElementById('oppMeta').textContent = '백';
+    document.getElementById('modeLbl').textContent = `방 ${ROOM_CODE} (게스트)`;
+  } else if(IS_SPEC){
+    document.getElementById('myName').textContent = '백';
+    document.getElementById('oppName').textContent = '흑';
+    document.getElementById('modeLbl').textContent = `방 ${ROOM_CODE} (관전)`;
+    document.getElementById('forfeitBtn').style.display = 'none';
+  }
+
+  if(IS_LOCAL || IS_AI){
+    if(TIME_LIMIT > 0) startTimerIfNeeded();
+  }
+
+  netInit();
+  renderAll();
+}
+init();
 </script>
 </body>
 </html>
