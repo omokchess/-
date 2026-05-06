@@ -80,6 +80,14 @@ html,body{overflow-x:hidden;max-width:100vw}
 .hp.sel{background:rgba(245,200,66,.2);border-color:var(--gold)}
 .hp.dis{opacity:.4;cursor:not-allowed}
 .hp .sym{font-size:22px;line-height:1;width:24px;text-align:center}
+.hp .sym.hp-w{color:#fff;text-shadow:
+  0 0 2px #000, 0 0 2px #000, 0 1px 1px #000, 0 -1px 1px #000, 1px 0 1px #000, -1px 0 1px #000}
+.hp .sym.hp-b{color:#1a1a1a;text-shadow:
+  0 0 2px #fff, 0 0 2px #fff, 0 1px 1px #fff, 0 -1px 1px #fff, 1px 0 1px #fff, -1px 0 1px #fff}
+.hp .sym.spec.hp-w{color:#fff;text-shadow:
+  0 0 3px #000, 0 0 3px #000, 0 0 4px #000, 0 1px 1px #000, 0 -1px 1px #000, 1px 0 1px #000, -1px 0 1px #000}
+.hp .sym.spec.hp-b{color:#1a1a1a;text-shadow:
+  0 0 3px #fff, 0 0 3px #fff, 0 0 4px #fff, 0 1px 1px #fff, 0 -1px 1px #fff, 1px 0 1px #fff, -1px 0 1px #fff}
 .hp .nm{font-size:12px;font-weight:600;flex:1}
 .hp .ct{font-weight:800;font-size:14px;color:var(--gold)}
 
@@ -101,11 +109,17 @@ html,body{overflow-x:hidden;max-width:100vw}
 .cell.last{background:rgba(245,200,66,.3)!important}
 .cell.check::before{content:'';position:absolute;inset:0;background:rgba(255,69,58,.4);border-radius:0;animation:checkpulse 1s infinite}
 @keyframes checkpulse{50%{background:rgba(255,69,58,.15)}}
-.cell .pc{position:relative;z-index:1;text-shadow:0 1px 2px rgba(0,0,0,.5)}
-.cell .pc.w{color:#fff}
-.cell .pc.b{color:#1a1a1a}
-.cell .pc.spec.w{color:#fff;text-shadow:0 0 3px #000,0 0 3px #000,0 0 3px #000}
-.cell .pc.spec.b{color:#1a1a1a;text-shadow:0 0 3px #fff,0 0 3px #fff,0 0 3px #fff}
+.cell .pc{position:relative;z-index:1}
+.cell .pc.w{color:#fff;text-shadow:
+  0 0 2px #000, 0 0 2px #000, 0 0 3px #000,
+  0 1px 1px #000, 0 -1px 1px #000, 1px 0 1px #000, -1px 0 1px #000}
+.cell .pc.b{color:#1a1a1a;text-shadow:
+  0 0 2px #fff, 0 0 2px #fff, 0 0 3px rgba(255,255,255,.6),
+  0 1px 1px #fff, 0 -1px 1px #fff, 1px 0 1px #fff, -1px 0 1px #fff}
+.cell .pc.spec.w{color:#fff;text-shadow:
+  0 0 3px #000, 0 0 3px #000, 0 0 4px #000, 0 1px 1px #000, 0 -1px 1px #000, 1px 0 1px #000, -1px 0 1px #000}
+.cell .pc.spec.b{color:#1a1a1a;text-shadow:
+  0 0 3px #fff, 0 0 3px #fff, 0 0 4px #fff, 0 1px 1px #fff, 0 -1px 1px #fff, 1px 0 1px #fff, -1px 0 1px #fff}
 
 .coord{position:absolute;font-size:9px;font-weight:700;color:#7a5e3a;pointer-events:none;z-index:2}
 .coord.f{bottom:1px;right:3px}
@@ -241,7 +255,7 @@ html,body{overflow-x:hidden;max-width:100vw}
     </div>
     <div class="tb-mid">FRONTIER</div>
     <div class="tb-right">
-      <span id="modeLbl" style="font-size:11px;color:var(--muted)"></span>
+      <span id="modeLbl" style="font-size:12px;color:var(--gold);font-weight:700;background:rgba(245,200,66,.1);padding:3px 8px;border-radius:6px;border:1px solid rgba(245,200,66,.3)"></span>
       <button class="tb-btn danger" onclick="confirmForfeit()" id="forfeitBtn" style="display:none">기권</button>
     </div>
   </div>
@@ -385,7 +399,10 @@ html,body{overflow-x:hidden;max-width:100vw}
 // 1. URL 파라미터 파싱 + 글로벌 상태
 // ===================================================================
 const Q = new URLSearchParams(location.search);
-const MODE      = Q.get('mode') || 'online';   // local | ai | online
+// 모드 결정: ?role=host/guest 같이 온라인 신호가 있으면 online, 없으면 ?mode 우선, 둘 다 없으면 local 기본
+const _explicitMode = Q.get('mode');
+const _hasRole = !!Q.get('role');
+const MODE      = _explicitMode || (_hasRole ? 'online' : 'local');   // local | ai | online
 const NET_ROLE  = Q.get('role') || null;       // host | guest | spectator
 const ROOM_CODE = (Q.get('room') || '').toUpperCase();
 const DIFF      = Q.get('difficulty') || 'normal';
@@ -872,26 +889,28 @@ function trySHMove(fr, fc, tr, tc, color){
 function allLegalActions(color){
   const list = [];
   const handHasPieces = Object.values(hands[color]).some(v => v > 0);
-  // 킹 미배치면 킹 배치만 가능
+  // 킹 미배치면 킹 배치만 가능 (단, 자기 킹이 즉시 체크되는 자리는 제외 — 아래 필터에서 걸러짐)
   if(!kingPlaced[color]){
     if(hands[color].K > 0){
       for(let r=2;r<=5;r++) for(let c=2;c<=5;c++){
         if(!board[r][c]) list.push({type:'place', kind:'K', r, c, color});
       }
     }
-    return list;
-  }
-  // 손패 배치
-  for(const [kind, n] of Object.entries(hands[color])){
-    if(n <= 0) continue;
-    if(kind === 'K') continue; // K 추가 배치 불가 (이미 배치됨)
-    if(kind === 'SN'){
-      [[0,0],[0,7],[7,0],[7,7]].forEach(([r,c]) => {
-        if(!board[r][c]) list.push({type:'place', kind, r, c, color});
-      });
-    } else {
-      for(let r=2;r<=5;r++) for(let c=1;c<=6;c++){
-        if(!board[r][c]) list.push({type:'place', kind, r, c, color});
+    // ⚠ 여기서 early return 하지 않음 — 아래 합법성 필터로 흘려보내서
+    // 상대 킹 인접 등 자기 킹이 즉시 체크되는 자리를 걸러냄 (AI가 무한 거절 안 당하게)
+  } else {
+    // 손패 배치
+    for(const [kind, n] of Object.entries(hands[color])){
+      if(n <= 0) continue;
+      if(kind === 'K') continue; // K 추가 배치 불가 (이미 배치됨)
+      if(kind === 'SN'){
+        [[0,0],[0,7],[7,0],[7,7]].forEach(([r,c]) => {
+          if(!board[r][c]) list.push({type:'place', kind, r, c, color});
+        });
+      } else {
+        for(let r=2;r<=5;r++) for(let c=1;c<=6;c++){
+          if(!board[r][c]) list.push({type:'place', kind, r, c, color});
+        }
       }
     }
   }
@@ -1134,7 +1153,7 @@ function renderHandList(color, interactive){
     const isSel = SEL && SEL.kind === 'place' && SEL.piece === k;
     return `<button class="hp ${isSel?'sel':''} ${dis?'dis':''}"
               ${interactive && !dis ? `onclick="selectHand('${k}')"` : ''}>
-              <span class="sym ${SPECIAL_KINDS.includes(k)?'spec':''}" style="color:${color==='w'?'#fff':'#1a1a1a'};${SPECIAL_KINDS.includes(k)?`text-shadow:0 0 2px ${color==='w'?'#000':'#fff'},0 0 2px ${color==='w'?'#000':'#fff'}`:''}">${sym}</span>
+              <span class="sym hp-${color} ${SPECIAL_KINDS.includes(k)?'spec':''}">${sym}</span>
               <span class="nm">${name}</span>
               <span class="ct">${n}</span>
             </button>`;
