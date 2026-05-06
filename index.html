@@ -109,6 +109,33 @@ input{font-family:inherit;outline:none}
   border-radius:8px;color:var(--text);font-size:14px}
 .enter-form input:focus{border-color:var(--gold)}
 
+/* 로컬 설정 모달 */
+.local-card{max-width:480px}
+.local-pieces{display:flex;flex-direction:column;gap:5px;margin-bottom:14px;max-height:50vh;overflow-y:auto}
+.local-piece{display:flex;align-items:center;gap:10px;padding:8px 10px;background:var(--panel2);
+  border:1px solid var(--border);border-radius:8px}
+.local-piece .sym{font-size:22px;width:28px;text-align:center;line-height:1;color:var(--text)}
+.local-piece .sym.spec{text-shadow:0 0 2px var(--text),0 0 2px var(--text)}
+.local-piece .info{flex:1;min-width:0}
+.local-piece .pname{font-weight:700;font-size:13px}
+.local-piece .pdesc{font-size:11px;color:var(--muted);line-height:1.3}
+.local-piece .ctl{display:flex;align-items:center;gap:6px}
+.local-piece .cbtn{width:26px;height:26px;border-radius:6px;background:var(--panel);color:var(--text);
+  border:1px solid var(--border);font-weight:700;font-size:14px}
+.local-piece .cbtn:hover:not(:disabled){background:var(--gold);color:#1c1c1e}
+.local-piece .cbtn:disabled{opacity:.3;cursor:not-allowed}
+.local-piece .cnum{min-width:22px;text-align:center;font-weight:700;font-size:14px}
+.local-time-label{font-size:12px;color:var(--muted);margin-bottom:6px;font-weight:600}
+.local-times{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-bottom:12px}
+.local-times .tbtn{padding:8px;background:var(--panel2);border:1px solid var(--border);border-radius:6px;
+  color:var(--text);font-size:12px;font-weight:600;cursor:pointer}
+.local-times .tbtn.on{background:var(--gold);color:#1c1c1e;border-color:var(--gold)}
+.local-summary{padding:10px;background:rgba(245,200,66,.08);border:1px solid rgba(245,200,66,.3);
+  border-radius:8px;margin-bottom:14px;font-size:13px;line-height:1.6}
+
+/* 오프라인 배지 */
+.offline-badge{font-size:11px;background:var(--orange);color:#1c1c1e;padding:2px 8px;border-radius:6px;font-weight:700;margin-left:6px}
+
 @media (max-width:780px){
   .modes{grid-template-columns:repeat(2,1fr)}
   .logo{font-size:30px;letter-spacing:4px}
@@ -207,210 +234,371 @@ input{font-family:inherit;outline:none}
       </div>
     </div>
   </div>
+
+  <!-- 로컬 2인 설정 모달 -->
+  <div class="modal" id="localModal">
+    <div class="modal-card local-card">
+      <h3>로컬 2인 — 기물 설정</h3>
+      <div class="local-pieces" id="localPieces"></div>
+      <div class="local-time-label">⏱ 1턴 시간 제한</div>
+      <div class="local-times" id="localTimes"></div>
+      <div class="local-summary" id="localSummary"></div>
+      <div class="actions">
+        <button class="btn btn-ghost" onclick="closeLocalModal()">취소</button>
+        <button class="btn btn-gold" onclick="startLocalGame()">게임 시작</button>
+      </div>
+    </div>
+  </div>
 </div>
 
+<!-- ================== Block 1: 항상 동작하는 핸들러 (Firebase 실패해도 살아남음) ================== -->
 <script>
-// ================== Firebase ==================
-const FIREBASE_CONFIG = {
-  apiKey: "AIzaSyD_bv9vLqcMDMZgGHNLS2A94INXqkO8XX8",
-  authDomain: "ooooomok-285e6.firebaseapp.com",
-  databaseURL: "https://ooooomok-285e6-default-rtdb.asia-southeast1.firebasedatabase.app",
-  projectId: "ooooomok-285e6",
-  storageBucket: "ooooomok-285e6.firebasestorage.app",
-  messagingSenderId: "764275385569",
-  appId: "1:764275385569:web:44cecc18de9aef4d9a43a0"
+// 로컬/AI 모드는 Firebase 없이도 동작해야 한다.
+// 모든 버튼 핸들러를 window에 즉시 부착하여 후속 스크립트가 실패해도 클릭이 살아 있게 한다.
+
+// ----- 로컬 설정 상태 -----
+window._localCounts = {Q:1, R:2, B:2, N:2, P:8, SH:0, SN:0, JP:0};
+window._localTime = '300';
+const _LOCAL_PIECE_DEFS = {
+  Q:{sym:'♕',name:'퀸',  desc:'8방향 직선 이동',         max:2},
+  R:{sym:'♖',name:'룩',  desc:'4방향 직선 이동',         max:4},
+  B:{sym:'♗',name:'비숍',desc:'대각선 이동',             max:4},
+  N:{sym:'♘',name:'나이트',desc:'L자 점프',              max:4},
+  P:{sym:'♙',name:'폰',  desc:'1칸 전진, 대각 공격',     max:8},
+  SH:{sym:'۩',name:'방패',desc:'앞/뒤 1칸, 기물 밀기 가능',max:2,spec:true},
+  SN:{sym:'፬',name:'스나이퍼',desc:'4꼭짓점 배치, 직선 3칸 저격',max:1,spec:true},
+  JP:{sym:'ᎇ',name:'어쌔신',desc:'상하좌우 2칸 점프',    max:2,spec:true}
 };
-let _fbApp = null, _fbDb = null, _fbAuth = null;
-function fbInit(){
-  if(_fbApp) return;
-  _fbApp = firebase.apps.length ? firebase.app() : firebase.initializeApp(FB_CONFIG);
-  _fbDb = firebase.database();
-  _fbAuth = firebase.auth();
-}
-fbInit();
+const _LOCAL_PIECE_ORDER = ['Q','R','B','N','P','SH','SN','JP'];
+const _LOCAL_TIME_OPTS = [
+  {v:'30',l:'30초'},{v:'60',l:'1분'},{v:'300',l:'5분'},
+  {v:'600',l:'10분'},{v:'1800',l:'30분'},{v:'3600',l:'1시간'},
+  {v:'unlimited',l:'제한없음'}
+];
 
-// ================== ELO Tier ==================
-function tierOf(elo){
-  if(elo<1100) return {name:'브론즈', color:'#CD7F32'};
-  if(elo<1250) return {name:'실버', color:'#C0C0C0'};
-  if(elo<1400) return {name:'골드', color:'#FFD700'};
-  if(elo<1600) return {name:'플래티넘', color:'#30D158'};
-  return {name:'다이아몬드', color:'#0A84FF'};
-}
+window.openLocalModal = function(){
+  renderLocalSetup();
+  document.getElementById('localModal').classList.add('show');
+};
+window.closeLocalModal = function(){
+  document.getElementById('localModal').classList.remove('show');
+};
+window.adjLocal = function(k, delta){
+  const def = _LOCAL_PIECE_DEFS[k]; if(!def) return;
+  window._localCounts[k] = Math.max(0, Math.min(def.max, (window._localCounts[k]||0) + delta));
+  renderLocalSetup();
+};
+window.setLocalTime = function(v){
+  window._localTime = v;
+  renderLocalSetup();
+};
 
-// ================== Auth + Profile ==================
-let MY_UID = null, MY_NICK = '', MY_ELO = 1200, MY_W=0, MY_L=0, MY_D=0;
-
-_fbAuth.onAuthStateChanged(async user=>{
-  if(!user){ try{await _fbAuth.signInAnonymously();}catch(e){console.error(e);} return; }
-  MY_UID = user.uid;
-  const snap = await _fbDb.ref('users/'+MY_UID).once('value');
-  const u = snap.val();
-  if(!u || !u.nick){
-    let nick = prompt('닉네임을 입력하세요 (12자 이내)','플레이어'+Math.floor(Math.random()*9000+1000));
-    if(!nick) nick = '플레이어'+Math.floor(Math.random()*9000+1000);
-    nick = nick.slice(0,12);
-    MY_NICK = nick; MY_ELO = 1200;
-    await _fbDb.ref('users/'+MY_UID).set({nick, elo:1200, w:0, l:0, d:0, t:Date.now()});
-    await _fbDb.ref('leaderboard/'+MY_UID).set({nick, elo:1200, w:0, l:0, d:0});
-  }else{
-    MY_NICK = u.nick || '익명';
-    MY_ELO = u.elo || 1200;
-    MY_W = u.w || 0; MY_L = u.l || 0; MY_D = u.d || 0;
-  }
-  renderProfile();
-  watchRooms();
-});
-
-function renderProfile(){
-  document.getElementById('avatar').textContent = MY_NICK.charAt(0).toUpperCase();
-  document.getElementById('nick').textContent = MY_NICK;
-  document.getElementById('elo').textContent = MY_ELO + ' ELO';
-  document.getElementById('record').textContent = `${MY_W}승 ${MY_L}패${MY_D?` ${MY_D}무`:''}`;
-  const t = tierOf(MY_ELO);
-  const tEl = document.getElementById('tier');
-  tEl.textContent = t.name;
-  tEl.style.background = t.color;
-}
-
-async function changeNick(){
-  const cur = MY_NICK;
-  let nv = prompt('새 닉네임 (12자 이내)', cur);
-  if(!nv) return;
-  nv = nv.slice(0,12).trim();
-  if(!nv || nv === cur) return;
-  MY_NICK = nv;
-  await _fbDb.ref('users/'+MY_UID).update({nick:nv});
-  await _fbDb.ref('leaderboard/'+MY_UID).update({nick:nv});
-  renderProfile();
-}
-
-// ================== 방 목록 ==================
-let TAB = 'wait';
-let ROOMS = {};
-
-function watchRooms(){
-  _fbDb.ref('rooms').on('value', snap=>{
-    ROOMS = snap.val() || {};
-    renderRooms();
-  });
-}
-
-function setTab(t){
-  TAB = t;
-  document.querySelectorAll('.tab').forEach(b=>b.classList.toggle('on', b.dataset.tab===t));
-  renderRooms();
-}
-
-function renderRooms(){
-  const list = document.getElementById('rooms');
-  const arr = Object.entries(ROOMS).map(([code,r])=>({code,...r}));
-  // 24시간 이상 묵은 방은 무시
-  const now = Date.now();
-  const fresh = arr.filter(r => !r.createdAt || (now-r.createdAt) < 24*3600*1000);
-  const filtered = fresh.filter(r => TAB==='wait' ? !r.started : !!r.started);
-  // 최신순
-  filtered.sort((a,b)=>(b.createdAt||0)-(a.createdAt||0));
-  document.getElementById('rcount').textContent = filtered.length;
-  if(!filtered.length){
-    list.innerHTML = `<div class="empty">${TAB==='wait'?'대기 중인 방이 없습니다. 방 만들기로 시작하세요!':'진행 중인 게임이 없습니다.'}</div>`;
-    return;
-  }
-  list.innerHTML = filtered.map(r=>{
-    const isPlay = !!r.started;
+function renderLocalSetup(){
+  const pe = document.getElementById('localPieces');
+  pe.innerHTML = _LOCAL_PIECE_ORDER.map(k=>{
+    const d = _LOCAL_PIECE_DEFS[k];
+    const c = window._localCounts[k] || 0;
     return `
-    <div class="room">
-      <div class="rcode">${r.code}</div>
-      <div class="rinfo">
-        <div class="rname">
-          ${r.name?escapeHtml(r.name):'(이름 없음)'}
-          ${r.password?'<span class="lock">🔒</span>':''}
-        </div>
-        <div class="rmeta">
-          <span>호스트: ${escapeHtml(r.hostNick||'?')}</span>
-          ${r.guestNick?`<span>vs ${escapeHtml(r.guestNick)}</span>`:''}
-          <span>⏱ ${formatTime(r.timeLimit)}</span>
-        </div>
+    <div class="local-piece">
+      <div class="sym ${d.spec?'spec':''}">${d.sym}</div>
+      <div class="info">
+        <div class="pname">${d.name}</div>
+        <div class="pdesc">${d.desc}</div>
       </div>
-      <span class="rstatus ${isPlay?'play':'wait'}">${isPlay?'진행중':'대기중'}</span>
-      ${isPlay
-        ? `<button class="btn renter spec" onclick="spectate('${r.code}')">👁 관전</button>`
-        : `<button class="btn renter" onclick="openEnter('${r.code}', ${r.password?'true':'false'})">입장</button>`}
+      <div class="ctl">
+        <button class="cbtn" onclick="adjLocal('${k}',-1)" ${c<=0?'disabled':''}>−</button>
+        <span class="cnum">${c}</span>
+        <button class="cbtn" onclick="adjLocal('${k}',1)" ${c>=d.max?'disabled':''}>+</button>
+      </div>
     </div>`;
   }).join('');
+
+  const te = document.getElementById('localTimes');
+  te.innerHTML = _LOCAL_TIME_OPTS.map(o=>
+    `<button class="tbtn ${o.v===window._localTime?'on':''}" onclick="setLocalTime('${o.v}')">${o.l}</button>`
+  ).join('');
+
+  const total = 1 + Object.values(window._localCounts).reduce((a,b)=>a+b,0); // K1 포함
+  const tlabel = _LOCAL_TIME_OPTS.find(o=>o.v===window._localTime)?.l || '5분';
+  document.getElementById('localSummary').innerHTML = `
+    각 진영 총 기물 수: <b style="color:var(--gold)">${total}</b><br>
+    1턴 시간: <b style="color:var(--gold)">${tlabel}</b>`;
 }
 
-function formatTime(s){
-  if(!s || s==='unlimited' || s==='0') return '제한없음';
-  s = parseInt(s);
-  if(s>=3600) return Math.floor(s/3600)+'시간';
-  if(s>=60) return Math.floor(s/60)+'분';
-  return s+'초';
-}
-function escapeHtml(s){return String(s).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c]);}
-
-// ================== 입장 ==================
-let _enterCode = null, _enterPwReq = false;
-function openEnter(code, pwReq){
-  _enterCode = code; _enterPwReq = pwReq;
-  document.getElementById('enterTitle').textContent = `방 ${code} 입장`;
-  document.getElementById('enterCode').value = code;
-  document.getElementById('enterPw').value = '';
-  document.getElementById('enterPw').style.display = pwReq?'block':'none';
-  document.getElementById('enterModal').classList.add('show');
-}
-function closeEnter(){ document.getElementById('enterModal').classList.remove('show'); }
-
-async function doEnter(){
-  const code = (document.getElementById('enterCode').value || _enterCode || '').trim().toUpperCase();
-  if(!code || code.length!==6){ alert('방 코드는 6자리입니다.'); return; }
-  const pw = document.getElementById('enterPw').value;
-  const snap = await _fbDb.ref('rooms/'+code).once('value');
-  const r = snap.val();
-  if(!r){ alert('해당 방이 없습니다.'); return; }
-  if(r.started){ alert('이미 시작된 방입니다. 관전을 이용하세요.'); return; }
-  if(r.password && r.password !== pw){ alert('비밀번호가 틀립니다.'); return; }
-  if(r.guestUid && r.guestUid !== MY_UID){ alert('이미 게스트가 입장했습니다.'); return; }
-  // 게스트 정보 업데이트
-  await _fbDb.ref('rooms/'+code).update({
-    guestUid: MY_UID, guestNick: MY_NICK, guestElo: MY_ELO
-  });
+window.startLocalGame = function(){
+  // hand 문자열 빌드: K1Q1R2B2N2P8SH0SN0JP0 형식
+  const hand = _LOCAL_PIECE_ORDER.reduce((s,k)=> s + k + (window._localCounts[k]||0), 'K1');
   const params = new URLSearchParams({
-    role:'guest', room:code, time:r.timeLimit||'unlimited',
-    uid:MY_UID, nick:MY_NICK, elo:MY_ELO,
-    hand:r.hand||'K1Q1R2B2N2P8SH0SN0JP0'
+    mode:'local',
+    hand: hand,
+    time: window._localTime
   });
-  location.href = 'omokgay.html?'+params.toString();
-}
+  location.href = 'omokgay.html?' + params.toString();
+};
 
-function spectate(code){
-  const r = ROOMS[code]; if(!r) return;
-  const params = new URLSearchParams({
-    role:'spectator', room:code, time:r.timeLimit||'unlimited',
-    uid:MY_UID, nick:MY_NICK, elo:MY_ELO,
-    hand:r.hand||'K1Q1R2B2N2P8SH0SN0JP0'
+// ----- AI 모드 -----
+window.openAiModal = function(){ document.getElementById('aiModal').classList.add('show'); };
+window.closeAi    = function(){ document.getElementById('aiModal').classList.remove('show'); };
+window.goAi       = function(d){ location.href = 'omokgay.html?mode=ai&difficulty='+d; };
+
+// ----- 호환용 (이전 코드가 goLocal을 부르는 경우 대비) -----
+window.goLocal = window.openLocalModal;
+</script>
+
+<!-- ================== Block 2: Firebase / 로비 (실패해도 위 핸들러는 정상) ================== -->
+<script>
+(function(){
+  // 페이지 어딘가에서 사용 가능한 헬퍼
+  function escapeHtml(s){return String(s).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c]);}
+  function formatTime(s){
+    if(!s || s==='unlimited' || s==='0') return '제한없음';
+    s = parseInt(s);
+    if(s>=3600) return Math.floor(s/3600)+'시간';
+    if(s>=60) return Math.floor(s/60)+'분';
+    return s+'초';
+  }
+  function tierOf(elo){
+    if(elo<1100) return {name:'브론즈', color:'#CD7F32'};
+    if(elo<1250) return {name:'실버', color:'#C0C0C0'};
+    if(elo<1400) return {name:'골드', color:'#FFD700'};
+    if(elo<1600) return {name:'플래티넘', color:'#30D158'};
+    return {name:'다이아몬드', color:'#0A84FF'};
+  }
+
+  function setOfflineMode(reason){
+    console.warn('[Lobby] 오프라인 모드:', reason);
+    const av = document.getElementById('avatar');
+    const nk = document.getElementById('nick');
+    const el = document.getElementById('elo');
+    const rc = document.getElementById('record');
+    const tr = document.getElementById('tier');
+    if(av) av.textContent = '✕';
+    if(nk) nk.innerHTML = '오프라인 <span class="offline-badge">로컬/AI 가능</span>';
+    if(el) el.textContent = '서버 연결 실패';
+    if(rc) rc.textContent = '— ';
+    if(tr){ tr.textContent = '—'; tr.style.background = 'var(--panel2)'; }
+    const list = document.getElementById('rooms');
+    if(list) list.innerHTML = `<div class="empty">⚠ 서버에 연결할 수 없습니다.<br>로컬 2인 / AI 대전은 정상 작동합니다.<br><small style="color:var(--muted)">사유: ${escapeHtml(reason)}</small></div>`;
+    // 온라인 버튼은 안내 후 작동 차단
+    window.goCreate = function(){ alert('서버 연결 실패 — 온라인 기능을 사용할 수 없습니다. 새로고침하거나 인터넷 연결을 확인해 주세요.'); };
+    window.openEnter = window.goCreate;
+    window.spectate = window.goCreate;
+    window.changeNick = function(){ alert('서버 연결 실패 상태입니다.'); };
+    window.setTab = function(t){
+      TAB = t;
+      document.querySelectorAll('.tab').forEach(b=>b.classList.toggle('on', b.dataset.tab===t));
+    };
+  }
+
+  // ===== Firebase 설정 =====
+  const FB_CONFIG = {
+    apiKey: "AIzaSyB1xN9bp9HsmVmGTHwTIEzKxlbS0RhuwLY",
+    authDomain: "ooooomok-285e6.firebaseapp.com",
+    databaseURL: "https://ooooomok-285e6-default-rtdb.asia-southeast1.firebasedatabase.app",
+    projectId: "ooooomok-285e6",
+    appId: "1:1:web:1"
+  };
+
+  // Firebase 라이브러리 자체가 로드 안 됐으면 즉시 오프라인
+  if(typeof firebase === 'undefined'){
+    setOfflineMode('Firebase 라이브러리 로드 실패 (네트워크 또는 광고차단기 확인)');
+    return;
+  }
+
+  let _fbApp = null, _fbDb = null, _fbAuth = null;
+  try {
+    _fbApp = firebase.apps && firebase.apps.length ? firebase.app() : firebase.initializeApp(FB_CONFIG);
+    _fbDb = firebase.database();
+    _fbAuth = firebase.auth();
+  } catch(e){
+    setOfflineMode('Firebase 초기화 실패: ' + (e && e.message ? e.message : e));
+    return;
+  }
+
+  // ===== 사용자 정보 =====
+  let MY_UID = null, MY_NICK = '', MY_ELO = 1200, MY_W=0, MY_L=0, MY_D=0;
+  let _authTimedOut = false;
+  const authTimeout = setTimeout(()=>{
+    if(!MY_UID){
+      _authTimedOut = true;
+      setOfflineMode('익명 로그인 시간 초과 (8초 경과)');
+    }
+  }, 8000);
+
+  _fbAuth.onAuthStateChanged(async user=>{
+    if(_authTimedOut) return;
+    try {
+      if(!user){
+        try { await _fbAuth.signInAnonymously(); }
+        catch(e){ clearTimeout(authTimeout); setOfflineMode('익명 로그인 실패: ' + (e.message||e)); }
+        return;
+      }
+      clearTimeout(authTimeout);
+      MY_UID = user.uid;
+      const snap = await _fbDb.ref('users/'+MY_UID).once('value');
+      const u = snap.val();
+      if(!u || !u.nick){
+        let nick = prompt('닉네임을 입력하세요 (12자 이내)','플레이어'+Math.floor(Math.random()*9000+1000));
+        if(!nick) nick = '플레이어'+Math.floor(Math.random()*9000+1000);
+        nick = nick.slice(0,12);
+        MY_NICK = nick; MY_ELO = 1200;
+        await _fbDb.ref('users/'+MY_UID).set({nick, elo:1200, w:0, l:0, d:0, t:Date.now()});
+        await _fbDb.ref('leaderboard/'+MY_UID).set({nick, elo:1200, w:0, l:0, d:0});
+      } else {
+        MY_NICK = u.nick || '익명';
+        MY_ELO = u.elo || 1200;
+        MY_W = u.w || 0; MY_L = u.l || 0; MY_D = u.d || 0;
+      }
+      renderProfile();
+      watchRooms();
+    } catch(e){
+      clearTimeout(authTimeout);
+      setOfflineMode('사용자 정보 로드 실패: ' + (e.message||e));
+    }
   });
-  location.href = 'omokgay.html?'+params.toString();
-}
 
-// ================== 모드 이동 ==================
-function goLocal(){
-  location.href = 'omokgay.html?mode=local';
-}
-function openAiModal(){ document.getElementById('aiModal').classList.add('show'); }
-function closeAi(){ document.getElementById('aiModal').classList.remove('show'); }
-function goAi(d){
-  location.href = 'omokgay.html?mode=ai&difficulty='+d;
-}
-function goCreate(){
-  if(!MY_UID){ alert('로그인 중...'); return; }
-  const params = new URLSearchParams({uid:MY_UID, nick:MY_NICK, elo:MY_ELO});
-  location.href = 'create-room.html?'+params.toString();
-}
+  function renderProfile(){
+    document.getElementById('avatar').textContent = MY_NICK.charAt(0).toUpperCase();
+    document.getElementById('nick').textContent = MY_NICK;
+    document.getElementById('elo').textContent = MY_ELO + ' ELO';
+    document.getElementById('record').textContent = `${MY_W}승 ${MY_L}패${MY_D?` ${MY_D}무`:''}`;
+    const t = tierOf(MY_ELO);
+    const tEl = document.getElementById('tier');
+    tEl.textContent = t.name;
+    tEl.style.background = t.color;
+  }
 
-// 엔터로 입장
-document.getElementById('enterPw').addEventListener('keydown', e=>{ if(e.key==='Enter') doEnter(); });
-document.getElementById('enterCode').addEventListener('keydown', e=>{ if(e.key==='Enter') doEnter(); });
+  window.changeNick = async function(){
+    const cur = MY_NICK;
+    let nv = prompt('새 닉네임 (12자 이내)', cur);
+    if(!nv) return;
+    nv = nv.slice(0,12).trim();
+    if(!nv || nv === cur) return;
+    MY_NICK = nv;
+    try{
+      await _fbDb.ref('users/'+MY_UID).update({nick:nv});
+      await _fbDb.ref('leaderboard/'+MY_UID).update({nick:nv});
+    } catch(e){ alert('닉네임 변경 실패: '+(e.message||e)); return; }
+    renderProfile();
+  };
+
+  // ===== 방 목록 =====
+  let TAB = 'wait';
+  let ROOMS = {};
+  function watchRooms(){
+    _fbDb.ref('rooms').on('value', snap=>{
+      ROOMS = snap.val() || {};
+      renderRooms();
+    }, err=>{
+      console.error('rooms 감시 실패', err);
+      const list = document.getElementById('rooms');
+      if(list) list.innerHTML = `<div class="empty">방 목록 로드 실패: ${escapeHtml(err.message||'알 수 없는 오류')}</div>`;
+    });
+  }
+  window.setTab = function(t){
+    TAB = t;
+    document.querySelectorAll('.tab').forEach(b=>b.classList.toggle('on', b.dataset.tab===t));
+    renderRooms();
+  };
+  function renderRooms(){
+    const list = document.getElementById('rooms');
+    const arr = Object.entries(ROOMS).map(([code,r])=>({code,...r}));
+    const now = Date.now();
+    const fresh = arr.filter(r => !r.createdAt || (now-r.createdAt) < 24*3600*1000);
+    const filtered = fresh.filter(r => TAB==='wait' ? !r.started : !!r.started);
+    filtered.sort((a,b)=>(b.createdAt||0)-(a.createdAt||0));
+    document.getElementById('rcount').textContent = filtered.length;
+    if(!filtered.length){
+      list.innerHTML = `<div class="empty">${TAB==='wait'?'대기 중인 방이 없습니다. 방 만들기로 시작하세요!':'진행 중인 게임이 없습니다.'}</div>`;
+      return;
+    }
+    list.innerHTML = filtered.map(r=>{
+      const isPlay = !!r.started;
+      return `
+      <div class="room">
+        <div class="rcode">${r.code}</div>
+        <div class="rinfo">
+          <div class="rname">
+            ${r.name?escapeHtml(r.name):'(이름 없음)'}
+            ${r.password?'<span class="lock">🔒</span>':''}
+          </div>
+          <div class="rmeta">
+            <span>호스트: ${escapeHtml(r.hostNick||'?')}</span>
+            ${r.guestNick?`<span>vs ${escapeHtml(r.guestNick)}</span>`:''}
+            <span>⏱ ${formatTime(r.timeLimit)}</span>
+          </div>
+        </div>
+        <span class="rstatus ${isPlay?'play':'wait'}">${isPlay?'진행중':'대기중'}</span>
+        ${isPlay
+          ? `<button class="btn renter spec" onclick="spectate('${r.code}')">👁 관전</button>`
+          : `<button class="btn renter" onclick="openEnter('${r.code}', ${r.password?'true':'false'})">입장</button>`}
+      </div>`;
+    }).join('');
+  }
+
+  // ===== 입장 =====
+  let _enterCode = null, _enterPwReq = false;
+  window.openEnter = function(code, pwReq){
+    _enterCode = code; _enterPwReq = pwReq;
+    document.getElementById('enterTitle').textContent = `방 ${code} 입장`;
+    document.getElementById('enterCode').value = code;
+    document.getElementById('enterPw').value = '';
+    document.getElementById('enterPw').style.display = pwReq?'block':'none';
+    document.getElementById('enterModal').classList.add('show');
+  };
+  window.closeEnter = function(){ document.getElementById('enterModal').classList.remove('show'); };
+
+  window.doEnter = async function(){
+    if(!MY_UID){ alert('로그인이 완료되지 않았습니다. 잠시 후 다시 시도하세요.'); return; }
+    const code = (document.getElementById('enterCode').value || _enterCode || '').trim().toUpperCase();
+    if(!code || code.length!==6){ alert('방 코드는 6자리입니다.'); return; }
+    const pw = document.getElementById('enterPw').value;
+    let r;
+    try {
+      const snap = await _fbDb.ref('rooms/'+code).once('value');
+      r = snap.val();
+    } catch(e){ alert('방 정보를 가져오지 못했습니다: '+(e.message||e)); return; }
+    if(!r){ alert('해당 방이 없습니다.'); return; }
+    if(r.started){ alert('이미 시작된 방입니다. 관전을 이용하세요.'); return; }
+    if(r.password && r.password !== pw){ alert('비밀번호가 틀립니다.'); return; }
+    if(r.guestUid && r.guestUid !== MY_UID){ alert('이미 게스트가 입장했습니다.'); return; }
+    try {
+      await _fbDb.ref('rooms/'+code).update({
+        guestUid: MY_UID, guestNick: MY_NICK, guestElo: MY_ELO
+      });
+    } catch(e){ alert('입장 처리 실패: '+(e.message||e)); return; }
+    const params = new URLSearchParams({
+      role:'guest', room:code, time:r.timeLimit||'unlimited',
+      uid:MY_UID, nick:MY_NICK, elo:MY_ELO,
+      hand:r.hand||'K1Q1R2B2N2P8SH0SN0JP0'
+    });
+    location.href = 'omokgay.html?'+params.toString();
+  };
+
+  window.spectate = function(code){
+    const r = ROOMS[code]; if(!r) return;
+    const params = new URLSearchParams({
+      role:'spectator', room:code, time:r.timeLimit||'unlimited',
+      uid:MY_UID||'spec-'+Math.random().toString(36).slice(2,8),
+      nick:MY_NICK||'관전자', elo:MY_ELO||1200,
+      hand:r.hand||'K1Q1R2B2N2P8SH0SN0JP0'
+    });
+    location.href = 'omokgay.html?'+params.toString();
+  };
+
+  // ===== 방 만들기 =====
+  window.goCreate = function(){
+    if(!MY_UID){ alert('로그인이 완료되지 않았습니다. 잠시 후 다시 시도하세요.'); return; }
+    const params = new URLSearchParams({uid:MY_UID, nick:MY_NICK, elo:MY_ELO});
+    location.href = 'create-room.html?'+params.toString();
+  };
+
+  // 엔터로 입장
+  const epw = document.getElementById('enterPw');
+  const ecd = document.getElementById('enterCode');
+  if(epw) epw.addEventListener('keydown', e=>{ if(e.key==='Enter') window.doEnter(); });
+  if(ecd) ecd.addEventListener('keydown', e=>{ if(e.key==='Enter') window.doEnter(); });
+})();
 </script>
 </body>
 </html>

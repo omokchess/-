@@ -1017,8 +1017,12 @@ function renderHands(){
   const oppHandEl = document.getElementById('oppHand');
   const oppSheetEl = document.getElementById('oppHandSheet');
 
-  myHandEl.innerHTML = renderHandList(MY_COLOR, true);
-  const oppHandHTML = renderHandList(opp(MY_COLOR), false);
+  // 로컬 모드: 현재 차례인 색의 패널만 클릭 가능 (양쪽 다 같은 기기에서 조작)
+  const myInteractive  = IS_LOCAL ? (turn === MY_COLOR)      : true;
+  const oppInteractive = IS_LOCAL ? (turn === opp(MY_COLOR)) : false;
+
+  myHandEl.innerHTML = renderHandList(MY_COLOR, myInteractive);
+  const oppHandHTML = renderHandList(opp(MY_COLOR), oppInteractive);
   oppHandEl.innerHTML = oppHandHTML;
   oppSheetEl.innerHTML = oppHandHTML;
 }
@@ -1055,9 +1059,10 @@ function renderStatus(){
     msg = '';
   } else if(IS_SPEC){
     msg = `${turn==='w'?'백':'흑'} 차례`;
-  } else if(turn === MY_COLOR){
-    if(!kingPlaced[MY_COLOR]){
-      msg = '⚠ 킹부터 배치하세요 (4×4 영역)';
+  } else if(turn === MY_COLOR || IS_LOCAL){
+    const activeCol = IS_LOCAL ? turn : MY_COLOR;
+    if(!kingPlaced[activeCol]){
+      msg = `⚠ ${turn==='w'?'백':'흑'}: 킹부터 배치하세요 (4×4 영역)`;
     } else if(SEL && SEL.kind === 'place'){
       msg = `${PIECE_NAMES[SEL.piece]} 배치할 곳 선택`;
     } else if(SEL && SEL.kind === 'board'){
@@ -1222,9 +1227,9 @@ function promptPromotion(color){
 // 11. submitAction (로컬/AI/네트워크 분기)
 // ===================================================================
 function submitAction(action){
-  const myCol = IS_LOCAL ? turn : MY_COLOR;
-  // 액션 컬러 보장
-  if(action.type === 'place') action.color = myCol;
+  // place 액션의 color는 항상 현재 차례의 색으로 통일
+  // (LOCAL: turn 따라 번갈아 / AI: AI는 흑 차례 / ONLINE: 본인 차례에서만 호출됨)
+  if(action.type === 'place') action.color = turn;
   
   const snap = snapshotState();
   const r = applyAction(action);
@@ -1642,14 +1647,12 @@ function playSnd(type){
 // ===================================================================
 // 15. 네트워크 (Firebase + PeerJS)
 // ===================================================================
-const FIREBASE_CONFIG = {
-  apiKey: "AIzaSyD_bv9vLqcMDMZgGHNLS2A94INXqkO8XX8",
+const FB_CONFIG = {
+  apiKey: "AIzaSyB1xN9bp9HsmVmGTHwTIEzKxlbS0RhuwLY",
   authDomain: "ooooomok-285e6.firebaseapp.com",
   databaseURL: "https://ooooomok-285e6-default-rtdb.asia-southeast1.firebasedatabase.app",
   projectId: "ooooomok-285e6",
-  storageBucket: "ooooomok-285e6.firebasestorage.app",
-  messagingSenderId: "764275385569",
-  appId: "1:764275385569:web:44cecc18de9aef4d9a43a0"
+  appId: "1:1:web:1"
 };
 var _fbDb = null;
 var _fbAuth = null;
