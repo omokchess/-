@@ -726,7 +726,7 @@ function applyAction(action, opts={}){
       moveHistory.push(serializeBoard());
       // 차례 넘기지 않고 즉시 종료
       lastMove.causedSuicide = true;
-      finalizeAfterMove(opponentInCheck, snap);
+      finalizeAfterMove(opponentInCheck, snap, silent);
       if(!silent){
         const winnerColor = next;
         endGame('🚫', '반칙패!',
@@ -741,12 +741,17 @@ function applyAction(action, opts={}){
   // 본인이 받던 체크는 이제 풀린 셈
   checkStreak[turn] = 0;
 
-  return finalizeAfterMove(opponentInCheck, snap);
+  return finalizeAfterMove(opponentInCheck, snap, silent);
 }
 
-function finalizeAfterMove(opponentInCheck, snap){
+function finalizeAfterMove(opponentInCheck, snap, silent=false){
   // 차례 넘김
   turn = opp(turn);
+
+  // silent (allLegalActions 합법성 검증 등) 호출에선 종말 검사 건너뜀.
+  // 이게 없으면 hasAnyLegalAction → allLegalActions → applyAction → finalizeAfterMove → ...
+  // 무한재귀로 폭주함.
+  if(silent) return { ok:true };
 
   // 5연속 검사
   const fiveWin = checkFiveInRow();
