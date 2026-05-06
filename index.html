@@ -73,6 +73,8 @@ input{font-family:inherit;outline:none}
 .sec-title .badge{background:var(--gold);color:#1c1c1e;font-size:11px;padding:2px 8px;border-radius:8px;margin-left:8px}
 .tabs{display:flex;gap:6px}
 .tab{padding:7px 14px;background:var(--panel2);border:1px solid var(--border);border-radius:8px;color:var(--muted);font-size:13px;font-weight:600;cursor:pointer}
+.tab.tab-action{color:var(--gold);border-color:var(--gold);margin-left:6px}
+.tab.tab-action:hover{background:var(--gold);color:#1c1c1e}
 .tab.on{background:var(--gold);color:#1c1c1e;border-color:var(--gold)}
 
 .room-list{display:flex;flex-direction:column;gap:8px;max-height:380px;overflow-y:auto}
@@ -198,6 +200,7 @@ input{font-family:inherit;outline:none}
       <div class="tabs">
         <button class="tab on" data-tab="wait" onclick="setTab('wait')">대기 중</button>
         <button class="tab" data-tab="play" onclick="setTab('play')">진행 중</button>
+        <button class="tab tab-action" onclick="openEnterByCode()" title="방 코드로 직접 입장">🔑 코드 입장</button>
       </div>
     </div>
     <div class="room-list" id="rooms">
@@ -220,17 +223,20 @@ input{font-family:inherit;outline:none}
     </div>
   </div>
 
-  <!-- AI 난이도 -->
+  <!-- AI 대전 설정 -->
   <div class="modal" id="aiModal">
-    <div class="modal-card">
-      <h3>AI 난이도 선택</h3>
-      <div class="opts">
-        <button class="opt" onclick="goAi('easy')"><b>🟢 쉬움</b><span>오목 위주, 빠르게 배우기 좋음</span></button>
-        <button class="opt" onclick="goAi('normal')"><b>🟡 보통</b><span>평가 기반, 적당한 도전</span></button>
-        <button class="opt" onclick="goAi('hard')"><b>🔴 어려움</b><span>2수 lookahead, 진지한 대국</span></button>
-      </div>
+    <div class="modal-card local-card">
+      <h3>AI 대전 — 설정</h3>
+      <div class="local-time-label" style="margin-top:0">난이도</div>
+      <div class="local-times" id="aiDifficulties" style="grid-template-columns:repeat(3,1fr);margin-bottom:12px"></div>
+      <div class="local-time-label">기물 구성</div>
+      <div class="local-pieces" id="aiPieces"></div>
+      <div class="local-time-label">⏱ 1턴 시간 제한</div>
+      <div class="local-times" id="aiTimes"></div>
+      <div class="local-summary" id="aiSummary"></div>
       <div class="actions">
         <button class="btn btn-ghost" onclick="closeAi()">취소</button>
+        <button class="btn btn-gold" onclick="startAiGame()">AI 대전 시작</button>
       </div>
     </div>
   </div>
@@ -336,10 +342,82 @@ window.startLocalGame = function(){
   location.href = 'omokgay.html?' + params.toString();
 };
 
-// ----- AI 모드 -----
-window.openAiModal = function(){ document.getElementById('aiModal').classList.add('show'); };
-window.closeAi    = function(){ document.getElementById('aiModal').classList.remove('show'); };
-window.goAi       = function(d){ location.href = 'omokgay.html?mode=ai&difficulty='+d; };
+// ----- AI 모드 (난이도 + 기물 + 시간) -----
+window._aiCounts = {Q:1, R:2, B:2, N:2, P:8, SH:1, SN:0, JP:0};
+window._aiTime = 'unlimited';
+window._aiDiff = 'normal';
+
+window.openAiModal = function(){
+  renderAiSetup();
+  document.getElementById('aiModal').classList.add('show');
+};
+window.closeAi = function(){ document.getElementById('aiModal').classList.remove('show'); };
+window.adjAi = function(k, delta){
+  const def = _LOCAL_PIECE_DEFS[k]; if(!def) return;
+  window._aiCounts[k] = Math.max(0, Math.min(def.max, (window._aiCounts[k]||0) + delta));
+  renderAiSetup();
+};
+window.setAiTime = function(v){ window._aiTime = v; renderAiSetup(); };
+window.setAiDiff = function(v){ window._aiDiff = v; renderAiSetup(); };
+
+function renderAiSetup(){
+  // 난이도
+  const diffOpts = [
+    {v:'easy',   l:'🟢 쉬움'},
+    {v:'normal', l:'🟡 보통'},
+    {v:'hard',   l:'🔴 어려움'}
+  ];
+  document.getElementById('aiDifficulties').innerHTML = diffOpts.map(o =>
+    `<button class="tbtn ${o.v===window._aiDiff?'on':''}" onclick="setAiDiff('${o.v}')">${o.l}</button>`
+  ).join('');
+
+  // 기물
+  const pe = document.getElementById('aiPieces');
+  pe.innerHTML = _LOCAL_PIECE_ORDER.map(k=>{
+    const d = _LOCAL_PIECE_DEFS[k];
+    const c = window._aiCounts[k] || 0;
+    return `
+    <div class="local-piece">
+      <div class="sym ${d.spec?'spec':''}">${d.sym}</div>
+      <div class="info">
+        <div class="pname">${d.name}</div>
+        <div class="pdesc">${d.desc}</div>
+      </div>
+      <div class="ctl">
+        <button class="cbtn" onclick="adjAi('${k}',-1)" ${c<=0?'disabled':''}>−</button>
+        <span class="cnum">${c}</span>
+        <button class="cbtn" onclick="adjAi('${k}',1)" ${c>=d.max?'disabled':''}>+</button>
+      </div>
+    </div>`;
+  }).join('');
+
+  // 시간
+  document.getElementById('aiTimes').innerHTML = _LOCAL_TIME_OPTS.map(o=>
+    `<button class="tbtn ${o.v===window._aiTime?'on':''}" onclick="setAiTime('${o.v}')">${o.l}</button>`
+  ).join('');
+
+  const total = 1 + Object.values(window._aiCounts).reduce((a,b)=>a+b,0);
+  const tlabel = _LOCAL_TIME_OPTS.find(o=>o.v===window._aiTime)?.l || '제한없음';
+  const dlabel = diffOpts.find(o=>o.v===window._aiDiff)?.l || '보통';
+  document.getElementById('aiSummary').innerHTML = `
+    난이도: <b style="color:var(--gold)">${dlabel}</b> ·
+    각 진영 총 기물: <b style="color:var(--gold)">${total}</b> ·
+    1턴 시간: <b style="color:var(--gold)">${tlabel}</b>`;
+}
+
+window.startAiGame = function(){
+  const hand = _LOCAL_PIECE_ORDER.reduce((s,k)=> s + k + (window._aiCounts[k]||0), 'K1');
+  const params = new URLSearchParams({
+    mode:'ai',
+    difficulty: window._aiDiff,
+    hand: hand,
+    time: window._aiTime
+  });
+  location.href = 'omokgay.html?' + params.toString();
+};
+
+// 호환용 — 기존 직접 goAi 호출 경로가 있다면
+window.goAi = function(d){ window._aiDiff = d || 'normal'; window.startAiGame(); };
 
 // ----- 호환용 (이전 코드가 goLocal을 부르는 경우 대비) -----
 window.goLocal = window.openLocalModal;
@@ -382,6 +460,7 @@ window.goLocal = window.openLocalModal;
     // 온라인 버튼은 안내 후 작동 차단
     window.goCreate = function(){ alert('서버 연결 실패 — 온라인 기능을 사용할 수 없습니다. 새로고침하거나 인터넷 연결을 확인해 주세요.'); };
     window.openEnter = window.goCreate;
+    window.openEnterByCode = window.goCreate;
     window.spectate = window.goCreate;
     window.changeNick = function(){ alert('서버 연결 실패 상태입니다.'); };
     window.setTab = function(t){
@@ -544,9 +623,26 @@ window.goLocal = window.openLocalModal;
     _enterCode = code; _enterPwReq = pwReq;
     document.getElementById('enterTitle').textContent = `방 ${code} 입장`;
     document.getElementById('enterCode').value = code;
+    document.getElementById('enterCode').readOnly = true;
     document.getElementById('enterPw').value = '';
     document.getElementById('enterPw').style.display = pwReq?'block':'none';
     document.getElementById('enterModal').classList.add('show');
+  };
+  // 방 코드 직접 입력하여 입장
+  window.openEnterByCode = function(){
+    if(!MY_UID){ alert('로그인이 완료되지 않았습니다. 잠시 후 다시 시도하세요.'); return; }
+    _enterCode = null; _enterPwReq = false;
+    document.getElementById('enterTitle').textContent = '방 코드로 입장';
+    const codeInput = document.getElementById('enterCode');
+    codeInput.value = '';
+    codeInput.readOnly = false;
+    codeInput.placeholder = '6자리 방 코드 (예: ABC123)';
+    document.getElementById('enterPw').value = '';
+    // 비번 입력칸은 일단 표시 — 비번 없는 방은 비워두면 됨
+    document.getElementById('enterPw').style.display = 'block';
+    document.getElementById('enterPw').placeholder = '비밀번호 (없으면 비워두기)';
+    document.getElementById('enterModal').classList.add('show');
+    setTimeout(()=> codeInput.focus(), 50);
   };
   window.closeEnter = function(){ document.getElementById('enterModal').classList.remove('show'); };
 

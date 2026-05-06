@@ -128,6 +128,12 @@ html,body{overflow-x:hidden;max-width:100vw}
 .cell .pawn-place-arrow.w{top:6%;left:50%;transform:translateX(-50%);color:rgba(255,255,255,.85)}
 .cell .pawn-place-arrow.b{bottom:6%;left:50%;transform:translateX(-50%);color:rgba(20,20,20,.85)}
 
+/* 게임 종료 후 결과 모달을 잠시 닫고 보드 볼 때의 복귀 버튼 */
+.end-restore{position:fixed;top:60px;left:50%;transform:translateX(-50%);z-index:80;
+  background:var(--gold);color:#1c1c1e;border:none;padding:8px 16px;border-radius:8px;
+  font-size:13px;font-weight:700;cursor:pointer;box-shadow:0 4px 14px rgba(0,0,0,.4)}
+.end-restore:hover{background:#fcd853}
+
 /* 채팅 */
 .chat-fab{position:fixed;bottom:14px;right:14px;width:50px;height:50px;border-radius:50%;
   background:var(--gold);color:#1c1c1e;font-size:22px;display:flex;align-items:center;justify-content:center;
@@ -253,7 +259,7 @@ html,body{overflow-x:hidden;max-width:100vw}
       <div class="timer" id="oppTimer" style="display:none">--:--</div>
     </div>
     <div class="hand-card">
-      <h4>상대 손패</h4>
+      <h4 id="oppHandTitle">상대 손패</h4>
       <div class="hand-list" id="oppHand"></div>
     </div>
   </div>
@@ -279,7 +285,7 @@ html,body{overflow-x:hidden;max-width:100vw}
       <div class="timer" id="myTimer" style="display:none">--:--</div>
     </div>
     <div class="hand-card">
-      <h4>내 손패</h4>
+      <h4 id="myHandTitle">내 손패</h4>
       <div class="hand-list" id="myHand"></div>
     </div>
   </div>
@@ -327,11 +333,14 @@ html,body{overflow-x:hidden;max-width:100vw}
     <p id="endDesc">—</p>
     <div id="endElo" style="display:none"></div>
     <div class="actions">
+      <button class="btn btn-ghost" onclick="hideEndModal()">👁 보드 보기</button>
       <button class="btn btn-ghost" onclick="goLobby()">← 로비로</button>
       <button class="btn btn-blue" onclick="requestRematch()" id="rematchBtn" style="display:none">🔄 리매치</button>
     </div>
   </div>
 </div>
+<!-- 보드 보기 중 띄워둘 작은 복귀 버튼 -->
+<button class="end-restore" id="endRestore" onclick="showEndModal()" style="display:none">🏁 결과 다시 보기</button>
 
 <!-- 리매치 수락 모달 -->
 <div class="modal" id="rematchAskModal">
@@ -713,14 +722,9 @@ function applyAction(action, opts={}){
       const isAtk  = attacks.some(([r,c]) => r===tr && c===tc);
       if(!isMove && !isAtk) return { ok:false, err:'이동 불가' };
       const target = board[tr][tc];
-      // 이동
+      // 이동 (일반 캡처: 잡힌 기물은 영구 제거 — 손패 회수 X)
       board[tr][tc] = p;
       board[fr][fc] = null;
-      if(target && target.color !== p.color){
-        if(target.kind !== 'K' && target.kind !== 'SN'){
-          hands[p.color][target.kind] = (hands[p.color][target.kind] || 0) + 1;
-        }
-      }
       // 폰 프로모션
       if(p.kind === 'P'){
         if((p.color === 'w' && tr === 0) || (p.color === 'b' && tr === 7)){
@@ -1093,13 +1097,30 @@ function renderHands(){
   const myHandEl = document.getElementById('myHand');
   const oppHandEl = document.getElementById('oppHand');
   const oppSheetEl = document.getElementById('oppHandSheet');
+  const myTitleEl = document.getElementById('myHandTitle');
+  const oppTitleEl = document.getElementById('oppHandTitle');
 
-  // 로컬 모드: 현재 차례인 색의 패널만 클릭 가능 (양쪽 다 같은 기기에서 조작)
-  const myInteractive  = IS_LOCAL ? (turn === MY_COLOR)      : true;
-  const oppInteractive = IS_LOCAL ? (turn === opp(MY_COLOR)) : false;
+  let bottomColor, topColor, bottomInteractive, topInteractive;
+  if(IS_LOCAL){
+    // 로컬: 항상 현재 차례 색이 메인(아래) 패널에. 모바일에서도 눈동자 버튼 없이 즉시 조작 가능.
+    bottomColor = turn;
+    topColor = opp(turn);
+    bottomInteractive = !gameOver;
+    topInteractive = false;
+    if(myTitleEl)  myTitleEl.textContent  = (bottomColor==='w'?'백':'흑') + ' 손패 (활성)';
+    if(oppTitleEl) oppTitleEl.textContent = (topColor==='w'?'백':'흑') + ' 손패 (대기)';
+  } else {
+    // 네트워크/AI/관전: 본인 색이 메인, 상대 색이 위
+    bottomColor = MY_COLOR;
+    topColor = opp(MY_COLOR);
+    bottomInteractive = (turn === MY_COLOR) && !gameOver;
+    topInteractive = false;
+    if(myTitleEl)  myTitleEl.textContent  = '내 손패';
+    if(oppTitleEl) oppTitleEl.textContent = '상대 손패';
+  }
 
-  myHandEl.innerHTML = renderHandList(MY_COLOR, myInteractive);
-  const oppHandHTML = renderHandList(opp(MY_COLOR), oppInteractive);
+  myHandEl.innerHTML = renderHandList(bottomColor, bottomInteractive);
+  const oppHandHTML = renderHandList(topColor, topInteractive);
   oppHandEl.innerHTML = oppHandHTML;
   oppSheetEl.innerHTML = oppHandHTML;
 }
@@ -1129,9 +1150,32 @@ function renderStatus(){
   renderCheckStats('myCheckStats', MY_COLOR);
   renderCheckStats('oppCheckStats', opp(MY_COLOR));
 
-  // 활성 표시
-  document.getElementById('myCard').classList.toggle('active', turn === MY_COLOR && !gameOver);
-  document.getElementById('oppCard').classList.toggle('active', turn !== MY_COLOR && !gameOver);
+  // 로컬 모드: 카드 라벨/아바타도 활성-기준으로 동적 갱신
+  if(IS_LOCAL){
+    const act = turn, idle = opp(turn);
+    // 아래(myCard) = 활성, 위(oppCard) = 대기
+    document.getElementById('myAv').textContent = act==='w' ? 'W' : 'B';
+    document.getElementById('myAv').className = 'av' + (act==='b'?' b':'');
+    document.getElementById('myName').textContent = act==='w' ? '백 (플레이어 1)' : '흑 (플레이어 2)';
+    document.getElementById('myMeta').textContent = (act==='w'?'백':'흑') + ' — 차례';
+
+    document.getElementById('oppAv').textContent = idle==='w' ? 'W' : 'B';
+    document.getElementById('oppAv').className = 'av' + (idle==='b'?' b':'');
+    document.getElementById('oppName').textContent = idle==='w' ? '백 (플레이어 1)' : '흑 (플레이어 2)';
+    document.getElementById('oppMeta').textContent = (idle==='w'?'백':'흑') + ' — 대기';
+
+    // 활성 카드는 항상 myCard
+    document.getElementById('myCard').classList.toggle('active', !gameOver);
+    document.getElementById('oppCard').classList.toggle('active', false);
+
+    // 체크 통계도 활성/대기 매핑
+    renderCheckStats('myCheckStats', act);
+    renderCheckStats('oppCheckStats', idle);
+  } else {
+    // 활성 표시 (기본)
+    document.getElementById('myCard').classList.toggle('active', turn === MY_COLOR && !gameOver);
+    document.getElementById('oppCard').classList.toggle('active', turn !== MY_COLOR && !gameOver);
+  }
 
   // 상태 플로팅
   const sf = document.getElementById('statusFloat');
@@ -1395,7 +1439,7 @@ function submitAction(action){
 
 function postMoveCheck(r){
   if(r.fiveWin){
-    endGame('🏆','오목 승리!', `${r.fiveWin==='w'?'백':'흑'}이 오목을 완성했습니다.`, r.fiveWin);
+    endGame('🏆','5연속 승리!', `${r.fiveWin==='w'?'백':'흑'}이 5연속을 완성했습니다.`, r.fiveWin);
     return;
   }
   if(r.checkmate){
@@ -1456,14 +1500,26 @@ function endGame(emoji, title, desc, winner /* 'w'|'b'|'draw' */){
 
   // ELO 적용 (온라인만)
   if(IS_NET && !IS_SPEC && _gameRatingInfo && winner){
+    eloEl.textContent = '레이팅 계산 중...';
+    eloEl.style.display = '';
     applyEloChange(winner).then(diff => {
       if(diff !== null){
         const sign = diff > 0 ? '+' : '';
         eloEl.className = 'elo-change ' + (diff>0?'up':diff<0?'dn':'');
-        eloEl.innerHTML = `레이팅 ${sign}${diff} → ${MY_ELO_P + diff}`;
-        eloEl.style.display = '';
+        eloEl.innerHTML = `레이팅 <b>${sign}${diff}</b> → ${MY_ELO_P + diff}`;
+      } else {
+        eloEl.className = 'elo-change';
+        eloEl.innerHTML = '⚠ ELO 업데이트 실패 (콘솔 확인)';
       }
-    }).catch(e => console.error(e));
+    }).catch(e => {
+      console.error('applyEloChange error:', e);
+      eloEl.className = 'elo-change';
+      eloEl.innerHTML = '⚠ ELO 오류: ' + (e && e.message ? e.message : e);
+    });
+  } else if(IS_AI || IS_LOCAL){
+    eloEl.style.display = '';
+    eloEl.className = 'elo-change';
+    eloEl.innerHTML = `<small style="color:var(--muted)">${IS_AI?'AI 대전':'로컬 모드'}: ELO 변동 없음</small>`;
   }
 
   document.getElementById('endModal').classList.add('show');
@@ -1477,8 +1533,19 @@ function endGame(emoji, title, desc, winner /* 'w'|'b'|'draw' */){
   }
 }
 
+// 게임 종료 모달 숨기기/복귀 (보드 확인용)
+function hideEndModal(){
+  document.getElementById('endModal').classList.remove('show');
+  document.getElementById('endRestore').style.display = 'block';
+}
+function showEndModal(){
+  document.getElementById('endModal').classList.add('show');
+  document.getElementById('endRestore').style.display = 'none';
+}
+
 async function applyEloChange(winner){
-  if(!_gameRatingInfo || !_fbDb) return null;
+  if(!_gameRatingInfo){ console.warn('[ELO] _gameRatingInfo 없음 — 적용 안 함'); return null; }
+  if(!_fbDb){ console.warn('[ELO] _fbDb 없음 — 적용 안 함'); return null; }
   const myCol = MY_COLOR;
   const myInfo = myCol === 'w'
     ? {uid:_gameRatingInfo.whiteUid, elo:_gameRatingInfo.whiteElo}
@@ -1486,16 +1553,35 @@ async function applyEloChange(winner){
   const oppInfo = myCol === 'w'
     ? {uid:_gameRatingInfo.blackUid, elo:_gameRatingInfo.blackElo}
     : {uid:_gameRatingInfo.whiteUid, elo:_gameRatingInfo.whiteElo};
-  if(!myInfo.uid || !oppInfo.uid) return null;
+  if(!myInfo.uid || !oppInfo.uid){ console.warn('[ELO] uid 누락', {myInfo, oppInfo}); return null; }
 
   const score = winner === 'draw' ? 0.5 : (winner === myCol ? 1 : 0);
   const K = 32;
   const expected = 1 / (1 + Math.pow(10, (oppInfo.elo - myInfo.elo)/400));
   const diff = Math.round(K * (score - expected));
   const newElo = myInfo.elo + diff;
+  console.log(`[ELO] ${myCol} score=${score} expected=${expected.toFixed(3)} diff=${diff} ${myInfo.elo}→${newElo}`);
 
   // 본인 데이터만 업데이트 (보안 규칙상)
   try{
+    // auth가 준비됐는지 확인
+    if(_authReady){
+      try { await _authReady; } catch(_) { /* 실패해도 try 내부에서 한 번 더 시도 */ }
+    }
+    if(!_fbAuth.currentUser){
+      console.warn('[ELO] auth.currentUser 없음 — 익명 로그인 시도');
+      try { await _fbAuth.signInAnonymously(); } catch(e){ console.error('[ELO] 익명 로그인 실패', e); }
+    }
+    if(_fbAuth.currentUser && _fbAuth.currentUser.uid !== myInfo.uid){
+      console.warn(`[ELO] auth.uid(${_fbAuth.currentUser.uid}) !== myInfo.uid(${myInfo.uid})`,
+        '— 동일 브라우저로 호스트/게스트 둘 다 테스트하면 발생. 본인 ELO만 갱신됨.');
+      // 그래도 본인이 본인 UID에 쓰는 건 가능 (auth.uid === path uid 인 경우만). 
+      // myInfo.uid가 auth.uid와 다르면 보안규칙이 거부.
+      if(_fbAuth.currentUser.uid !== myInfo.uid){
+        // 잘못된 매칭이면 본인 UID 쪽에만 기록
+        myInfo.uid = _fbAuth.currentUser.uid;
+      }
+    }
     const ref = _fbDb.ref('users/'+myInfo.uid);
     const snap = await ref.once('value');
     const cur = snap.val() || {};
@@ -1510,7 +1596,11 @@ async function applyEloChange(winner){
       nick: cur.nick || MY_NICK_P,
       elo: newElo, w: upd.w, l: upd.l, d: upd.d
     });
-  }catch(e){ console.error('ELO update failed',e); }
+    console.log('[ELO] 업데이트 성공', upd);
+  }catch(e){
+    console.error('[ELO] 업데이트 실패',e);
+    throw e; // 위에서 잡아 사용자에게 표시
+  }
   return diff;
 }
 
@@ -1799,11 +1889,31 @@ const FB_CONFIG = {
 };
 var _fbDb = null;
 var _fbAuth = null;
+var _authReady = null;
 function fbInit(){
   if(_fbDb) return;
   const app = firebase.apps.length ? firebase.app() : firebase.initializeApp(FB_CONFIG);
   _fbDb = firebase.database();
   _fbAuth = firebase.auth();
+  // 이전 페이지(index.html)에서 익명 로그인 한 세션이 있으면 자동 복원됨.
+  // 없으면 새로 익명 로그인. ELO 업데이트가 보안규칙상 auth.uid를 필요로 하므로 미리 보장.
+  _authReady = new Promise((resolve, reject)=>{
+    const unsub = _fbAuth.onAuthStateChanged(async u => {
+      unsub();
+      if(u){ console.log('[Auth] 기존 익명 세션 복원:', u.uid); resolve(u); }
+      else {
+        try {
+          const cred = await _fbAuth.signInAnonymously();
+          console.log('[Auth] 새 익명 로그인:', cred.user.uid);
+          resolve(cred.user);
+        } catch(e){
+          console.error('[Auth] 익명 로그인 실패', e);
+          reject(e);
+        }
+      }
+    });
+    setTimeout(()=> { try { reject(new Error('auth timeout')); } catch(_) {} }, 8000);
+  });
 }
 
 let _peer = null;
@@ -1997,17 +2107,20 @@ function initSpectator(){
   document.getElementById('forfeitBtn').style.display = 'none';
   document.getElementById('chatInput').disabled = true;
   document.getElementById('chatInput').placeholder = '관전 모드 (읽기 전용)';
+  showFlash('👁 관전 모드 — 게임 상태를 불러오는 중...', 4000);
   // chatLog 구독
   _fbDb.ref('rooms/'+ROOM_CODE+'/chatLog').on('value', snap => {
     const log = JSON.parse(snap.val() || '[]');
     document.getElementById('chatMsgs').innerHTML = '';
     log.forEach(m => addChatMsg(m.from, m.msg, false, m.sys));
   });
+  let _firstStateLoaded = false;
   _fbDb.ref('rooms/'+ROOM_CODE+'/gameState').on('value', snap => {
     const raw = snap.val();
     if(!raw){
-      // 방이 사라짐 → 종료 처리
-      if(!gameOver) endGame('📛','방 종료', '방이 닫혔습니다.', null);
+      // 아직 호스트가 publish 안 한 상태일 수 있음.
+      // 방 자체가 사라진 경우는 아래 rooms 리스너에서 처리.
+      // 여기서는 종료 처리하지 않고 대기.
       return;
     }
     try{
@@ -2017,8 +2130,8 @@ function initSpectator(){
       turn = s.turn;
       kingPlaced = s.kingPlaced;
       lastMove = s.lastMove;
-      checkStreak = s.checkStreak;
-      totalChecks = s.totalChecks;
+      checkStreak = s.checkStreak || {w:0,b:0};
+      totalChecks = s.totalChecks || {w:0,b:0};
       _gameRatingInfo = s.rating;
       if(_gameRatingInfo){
         document.getElementById('myName').textContent = _gameRatingInfo.whiteNick + ` (${_gameRatingInfo.whiteElo})`;
@@ -2027,12 +2140,18 @@ function initSpectator(){
         document.getElementById('oppMeta').textContent = '흑';
       }
       renderAll();
-    }catch(e){ console.error(e); }
+      if(!_firstStateLoaded){
+        _firstStateLoaded = true;
+        showFlash('👁 관전 시작', 1500);
+      }
+    }catch(e){ console.error('관전 상태 파싱 실패',e); }
   });
-  // 방 자체 감시 (started/gameActive)
+  // 방 자체 감시 — 방이 삭제될 때만 종료 처리
   _fbDb.ref('rooms/'+ROOM_CODE).on('value', snap => {
     const r = snap.val();
-    if(!r){ if(!gameOver) endGame('📛','방 종료','게임이 종료되었습니다.', null); }
+    if(!r && !gameOver){
+      endGame('📛','방 종료','호스트가 방을 닫았거나 게임이 종료되었습니다.', null);
+    }
   });
 }
 
