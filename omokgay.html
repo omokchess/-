@@ -40,9 +40,14 @@ input{font-family:inherit;outline:none}
 
 /* 좌/우 패널 (플레이어 카드 + 손패) */
 .side{display:flex;flex-direction:column;gap:8px;min-height:0}
-.pcard{background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:10px}
-.pcard.active{border-color:var(--gold);box-shadow:0 0 0 1px var(--gold)}
+.pcard{background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:10px;transition:all .2s}
+.pcard.active{border-color:var(--gold);box-shadow:0 0 0 2px var(--gold), 0 0 20px rgba(245,200,66,.4);animation:cardPulse 1.6s ease-in-out infinite}
+@keyframes cardPulse{
+  0%,100%{box-shadow:0 0 0 2px var(--gold), 0 0 20px rgba(245,200,66,.4)}
+  50%{box-shadow:0 0 0 2px var(--gold), 0 0 30px rgba(245,200,66,.7)}
+}
 .pcard .ph{display:flex;align-items:center;gap:8px;margin-bottom:8px}
+.pcard.active .ph::after{content:'◀ 차례';margin-left:auto;font-size:11px;font-weight:700;color:var(--gold);background:rgba(245,200,66,.15);padding:2px 7px;border-radius:5px;flex-shrink:0}
 .pcard .av{width:28px;height:28px;border-radius:50%;background:var(--gold);color:#1c1c1e;
   display:flex;align-items:center;justify-content:center;font-weight:900;font-size:13px;flex-shrink:0}
 .pcard .av.b{background:#1c1c1e;color:var(--gold);border:1px solid var(--gold)}
@@ -1088,6 +1093,37 @@ function renderAll(){
   renderBoard();
   renderHands();
   renderStatus();
+  if(window._DEBUG_ON) renderDebugOverlay();
+}
+
+// 디버그 오버레이 (URL에 ?debug=1 일 때만 활성)
+window._DEBUG_ON = (Q.get('debug') === '1');
+if(window._DEBUG_ON){
+  const dbg = document.createElement('div');
+  dbg.id = 'dbgOverlay';
+  dbg.style.cssText = 'position:fixed;top:8px;right:8px;background:rgba(0,0,0,.85);color:#0f0;font:11px/1.4 monospace;padding:8px 10px;border-radius:6px;z-index:9999;max-width:280px;border:1px solid #0f0;pointer-events:none';
+  document.body.appendChild(dbg);
+  // 모든 에러를 화면에 표시
+  window.addEventListener('error', e=>{
+    const errBox = document.createElement('div');
+    errBox.style.cssText = 'position:fixed;bottom:8px;left:8px;right:8px;background:rgba(180,0,0,.95);color:#fff;font:12px/1.4 monospace;padding:10px;border-radius:6px;z-index:10000;white-space:pre-wrap';
+    errBox.textContent = '🛑 JS ERROR: ' + e.message + '\n@ ' + (e.filename||'?') + ':' + e.lineno;
+    document.body.appendChild(errBox);
+    setTimeout(()=>errBox.remove(), 8000);
+  });
+}
+function renderDebugOverlay(){
+  const dbg = document.getElementById('dbgOverlay'); if(!dbg) return;
+  const handStr = c => Object.entries(hands[c]).filter(([k,v])=>v>0).map(([k,v])=>`${k}${v}`).join(' ')||'(빈)';
+  dbg.innerHTML =
+    `mode=${MODE} role=${NET_ROLE||'-'}<br>`+
+    `turn=<b style="color:${turn==='w'?'#fff':'#888'}">${turn}</b> myCol=${MY_COLOR}<br>`+
+    `kingPlaced w=${kingPlaced.w?'✓':'✗'} b=${kingPlaced.b?'✓':'✗'}<br>`+
+    `gameOver=${gameOver}<br>`+
+    `SEL=${SEL?JSON.stringify(SEL):'null'}<br>`+
+    `<span style="color:#ccc">w손패:</span> ${handStr('w')}<br>`+
+    `<span style="color:#aaa">b손패:</span> ${handStr('b')}<br>`+
+    `chk:w=${checkStreak.w}/${totalChecks.w} b=${checkStreak.b}/${totalChecks.b}`;
 }
 
 // ===================================================================
