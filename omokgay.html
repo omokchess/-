@@ -1395,7 +1395,7 @@ function submitAction(action){
 
 function postMoveCheck(r){
   if(r.fiveWin){
-    endGame('🏆','5연속 승리!', `${r.fiveWin==='w'?'백':'흑'}이 5연속을 완성했습니다.`, r.fiveWin);
+    endGame('🏆','오목 승리!', `${r.fiveWin==='w'?'백':'흑'}이 오목을 완성했습니다.`, r.fiveWin);
     return;
   }
   if(r.checkmate){
