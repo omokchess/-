@@ -51,6 +51,7 @@ button{font-family:inherit;cursor:pointer;border:none;outline:none;color:inherit
   --bs:36px}
 .demo-board.size5{grid-template-columns:repeat(5,var(--bs));grid-template-rows:repeat(5,var(--bs))}
 .demo-board.size7{grid-template-columns:repeat(7,var(--bs));grid-template-rows:repeat(7,var(--bs));--bs:30px}
+.demo-board.size8{grid-template-columns:repeat(8,var(--bs));grid-template-rows:repeat(8,var(--bs));--bs:28px}
 .demo-cell{width:var(--bs);height:var(--bs);display:flex;align-items:center;justify-content:center;
   font-size:calc(var(--bs) * .65);position:relative;line-height:1}
 .demo-cell.lt{background:var(--board-light)}
@@ -66,6 +67,7 @@ button{font-family:inherit;cursor:pointer;border:none;outline:none;color:inherit
 .demo-cell.zone{background:rgba(245,200,66,.2);box-shadow:inset 0 0 0 2px rgba(245,200,66,.7)}
 .demo-cell.zone-king{background:rgba(48,209,88,.25);box-shadow:inset 0 0 0 2px rgba(48,209,88,.6)}
 .demo-cell.zone-corner{background:rgba(255,69,58,.25);box-shadow:inset 0 0 0 2px rgba(255,69,58,.6)}
+.demo-cell.zone-general{background:rgba(245,200,66,.22);box-shadow:inset 0 0 0 2px rgba(245,200,66,.55)}
 .demo-cap{font-size:13px;color:var(--muted);max-width:280px;line-height:1.5}
 .demo-cap b{color:var(--gold)}
 
@@ -92,6 +94,7 @@ button{font-family:inherit;cursor:pointer;border:none;outline:none;color:inherit
   .tut-content{font-size:13px}
   .demo-board{--bs:32px}
   .demo-board.size7{--bs:26px}
+  .demo-board.size8{--bs:24px}
 }
 </style>
 </head>
@@ -186,17 +189,21 @@ const STEPS = [
     body:`
       <p>FRONTIER 보드는 <b>8×8</b> 크기이며 세 가지 배치 영역이 있습니다.</p>
       ${miniBoard({
-        size:7,
+        size:8,
         zones:{
-          'corner': [[0,0],[0,6],[6,0],[6,6]],
-          'king': [[2,2],[2,3],[2,4],[3,2],[3,3],[3,4],[4,2],[4,3],[4,4]],
-          // 일반은 표시 생략 (영역이 너무 넓음)
+          'corner': [[0,0],[0,7],[7,0],[7,7]],
+          'king':   [[2,2],[2,3],[2,4],[2,5],
+                     [3,2],[3,3],[3,4],[3,5],
+                     [4,2],[4,3],[4,4],[4,5],
+                     [5,2],[5,3],[5,4],[5,5]],
+          'general':[[2,1],[3,1],[4,1],[5,1],
+                     [2,6],[3,6],[4,6],[5,6]]
         }
       })}
       <ul>
         <li><span style="color:var(--green)">●</span> <b>킹 영역 (4×4)</b> — 첫 수에 무조건 킹 배치</li>
+        <li><span style="color:var(--gold)">●</span> <b>일반 영역 (6×4)</b> — 킹 영역 + 좌우 1줄. 킹/스나이퍼 외 모든 기물 배치 가능</li>
         <li><span style="color:var(--red)">●</span> <b>꼭짓점 4곳</b> — 스나이퍼 전용 자리</li>
-        <li>나머지 6×4 중앙 — 일반 기물 배치 영역</li>
       </ul>
       <div class="tut-callout info">💡 백이 먼저 시작합니다. 첫 수는 양쪽 모두 무조건 <b>킹 배치</b>입니다.</div>`
   },
