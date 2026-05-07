@@ -297,6 +297,23 @@ let _roomWatcher = null;
 async function createRoom(){
   if(!MY_UID){ alert('로그인이 필요합니다.'); return; }
   document.getElementById('createBtn').disabled = true;
+
+  // 같은 호스트 UID로 만들어진 옛 방들이 유령으로 남아 있으면 정리
+  try {
+    const allSnap = await _fbDb.ref('rooms').once('value');
+    const all = allSnap.val() || {};
+    const cleanups = [];
+    for(const [code, room] of Object.entries(all)){
+      if(room.hostUid === MY_UID && code !== MY_CODE){
+        cleanups.push(_fbDb.ref('rooms/'+code).remove().catch(()=>{}));
+      }
+    }
+    if(cleanups.length){
+      await Promise.all(cleanups);
+      console.log(`[방 생성] 같은 UID의 유령방 ${cleanups.length}개 정리`);
+    }
+  } catch(e){ console.warn('유령방 정리 중 오류 (무시 가능):', e); }
+
   const data = {
     name: document.getElementById('roomName').value.trim() || '',
     desc: document.getElementById('roomDesc').value.trim() || '',
@@ -304,6 +321,7 @@ async function createRoom(){
     hand: buildHandStr(),
     timeLimit: SEL_TIME,
     createdAt: Date.now(),
+    lastActivity: Date.now(),
     started: false,
     gameActive: false,
     hostUid: MY_UID,
@@ -312,6 +330,8 @@ async function createRoom(){
   };
   try{
     await _fbDb.ref('rooms/'+MY_CODE).set(data);
+    // 호스트 연결이 끊기면 방 자동 삭제 (유령방 방지)
+    _fbDb.ref('rooms/'+MY_CODE).onDisconnect().remove();
   }catch(e){
     alert('방 생성 실패: '+e.message);
     document.getElementById('createBtn').disabled = false;

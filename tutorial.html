@@ -1,0 +1,392 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>FRONTIER 튜토리얼</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;800&family=Noto+Sans+KR:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#1c1c1e; --panel:#2c2c30; --panel2:#1f1f22; --border:#3a3a3e;
+  --text:#f5f5f7; --muted:#a0a0a4; --gold:#f5c842; --green:#30d158; --red:#ff453a; --blue:#0a84ff;
+  --board-light:#f5e8c7; --board-dark:#b58863;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{min-height:100dvh;background:var(--bg);color:var(--text);
+  font-family:'Noto Sans KR','Apple SD Gothic Neo',sans-serif;overflow-x:hidden;max-width:100vw}
+button{font-family:inherit;cursor:pointer;border:none;outline:none;color:inherit;background:transparent}
+
+.tut-app{max-width:760px;margin:0 auto;padding:18px;display:flex;flex-direction:column;gap:14px;min-height:100dvh}
+
+/* 상단 — 진행도 + 종료 */
+.tut-top{display:flex;align-items:center;gap:12px;background:var(--panel);
+  border:1px solid var(--border);border-radius:12px;padding:10px 14px}
+.tut-progress{flex:1;height:8px;background:var(--panel2);border-radius:4px;overflow:hidden;position:relative}
+.tut-progress-fill{height:100%;background:linear-gradient(90deg,var(--gold),#fcd853);
+  transition:width .3s ease;border-radius:4px}
+.tut-step-label{font-size:12px;color:var(--muted);font-weight:700;min-width:60px;text-align:right}
+.tut-skip{background:var(--panel2);color:var(--muted);padding:6px 12px;border-radius:7px;
+  font-size:12px;font-weight:600;border:1px solid var(--border)}
+.tut-skip:hover{color:var(--red);border-color:var(--red)}
+
+/* 메인 카드 */
+.tut-main{flex:1;background:var(--panel);border:1px solid var(--border);border-radius:14px;
+  padding:24px;display:flex;flex-direction:column;gap:14px}
+.tut-title{font-size:24px;font-weight:800;color:var(--gold);font-family:'Cinzel',serif;letter-spacing:1px}
+.tut-subtitle{font-size:14px;color:var(--muted);margin-top:-8px}
+.tut-content{font-size:14px;line-height:1.7;flex:1}
+.tut-content h3{font-size:16px;color:var(--gold);margin:14px 0 8px;font-weight:700}
+.tut-content p{margin:8px 0}
+.tut-content ul{padding-left:18px;margin:8px 0}
+.tut-content li{padding:4px 0}
+.tut-content b{color:var(--text)}
+.tut-content em{font-style:normal;color:var(--gold);font-weight:700}
+
+/* 미니 보드 (행마 시범용) */
+.demo-row{display:flex;gap:18px;align-items:center;justify-content:center;flex-wrap:wrap;
+  margin:14px 0;padding:14px;background:var(--panel2);border-radius:10px}
+.demo-board{display:grid;gap:1px;background:var(--border);padding:2px;border-radius:6px;
+  --bs:36px}
+.demo-board.size5{grid-template-columns:repeat(5,var(--bs));grid-template-rows:repeat(5,var(--bs))}
+.demo-board.size7{grid-template-columns:repeat(7,var(--bs));grid-template-rows:repeat(7,var(--bs));--bs:30px}
+.demo-cell{width:var(--bs);height:var(--bs);display:flex;align-items:center;justify-content:center;
+  font-size:calc(var(--bs) * .65);position:relative;line-height:1}
+.demo-cell.lt{background:var(--board-light)}
+.demo-cell.dk{background:var(--board-dark)}
+.demo-cell .pc{color:#fff;text-shadow:
+  0 0 2px #000,0 0 2px #000,0 1px 1px #000,0 -1px 1px #000,1px 0 1px #000,-1px 0 1px #000;z-index:1}
+.demo-cell .pc.b{color:#1a1a1a;text-shadow:
+  0 0 2px #fff,0 0 2px #fff,0 1px 1px #fff,0 -1px 1px #fff,1px 0 1px #fff,-1px 0 1px #fff}
+.demo-cell.move::after{content:'';position:absolute;width:35%;height:35%;border-radius:50%;
+  background:rgba(48,209,88,.55);border:2px solid var(--green)}
+.demo-cell.attack::after{content:'';position:absolute;width:80%;height:80%;border-radius:50%;
+  border:3px solid var(--red);box-sizing:border-box;background:rgba(255,69,58,.15)}
+.demo-cell.zone{background:rgba(245,200,66,.2);box-shadow:inset 0 0 0 2px rgba(245,200,66,.7)}
+.demo-cell.zone-king{background:rgba(48,209,88,.25);box-shadow:inset 0 0 0 2px rgba(48,209,88,.6)}
+.demo-cell.zone-corner{background:rgba(255,69,58,.25);box-shadow:inset 0 0 0 2px rgba(255,69,58,.6)}
+.demo-cap{font-size:13px;color:var(--muted);max-width:280px;line-height:1.5}
+.demo-cap b{color:var(--gold)}
+
+/* 하단 네비 */
+.tut-nav{display:flex;gap:10px;background:var(--panel);border:1px solid var(--border);
+  border-radius:12px;padding:12px;position:sticky;bottom:8px}
+.tut-nav button{flex:1;padding:14px;border-radius:8px;font-size:14px;font-weight:700}
+.tut-nav .nav-prev{background:var(--panel2);color:var(--text);border:1px solid var(--border)}
+.tut-nav .nav-prev:disabled{opacity:.3;cursor:not-allowed}
+.tut-nav .nav-next{background:var(--gold);color:#1c1c1e}
+.tut-nav .nav-next:hover{background:#fcd853}
+
+/* 핵심 강조 박스 */
+.tut-callout{background:rgba(245,200,66,.08);border:1px solid rgba(245,200,66,.35);
+  border-radius:10px;padding:12px 14px;margin:10px 0}
+.tut-callout.warn{background:rgba(255,69,58,.08);border-color:rgba(255,69,58,.4)}
+.tut-callout.info{background:rgba(10,132,255,.08);border-color:rgba(10,132,255,.4)}
+
+/* 모바일 */
+@media (max-width:600px){
+  .tut-app{padding:12px;gap:10px}
+  .tut-main{padding:18px}
+  .tut-title{font-size:20px}
+  .tut-content{font-size:13px}
+  .demo-board{--bs:32px}
+  .demo-board.size7{--bs:26px}
+}
+</style>
+</head>
+<body>
+<div class="tut-app">
+  <div class="tut-top">
+    <div class="tut-progress"><div class="tut-progress-fill" id="progFill" style="width:8%"></div></div>
+    <span class="tut-step-label" id="stepLabel">1 / 12</span>
+    <button class="tut-skip" onclick="exitTutorial()">✕ 종료</button>
+  </div>
+
+  <div class="tut-main">
+    <h1 class="tut-title" id="tutTitle">FRONTIER</h1>
+    <div class="tut-subtitle" id="tutSubtitle"></div>
+    <div class="tut-content" id="tutContent"></div>
+  </div>
+
+  <div class="tut-nav">
+    <button class="nav-prev" onclick="prevStep()" id="prevBtn">← 이전</button>
+    <button class="nav-next" onclick="nextStep()" id="nextBtn">다음 →</button>
+  </div>
+</div>
+
+<script>
+'use strict';
+
+// ===== 미니 보드 헬퍼 =====
+function miniBoard(opts){
+  // opts: {size:5|7, piece:{kind, color, r, c}, moves:[[r,c],...], attacks:[[r,c],...], zones:{type:[[r,c]...]}}
+  const size = opts.size || 5;
+  const cls = 'size' + size;
+  const SYM = { K:{w:'♔',b:'♚'}, Q:{w:'♕',b:'♛'}, R:{w:'♖',b:'♜'}, B:{w:'♗',b:'♝'},
+    N:{w:'♘',b:'♞'}, P:{w:'♙',b:'♟'}, SH:{w:'۩',b:'۩'}, SN:{w:'፬',b:'፬'}, JP:{w:'ᎇ',b:'ᎇ'} };
+  let html = `<div class="demo-board ${cls}">`;
+  for(let r=0; r<size; r++){
+    for(let c=0; c<size; c++){
+      const isLt = ((r+c)%2 === 0);
+      const cellCls = ['demo-cell', isLt?'lt':'dk'];
+      // zones
+      if(opts.zones){
+        for(const [zoneType, cells] of Object.entries(opts.zones)){
+          if(cells.some(([zr,zc])=> zr===r && zc===c)){
+            cellCls.push('zone-'+zoneType);
+          }
+        }
+      }
+      // moves / attacks
+      if(opts.moves && opts.moves.some(([mr,mc])=>mr===r&&mc===c)) cellCls.push('move');
+      if(opts.attacks && opts.attacks.some(([ar,ac])=>ar===r&&ac===c)) cellCls.push('attack');
+
+      let inner = '';
+      // piece
+      if(opts.piece && opts.piece.r===r && opts.piece.c===c){
+        const p = opts.piece;
+        const sym = SYM[p.kind][p.color] || '?';
+        inner = `<span class="pc ${p.color}">${sym}</span>`;
+      }
+      // extra pieces (for sniper demo etc)
+      if(opts.others){
+        for(const ep of opts.others){
+          if(ep.r===r && ep.c===c){
+            inner = `<span class="pc ${ep.color}">${SYM[ep.kind][ep.color]}</span>`;
+          }
+        }
+      }
+      html += `<div class="${cellCls.join(' ')}">${inner}</div>`;
+    }
+  }
+  html += `</div>`;
+  return html;
+}
+
+// ===== 튜토리얼 단계들 =====
+const STEPS = [
+  {
+    title:'🎯 FRONTIER에 오신 것을 환영합니다',
+    sub:'체스 × 오목 하이브리드 보드게임',
+    body:`
+      <p>FRONTIER는 <b>체스</b>의 기물 행마와 <b>오목</b>의 5목 승리를 하나로 묶은 2인 게임입니다.</p>
+      <p>이 튜토리얼에서는 다음을 배웁니다:</p>
+      <ul>
+        <li>보드 구조와 영역 규칙</li>
+        <li>각 기물의 움직임 (8종)</li>
+        <li>승리 조건 (오목 / 체크메이트 / 자멸)</li>
+        <li>특수 규칙 (체크 한도, 캡처 규칙)</li>
+      </ul>
+      <div class="tut-callout">📌 약 5분이면 끝나며, 마지막에 AI와 연습 대국을 시작할 수 있습니다.</div>`
+  },
+  {
+    title:'📐 보드 구조',
+    sub:'8×8 보드의 영역 구분',
+    body:`
+      <p>FRONTIER 보드는 <b>8×8</b> 크기이며 세 가지 배치 영역이 있습니다.</p>
+      ${miniBoard({
+        size:7,
+        zones:{
+          'corner': [[0,0],[0,6],[6,0],[6,6]],
+          'king': [[2,2],[2,3],[2,4],[3,2],[3,3],[3,4],[4,2],[4,3],[4,4]],
+          // 일반은 표시 생략 (영역이 너무 넓음)
+        }
+      })}
+      <ul>
+        <li><span style="color:var(--green)">●</span> <b>킹 영역 (4×4)</b> — 첫 수에 무조건 킹 배치</li>
+        <li><span style="color:var(--red)">●</span> <b>꼭짓점 4곳</b> — 스나이퍼 전용 자리</li>
+        <li>나머지 6×4 중앙 — 일반 기물 배치 영역</li>
+      </ul>
+      <div class="tut-callout info">💡 백이 먼저 시작합니다. 첫 수는 양쪽 모두 무조건 <b>킹 배치</b>입니다.</div>`
+  },
+  {
+    title:'♕ 퀸 — 가장 강력한 기물',
+    body:`
+      <p>퀸은 <em>8방향 어디든</em> 직선으로 무제한 이동 가능합니다. (체스의 퀸과 동일)</p>
+      ${miniBoard({
+        size:7,
+        piece:{kind:'Q', color:'w', r:3, c:3},
+        moves:[[3,0],[3,1],[3,2],[3,4],[3,5],[3,6],[0,3],[1,3],[2,3],[4,3],[5,3],[6,3],
+               [0,0],[1,1],[2,2],[4,4],[5,5],[6,6],[0,6],[1,5],[2,4],[4,2],[5,1],[6,0]]
+      })}
+      <p>가로/세로/대각선 — 막히는 자리(다른 기물)까지 갈 수 있고, 그 자리에 적이 있으면 캡처합니다.</p>`
+  },
+  {
+    title:'♖ 룩 — 직선의 지배자',
+    body:`
+      <p>룩은 <em>가로/세로 4방향</em>으로만 무제한 이동합니다.</p>
+      ${miniBoard({
+        size:7,
+        piece:{kind:'R', color:'w', r:3, c:3},
+        moves:[[3,0],[3,1],[3,2],[3,4],[3,5],[3,6],[0,3],[1,3],[2,3],[4,3],[5,3],[6,3]]
+      })}
+      <p>대각선으로는 못 갑니다. 5목을 만들 때 가로/세로 라인을 점거하기 좋습니다.</p>`
+  },
+  {
+    title:'♗ 비숍 — 대각선 전문가',
+    body:`
+      <p>비숍은 <em>대각선 4방향</em>만 이동합니다.</p>
+      ${miniBoard({
+        size:7,
+        piece:{kind:'B', color:'w', r:3, c:3},
+        moves:[[0,0],[1,1],[2,2],[4,4],[5,5],[6,6],[0,6],[1,5],[2,4],[4,2],[5,1],[6,0]]
+      })}
+      <p>같은 색 칸만 다닙니다 (밝은 칸 비숍은 평생 밝은 칸).</p>`
+  },
+  {
+    title:'♘ 나이트 — L자 점프',
+    body:`
+      <p>나이트는 <em>L자 (2칸+1칸) 점프</em>를 합니다. 중간에 기물이 있어도 무시하고 넘어감.</p>
+      ${miniBoard({
+        size:5,
+        piece:{kind:'N', color:'w', r:2, c:2},
+        moves:[[0,1],[0,3],[1,0],[1,4],[3,0],[3,4],[4,1],[4,3]]
+      })}
+      <p>막힘이 없는 유일한 일반 기물. 좁은 공간에서 위협적입니다.</p>`
+  },
+  {
+    title:'♙ 폰 — 작지만 핵심',
+    body:`
+      <p>폰은 <em>한 칸 전진</em> (앞이 비어있을 때만), 대각선 한 칸으로 적 공격합니다.</p>
+      ${miniBoard({
+        size:5,
+        piece:{kind:'P', color:'w', r:3, c:2},
+        moves:[[2,2]],
+        attacks:[[2,1],[2,3]]
+      })}
+      <ul>
+        <li>백 폰은 위로 (랭크 8 방향), 흑 폰은 아래로 전진</li>
+        <li>대각 1칸의 <b>적</b>이 있을 때만 공격으로 잡음</li>
+        <li>마지막 줄 도달 시 <b>퀸/룩/비숍/나이트</b>로 프로모션</li>
+      </ul>
+      <div class="tut-callout">💡 폰 8개로 5목 라인 만들기가 핵심 전술입니다.</div>`
+  },
+  {
+    title:'۩ 방패 — 밀어내기 특수',
+    body:`
+      <p>방패는 <em>앞/뒤 1칸</em>으로만 이동하며, 앞 칸에 적이 있으면 <em>밀어낼 수 있습니다</em>.</p>
+      ${miniBoard({
+        size:5,
+        piece:{kind:'SH', color:'w', r:2, c:2},
+        moves:[[1,2],[3,2]]
+      })}
+      <h3>밀기 메카닉</h3>
+      <ul>
+        <li>방패 앞에 적이 있고, 그 너머 칸이 비었으면 → 적이 한 칸 밀려남</li>
+        <li>밀려난 적이 보드 밖이거나 다른 기물에 부딪히면 → 그 적은 <b>죽고 방패 쪽 손패로 회수</b></li>
+      </ul>
+      <div class="tut-callout warn">⚠ 방패는 양 옆/대각으로 못 갑니다. 앞뒤 직선 전용.</div>`
+  },
+  {
+    title:'፬ 스나이퍼 — 꼭짓점 저격수',
+    body:`
+      <p>스나이퍼는 <em>4꼭짓점에만 배치</em>됩니다. 이동은 못 하지만 직선 1~3칸 거리의 적을 <em>저격</em>합니다.</p>
+      ${miniBoard({
+        size:5,
+        piece:{kind:'SN', color:'w', r:0, c:0},
+        attacks:[[0,2],[2,0]],
+        others:[
+          {kind:'P', color:'b', r:0, c:2},
+          {kind:'N', color:'b', r:2, c:0}
+        ]
+      })}
+      <ul>
+        <li>가로/세로 시야 1-3칸 안의 적 가능</li>
+        <li>저격된 기물은 손패로 회수 (단 K, SN은 회수 불가)</li>
+        <li>시야 막힘: 첫 기물(아군/적)에서 멈춤</li>
+      </ul>`
+  },
+  {
+    title:'ᎇ 어쌔신 — 점프 암살자',
+    body:`
+      <p>어쌔신은 <em>상하좌우 정확히 2칸 점프</em>합니다. 중간 무시.</p>
+      ${miniBoard({
+        size:5,
+        piece:{kind:'JP', color:'w', r:2, c:2},
+        moves:[[0,2],[4,2],[2,0],[2,4]]
+      })}
+      <p>대각선 점프는 불가. 나이트와 비슷하지만 <b>4방향만</b> 가능합니다.</p>`
+  },
+  {
+    title:'🏆 승리 조건',
+    body:`
+      <h3>1. 오목 승리</h3>
+      <p>자기 색 기물 5개를 가로/세로/대각선으로 일직선 정렬 — <b>즉시 승리</b>.</p>
+      ${miniBoard({
+        size:7,
+        others:[
+          {kind:'P', color:'w', r:3, c:1},
+          {kind:'R', color:'w', r:3, c:2},
+          {kind:'Q', color:'w', r:3, c:3},
+          {kind:'B', color:'w', r:3, c:4},
+          {kind:'N', color:'w', r:3, c:5}
+        ]
+      })}
+      <h3>2. 체크메이트</h3>
+      <p>상대 킹이 빠져나갈 모든 수가 막힘. 체스와 동일.</p>
+      <h3>3. 자멸 (3연속 체크)</h3>
+      <p>상대를 <b>3연속으로 체크</b>하면, <em>체크 건 쪽이 패배</em>합니다 (상대가 자멸).</p>
+      <div class="tut-callout warn">⚠ 체크는 신중하게! 욕심부려서 3번 연속 체크하면 본인이 짐.</div>`
+  },
+  {
+    title:'⚙️ 추가 규칙 & 팁',
+    body:`
+      <h3>체크 한도</h3>
+      <p>한 게임에서 한 색이 가할 수 있는 총 체크는 <b>5회</b>까지. 6번째 체크는 무효 처리되어 그 수가 거절됩니다.</p>
+      <h3>캡처 규칙</h3>
+      <ul>
+        <li><b>일반 캡처</b>: 잡힌 기물은 영구 제거</li>
+        <li><b>스나이퍼 저격</b>: 잡힌 기물 손패 회수 ✓</li>
+        <li><b>방패 밀어 죽이기</b>: 잡힌 기물 손패 회수 ✓</li>
+      </ul>
+      <h3>전략 팁</h3>
+      <ul>
+        <li>킹 옆에 자기 기물을 모아 방어 라인 만들기</li>
+        <li>폰을 5목 만드는 핵심으로 활용</li>
+        <li>상대 5목을 막는 것이 체스 캡처보다 중요</li>
+        <li>체크 한도 5회는 상대 압박용으로 아껴쓰기</li>
+      </ul>
+      <div class="tut-callout">🎮 다음을 누르면 AI(쉬움)와 연습 대국을 시작합니다. 모든 기물(특수 포함)을 가지고 시작!</div>`
+  }
+];
+
+let cur = 0;
+
+function render(){
+  const s = STEPS[cur];
+  document.getElementById('tutTitle').textContent = s.title;
+  document.getElementById('tutSubtitle').textContent = s.sub || '';
+  document.getElementById('tutContent').innerHTML = s.body;
+  document.getElementById('stepLabel').textContent = `${cur+1} / ${STEPS.length}`;
+  document.getElementById('progFill').style.width = `${(cur+1)/STEPS.length*100}%`;
+  document.getElementById('prevBtn').disabled = (cur===0);
+  document.getElementById('nextBtn').textContent = (cur===STEPS.length-1) ? '🎮 AI와 연습하기 →' : '다음 →';
+  // 스크롤 위로
+  window.scrollTo({top:0, behavior:'smooth'});
+}
+
+function nextStep(){
+  if(cur === STEPS.length-1){
+    // 모든 기물 포함 hand로 AI(쉬움) 시작
+    location.href = 'omokgay.html?mode=ai&difficulty=easy&hand=K1Q1R2B2N2P8SH1SN1JP1&time=unlimited';
+    return;
+  }
+  cur++; render();
+}
+function prevStep(){ if(cur>0){ cur--; render(); } }
+function exitTutorial(){
+  if(confirm('튜토리얼을 종료하시겠습니까?')) location.href = 'index.html';
+}
+
+// 키보드 네비게이션
+document.addEventListener('keydown', e=>{
+  if(e.key === 'ArrowRight' || e.key === ' ') { e.preventDefault(); nextStep(); }
+  else if(e.key === 'ArrowLeft') { e.preventDefault(); prevStep(); }
+  else if(e.key === 'Escape') { exitTutorial(); }
+});
+
+render();
+</script>
+</body>
+</html>
