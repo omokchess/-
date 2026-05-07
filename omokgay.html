@@ -990,6 +990,12 @@ function setBoardSize(){
 }
 window.addEventListener('resize', setBoardSize);
 window.addEventListener('orientationchange', ()=> setTimeout(setBoardSize, 100));
+// 화면 폭 변경 시 카드/손패 스왑 조건도 재평가
+let _resizeRenderTimer = null;
+window.addEventListener('resize', ()=>{
+  clearTimeout(_resizeRenderTimer);
+  _resizeRenderTimer = setTimeout(()=> { try { renderAll(); } catch(_){} }, 150);
+});
 
 let SEL = null;             // 선택 상태: {kind:'place'|'board', ...}
 let HIGHLIGHTS = [];        // 표시할 [r,c, type] 좌표 리스트
@@ -1122,15 +1128,24 @@ function renderHands(){
   const myTitleEl = document.getElementById('myHandTitle');
   const oppTitleEl = document.getElementById('oppHandTitle');
 
+  const SMALL_SCREEN = window.innerWidth <= 600;
   let bottomColor, topColor, bottomInteractive, topInteractive;
-  if(IS_LOCAL){
-    // 로컬: 항상 현재 차례 색이 메인(아래) 패널에. 모바일에서도 눈동자 버튼 없이 즉시 조작 가능.
+  if(IS_LOCAL && SMALL_SCREEN){
+    // 모바일 로컬: 활성 색이 메인(아래) 패널에. 눈동자 안 써도 즉시 조작.
     bottomColor = turn;
     topColor = opp(turn);
     bottomInteractive = !gameOver;
     topInteractive = false;
     if(myTitleEl)  myTitleEl.textContent  = (bottomColor==='w'?'백':'흑') + ' 손패 (활성)';
     if(oppTitleEl) oppTitleEl.textContent = (topColor==='w'?'백':'흑') + ' 손패 (대기)';
+  } else if(IS_LOCAL){
+    // 큰 화면 로컬: 백=아래, 흑=위 고정. 양쪽 다 클릭 가능 (각자 차례에).
+    bottomColor = 'w';
+    topColor = 'b';
+    bottomInteractive = (turn === 'w') && !gameOver;
+    topInteractive    = (turn === 'b') && !gameOver;
+    if(myTitleEl)  myTitleEl.textContent  = '백 손패' + (turn==='w' ? ' (차례)' : '');
+    if(oppTitleEl) oppTitleEl.textContent = '흑 손패' + (turn==='b' ? ' (차례)' : '');
   } else {
     // 네트워크/AI/관전: 본인 색이 메인, 상대 색이 위
     bottomColor = MY_COLOR;
@@ -1172,8 +1187,10 @@ function renderStatus(){
   renderCheckStats('myCheckStats', MY_COLOR);
   renderCheckStats('oppCheckStats', opp(MY_COLOR));
 
-  // 로컬 모드: 카드 라벨/아바타도 활성-기준으로 동적 갱신
-  if(IS_LOCAL){
+  // 로컬 모드: 작은 화면(모바일)에선 카드/손패가 활성-기준으로 동적 스왑.
+  // 큰 화면에선 양쪽이 동시에 잘 보이므로 백=아래/흑=위 고정 유지.
+  const SMALL_SCREEN = window.innerWidth <= 600;
+  if(IS_LOCAL && SMALL_SCREEN){
     const act = turn, idle = opp(turn);
     // 아래(myCard) = 활성, 위(oppCard) = 대기
     document.getElementById('myAv').textContent = act==='w' ? 'W' : 'B';
@@ -1193,6 +1210,24 @@ function renderStatus(){
     // 체크 통계도 활성/대기 매핑
     renderCheckStats('myCheckStats', act);
     renderCheckStats('oppCheckStats', idle);
+  } else if(IS_LOCAL){
+    // 큰 화면 로컬: 양쪽 카드 고정 (myCard=백, oppCard=흑) — 활성 펄스만 색에 따라
+    document.getElementById('myAv').textContent = 'W';
+    document.getElementById('myAv').className = 'av';
+    document.getElementById('myName').textContent = '백 (플레이어 1)';
+    document.getElementById('myMeta').textContent = turn==='w' ? '백 — 차례' : '백 — 대기';
+
+    document.getElementById('oppAv').textContent = 'B';
+    document.getElementById('oppAv').className = 'av b';
+    document.getElementById('oppName').textContent = '흑 (플레이어 2)';
+    document.getElementById('oppMeta').textContent = turn==='b' ? '흑 — 차례' : '흑 — 대기';
+
+    // 활성 펄스: 백 차례면 myCard, 흑 차례면 oppCard
+    document.getElementById('myCard').classList.toggle('active', turn==='w' && !gameOver);
+    document.getElementById('oppCard').classList.toggle('active', turn==='b' && !gameOver);
+
+    renderCheckStats('myCheckStats', 'w');
+    renderCheckStats('oppCheckStats', 'b');
   } else {
     // 활성 표시 (기본)
     document.getElementById('myCard').classList.toggle('active', turn === MY_COLOR && !gameOver);
@@ -1461,7 +1496,7 @@ function submitAction(action){
 
 function postMoveCheck(r){
   if(r.fiveWin){
-    endGame('🏆','5연속 승리!', `${r.fiveWin==='w'?'백':'흑'}이 5연속을 완성했습니다.`, r.fiveWin);
+    endGame('🏆','오목 승리!', `${r.fiveWin==='w'?'백':'흑'}이 5목을 완성했습니다.`, r.fiveWin);
     return;
   }
   if(r.checkmate){
@@ -1963,6 +1998,12 @@ function netInit(){
 function initHost(){
   document.getElementById('connectModal').classList.add('show');
   document.getElementById('connectMsg').textContent = '게스트 입장을 기다립니다...';
+  // 유령방 방지: 호스트 연결이 끊기면 Firebase가 자동으로 방 제거
+  if(_fbDb && ROOM_CODE){
+    try {
+      _fbDb.ref('rooms/'+ROOM_CODE).onDisconnect().remove();
+    } catch(e){ console.warn('onDisconnect 등록 실패', e); }
+  }
   // PeerID = ROOM_CODE
   _peer = new Peer(ROOM_CODE, {
     config:{ 'iceServers':[ {urls:'stun:stun.l.google.com:19302'}, {urls:'stun:stun1.l.google.com:19302'} ]}
@@ -2121,6 +2162,8 @@ function publishGameState(){
     rating: _gameRatingInfo
   };
   _fbDb.ref('rooms/'+ROOM_CODE+'/gameState').set(JSON.stringify(state)).catch(()=>{});
+  // 활동 시각 갱신 (유령방 차단용)
+  _fbDb.ref('rooms/'+ROOM_CODE+'/lastActivity').set(Date.now()).catch(()=>{});
 }
 
 // 관전자

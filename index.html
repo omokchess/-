@@ -593,7 +593,24 @@ window.goLocal = window.openLocalModal;
     const list = document.getElementById('rooms');
     const arr = Object.entries(ROOMS).map(([code,r])=>({code,...r}));
     const now = Date.now();
-    const fresh = arr.filter(r => !r.createdAt || (now-r.createdAt) < 24*3600*1000);
+    // 유령방 차단:
+    //  - 대기 중: 24시간 이상 묵은 방 제외
+    //  - 진행 중: 1) 진행 중인데 마지막 활동(또는 생성)이 30분 이상 지난 방 제외
+    //              2) 호스트 닉이 없는 방 (정상 생성된 방엔 닉이 있음) — 유실/유령 신호
+    const fresh = arr.filter(r => {
+      if(!r.createdAt) return false; // 생성시각 없으면 의심스러운 유령
+      const age = now - r.createdAt;
+      if(!r.started){
+        return age < 24*3600*1000;
+      } else {
+        const lastAct = r.lastActivity || r.createdAt;
+        const idle = now - lastAct;
+        if(idle > 30*60*1000) return false;          // 30분 이상 비활성
+        if(!r.hostNick) return false;                  // 호스트 닉 유실 = 유령
+        if(r.gameActive === false) return false;       // 종료된 게임 잔재
+        return true;
+      }
+    });
     const filtered = fresh.filter(r => TAB==='wait' ? !r.started : !!r.started);
     filtered.sort((a,b)=>(b.createdAt||0)-(a.createdAt||0));
     document.getElementById('rcount').textContent = filtered.length;
