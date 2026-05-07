@@ -252,6 +252,17 @@ input{font-family:inherit;outline:none}
   .side.right .pcard{padding:8px;min-width:0}
   .side.right .hand-list{flex-direction:row}
   .side.right .pcard.active .ph::after{font-size:9px;padding:1px 4px}
+  /* 손패 가로 스크롤 — 우측 fade 단서로 "더 있음" 표시 */
+  .side.right .hand-card{position:relative}
+  .side.right .hand-card::after{content:'';position:absolute;top:30px;right:0;bottom:8px;width:24px;
+    background:linear-gradient(to right, transparent, var(--panel) 70%);
+    pointer-events:none;border-top-right-radius:10px;border-bottom-right-radius:10px}
+  /* 체크 통계: 모바일은 세로 스택 + 각 박스 가로 레이아웃 (좁은 폭에도 항상 두 칸 보임) */
+  .pcard .check-stats{grid-template-columns:1fr;gap:3px}
+  .pcard .check-stats .cs{display:flex;align-items:center;justify-content:space-between;
+    padding:4px 9px;text-align:left}
+  .pcard .check-stats .cs .lab{font-size:11px;color:var(--muted)}
+  .pcard .check-stats .cs .val{font-size:13px;margin-top:0;font-weight:800}
   .opp-toggle{position:fixed;top:50px;right:8px;z-index:30;background:var(--panel);border:1px solid var(--gold);
     color:var(--gold);width:40px;height:40px;border-radius:50%;font-size:18px;display:flex;align-items:center;justify-content:center}
   .opp-sheet{position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:60;display:none;align-items:flex-end}
