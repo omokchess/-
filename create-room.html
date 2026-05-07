@@ -106,7 +106,7 @@ input,textarea{font-family:inherit;outline:none}
       <div class="logo">FRONTIER</div>
       <div class="tag">방 만들기</div>
     </div>
-    <a href="index.html" class="back">← 로비</a>
+    <a href="lobby.html" class="back">← 로비</a>
   </div>
 
   <div class="cols">
@@ -222,9 +222,9 @@ const PIECE_DEFS = {
   B:{sym:'♗',name:'비숍',desc:'대각선 이동',def:2,max:4},
   N:{sym:'♘',name:'나이트',desc:'L자 점프',def:2,max:4},
   P:{sym:'♙',name:'폰',desc:'1칸 전진, 대각 공격',def:8,max:8},
-  SH:{sym:'۩',name:'방패',desc:'앞/뒤 1칸, 기물 밀기 가능',def:0,max:2},
-  SN:{sym:'፬',name:'스나이퍼',desc:'4꼭짓점 배치, 직선 3칸 저격',def:0,max:1},
-  JP:{sym:'ᎇ',name:'어쌔신',desc:'상하좌우 2칸 점프',def:0,max:2}
+  SH:{sym:'◈',name:'방패',desc:'앞/뒤 1칸, 기물 밀기 가능',def:0,max:2},
+  SN:{sym:'⊕',name:'스나이퍼',desc:'4꼭짓점 배치, 직선 1-3칸 저격',def:0,max:1},
+  JP:{sym:'✦',name:'어쌔신',desc:'상하좌우 2칸 점프',def:0,max:2}
 };
 const PIECE_ORDER = ['Q','R','B','N','P','SH','SN','JP'];
 const NORMAL_KEYS = ['Q','R','B','N','P'];
@@ -357,7 +357,7 @@ async function createRoom(){
           hand:data.hand
         });
         // 즉시 이동
-        location.href = 'omokgay.html?'+params.toString();
+        location.href = 'FRONTIER.html?'+params.toString();
       });
     }
   });

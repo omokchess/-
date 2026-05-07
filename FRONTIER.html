@@ -1,0 +1,2653 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>FRONTIER — 게임</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;900&family=Cinzel:wght@600;800&display=swap" rel="stylesheet">
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+<script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
+<style>
+:root{
+  --bg:#2C2C2E; --panel:#3A3A3C; --panel2:#48484A; --border:#555558;
+  --gold:#F5C842; --gold2:#E5B832;
+  --text:#F2F2F7; --muted:#AEAEB2;
+  --red:#FF453A; --green:#30D158; --blue:#0A84FF; --orange:#FF9500;
+  --light:#F0D9B5; --dark:#B58863;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100dvh;overflow:hidden;background:var(--bg);color:var(--text);
+  font-family:'Noto Sans KR','Apple SD Gothic Neo',sans-serif;
+  -webkit-tap-highlight-color:transparent;user-select:none;overflow-x:hidden;max-width:100vw}
+button{font-family:inherit;cursor:pointer;border:none;outline:none;color:inherit;background:transparent}
+input{font-family:inherit;outline:none}
+
+/* 데스크탑 3열 */
+.app{display:grid;grid-template-columns:240px 1fr 240px;grid-template-rows:auto 1fr;
+  gap:8px;height:100dvh;padding:8px;max-width:1400px;margin:0 auto;overflow:hidden}
+
+.topbar{grid-column:1/-1;display:flex;align-items:center;justify-content:space-between;
+  background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:8px 12px}
+.tb-left{display:flex;gap:8px;align-items:center}
+.tb-mid{font-family:'Cinzel',serif;font-weight:800;color:var(--gold);font-size:18px;letter-spacing:3px}
+.tb-right{display:flex;gap:6px;align-items:center}
+.tb-btn{padding:6px 10px;background:var(--panel2);border:1px solid var(--border);border-radius:7px;font-size:12px;font-weight:600;color:var(--text)}
+.tb-btn:hover{background:var(--panel)}
+.tb-btn.danger{color:var(--red)}
+
+/* 좌/우 패널 (플레이어 카드 + 손패) */
+.side{display:flex;flex-direction:column;gap:8px;min-height:0}
+.pcard{background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:10px;transition:all .2s}
+.pcard.active{border-color:var(--gold);box-shadow:0 0 0 2px var(--gold), 0 0 20px rgba(245,200,66,.4);animation:cardPulse 1.6s ease-in-out infinite}
+@keyframes cardPulse{
+  0%,100%{box-shadow:0 0 0 2px var(--gold), 0 0 20px rgba(245,200,66,.4)}
+  50%{box-shadow:0 0 0 2px var(--gold), 0 0 30px rgba(245,200,66,.7)}
+}
+.pcard .ph{display:flex;align-items:center;gap:8px;margin-bottom:8px}
+.pcard.active .ph::after{content:'◀ 차례';margin-left:auto;font-size:11px;font-weight:700;color:var(--gold);background:rgba(245,200,66,.15);padding:2px 7px;border-radius:5px;flex-shrink:0}
+.pcard .av{width:28px;height:28px;border-radius:50%;background:var(--gold);color:#1c1c1e;
+  display:flex;align-items:center;justify-content:center;font-weight:900;font-size:13px;flex-shrink:0}
+.pcard .av.b{background:#1c1c1e;color:var(--gold);border:1px solid var(--gold)}
+.pcard .pn{font-weight:700;font-size:13px;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pcard .pe{font-size:11px;color:var(--muted)}
+.pcard .ck{font-size:11px;color:var(--orange);margin-top:4px}
+.pcard .check-stats{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:6px;margin-top:5px;font-size:10px;line-height:1.2;width:100%}
+.pcard .check-stats .cs{min-width:0;background:var(--panel2);border:1px solid var(--border);border-radius:5px;padding:4px 5px;text-align:center;overflow:hidden}
+.pcard .check-stats .cs .lab{color:var(--muted);font-size:9px;letter-spacing:.3px}
+.pcard .check-stats .cs .val{font-weight:800;color:var(--text);font-size:13px;margin-top:1px}
+.pcard .check-stats .cs.streak.warn .val{color:var(--orange)}
+.pcard .check-stats .cs.streak.danger .val{color:var(--red);animation:csPulse 0.7s infinite}
+.pcard .check-stats .cs.total.warn .val{color:var(--orange)}
+.pcard .check-stats .cs.total.danger .val{color:var(--red);animation:csPulse 0.7s infinite}
+@keyframes csPulse{50%{opacity:.5}}
+.pcard .timer{font-family:'Cinzel',monospace;font-size:18px;font-weight:800;text-align:center;
+  background:var(--panel2);padding:4px 8px;border-radius:6px;margin-top:4px}
+.pcard .timer.warn{color:var(--red);animation:pulse 1s infinite}
+@keyframes pulse{50%{opacity:.5}}
+
+.hand-card{background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:10px;flex:1;min-height:0;display:flex;flex-direction:column}
+.hand-card h4{font-size:11px;color:var(--muted);letter-spacing:1px;margin-bottom:8px;text-transform:uppercase}
+.hand-list{display:flex;flex-direction:column;gap:4px;overflow-y:auto;flex:1}
+.hand-list::-webkit-scrollbar{width:4px}
+.hand-list::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px}
+.hp{display:flex;align-items:center;gap:8px;padding:6px 8px;background:var(--panel2);border:1px solid var(--border);
+  border-radius:6px;cursor:pointer;transition:all .12s}
+.hp:hover{background:var(--panel);border-color:var(--gold)}
+.hp.sel{background:rgba(245,200,66,.2);border-color:var(--gold)}
+.hp.dis{opacity:.4;cursor:not-allowed}
+.hp .sym{font-size:22px;line-height:1;width:24px;text-align:center}
+.hp .sym.hp-w{color:#fff;text-shadow:
+  0 0 2px #000, 0 0 2px #000, 0 1px 1px #000, 0 -1px 1px #000, 1px 0 1px #000, -1px 0 1px #000}
+.hp .sym.hp-b{color:#1a1a1a;text-shadow:
+  0 0 2px #fff, 0 0 2px #fff, 0 1px 1px #fff, 0 -1px 1px #fff, 1px 0 1px #fff, -1px 0 1px #fff}
+.hp .sym.spec.hp-w{color:#fff;text-shadow:
+  0 0 3px #000, 0 0 3px #000, 0 0 4px #000, 0 1px 1px #000, 0 -1px 1px #000, 1px 0 1px #000, -1px 0 1px #000}
+.hp .sym.spec.hp-b{color:#1a1a1a;text-shadow:
+  0 0 3px #fff, 0 0 3px #fff, 0 0 4px #fff, 0 1px 1px #fff, 0 -1px 1px #fff, 1px 0 1px #fff, -1px 0 1px #fff}
+.hp .nm{font-size:12px;font-weight:600;flex:1}
+.hp .ct{font-weight:800;font-size:14px;color:var(--gold)}
+
+/* 보드 */
+.board-wrap{display:flex;align-items:center;justify-content:center;min-height:0;position:relative}
+.board-outer{position:relative}
+.board{display:grid;grid-template-columns:repeat(8, var(--cs));grid-template-rows:repeat(8, var(--cs));
+  border:2px solid #5a4a36;border-radius:6px;box-shadow:0 12px 50px rgba(0,0,0,.5);background:#5a4a36}
+.cell{width:var(--cs);height:var(--cs);position:relative;display:flex;align-items:center;justify-content:center;
+  font-size:calc(var(--cs) * .68);line-height:1;cursor:pointer;transition:background .1s}
+.cell.lt{background:var(--light)}
+.cell.dk{background:var(--dark)}
+.cell.king-zone::before{content:'';position:absolute;inset:2px;border:2px dashed rgba(245,200,66,.5);border-radius:4px;pointer-events:none}
+.cell.place-zone::after{content:'';position:absolute;inset:0;background:rgba(48,209,88,.15);pointer-events:none}
+.cell.corner-zone::after{content:'';position:absolute;inset:0;background:rgba(255,69,58,.18);pointer-events:none}
+.cell.move::after{content:'';position:absolute;width:30%;height:30%;background:rgba(48,209,88,.55);border-radius:50%;pointer-events:none}
+.cell.attack::after{content:'';position:absolute;inset:8%;border:3px solid rgba(255,69,58,.65);border-radius:50%;pointer-events:none}
+.cell.sel{background:rgba(245,200,66,.5)!important}
+.cell.last{background:rgba(245,200,66,.3)!important}
+.cell.check::before{content:'';position:absolute;inset:0;background:rgba(255,69,58,.4);border-radius:0;animation:checkpulse 1s infinite}
+@keyframes checkpulse{50%{background:rgba(255,69,58,.15)}}
+.cell .pc{position:relative;z-index:1}
+.cell .pc.w{color:#fff;text-shadow:
+  0 0 2px #000, 0 0 2px #000, 0 0 3px #000,
+  0 1px 1px #000, 0 -1px 1px #000, 1px 0 1px #000, -1px 0 1px #000}
+.cell .pc.b{color:#1a1a1a;text-shadow:
+  0 0 2px #fff, 0 0 2px #fff, 0 0 3px rgba(255,255,255,.6),
+  0 1px 1px #fff, 0 -1px 1px #fff, 1px 0 1px #fff, -1px 0 1px #fff}
+.cell .pc.spec.w{color:#fff;text-shadow:
+  0 0 3px #000, 0 0 3px #000, 0 0 4px #000, 0 1px 1px #000, 0 -1px 1px #000, 1px 0 1px #000, -1px 0 1px #000}
+.cell .pc.spec.b{color:#1a1a1a;text-shadow:
+  0 0 3px #fff, 0 0 3px #fff, 0 0 4px #fff, 0 1px 1px #fff, 0 -1px 1px #fff, 1px 0 1px #fff, -1px 0 1px #fff}
+
+.coord{position:absolute;font-size:9px;font-weight:700;color:#7a5e3a;pointer-events:none;z-index:2}
+.coord.f{bottom:1px;right:3px}
+.coord.r{top:1px;left:3px}
+
+.status-float{position:absolute;top:4px;left:50%;transform:translateX(-50%);
+  background:rgba(0,0,0,.7);border:1px solid var(--gold);padding:6px 14px;border-radius:8px;
+  font-size:13px;font-weight:600;z-index:5;pointer-events:none;display:none;white-space:nowrap}
+.status-float.show{display:block}
+.status-float.check-flash{background:rgba(180,40,40,.9);border-color:#fff;color:#fff;font-size:14px;
+  animation:flashPulse 0.5s ease-in-out 3;box-shadow:0 0 20px rgba(255,69,58,.7)}
+@keyframes flashPulse{0%,100%{transform:translateX(-50%) scale(1)}50%{transform:translateX(-50%) scale(1.08)}}
+
+/* 폰 진행 방향 표시 */
+.cell .pawn-dir{position:absolute;width:18%;height:18%;border-radius:50%;pointer-events:none;z-index:0}
+.cell .pawn-dir.w{background:rgba(255,255,255,.5);border:1px solid rgba(255,255,255,.8);top:8%;left:50%;transform:translateX(-50%)}
+.cell .pawn-dir.b{background:rgba(20,20,20,.55);border:1px solid rgba(20,20,20,.85);bottom:8%;left:50%;transform:translateX(-50%)}
+.cell .pawn-place-arrow{position:absolute;font-size:14px;font-weight:900;line-height:1;pointer-events:none;z-index:2;
+  text-shadow:0 1px 2px rgba(0,0,0,.5)}
+.cell .pawn-place-arrow.w{top:6%;left:50%;transform:translateX(-50%);color:rgba(255,255,255,.85)}
+.cell .pawn-place-arrow.b{bottom:6%;left:50%;transform:translateX(-50%);color:rgba(20,20,20,.85)}
+
+/* 게임 종료 후 결과 모달을 잠시 닫고 보드 볼 때의 복귀 버튼 */
+.end-restore{position:fixed;top:60px;left:50%;transform:translateX(-50%);z-index:80;
+  background:var(--gold);color:#1c1c1e;border:none;padding:8px 16px;border-radius:8px;
+  font-size:13px;font-weight:700;cursor:pointer;box-shadow:0 4px 14px rgba(0,0,0,.4)}
+.end-restore:hover{background:#fcd853}
+
+/* 규칙 모달 */
+.rules-card{max-width:560px;text-align:left}
+.rules-body{max-height:60vh;overflow-y:auto;padding-right:6px;text-align:left;line-height:1.55}
+.rules-body h4{color:var(--gold);font-size:14px;margin:14px 0 6px;font-weight:700}
+.rules-body h4:first-child{margin-top:0}
+.rules-body ul{list-style:none;padding:0;margin:0}
+.rules-body li{padding:4px 0;font-size:13px;border-bottom:1px dashed rgba(255,255,255,.06)}
+.rules-body li:last-child{border-bottom:none}
+.rules-body b{color:var(--text);font-weight:700}
+.rules-body .r-sym{display:inline-block;width:24px;font-size:18px;text-align:center;margin-right:4px}
+.rules-body .r-sym.spec-w{text-shadow:0 0 2px #000,0 0 2px #000}
+
+/* 채팅 */
+.chat-fab{position:fixed;bottom:14px;right:14px;width:50px;height:50px;border-radius:50%;
+  background:var(--gold);color:#1c1c1e;font-size:22px;display:flex;align-items:center;justify-content:center;
+  box-shadow:0 4px 14px rgba(0,0,0,.3);z-index:50;cursor:pointer}
+.chat-badge{position:absolute;top:-3px;right:-3px;background:var(--red);color:#fff;font-size:10px;
+  font-weight:700;padding:2px 5px;border-radius:9px;min-width:18px;text-align:center}
+.chat-panel{position:fixed;bottom:14px;right:14px;width:300px;max-width:calc(100vw - 28px);height:380px;max-height:60vh;
+  background:var(--panel);border:1px solid var(--border);border-radius:12px;display:none;flex-direction:column;
+  z-index:51;overflow:hidden;box-shadow:0 10px 30px rgba(0,0,0,.4)}
+.chat-panel.show{display:flex}
+.chat-head{padding:10px 14px;background:var(--panel2);border-bottom:1px solid var(--border);
+  display:flex;justify-content:space-between;align-items:center;font-weight:700;font-size:14px}
+.chat-msgs{flex:1;overflow-y:auto;padding:10px;display:flex;flex-direction:column;gap:6px}
+.chat-msgs::-webkit-scrollbar{width:4px}
+.cm{display:flex;flex-direction:column;gap:2px;font-size:13px;padding:6px 10px;border-radius:8px;max-width:80%;word-break:break-word}
+.cm.me{align-self:flex-end;background:var(--gold);color:#1c1c1e}
+.cm.them{align-self:flex-start;background:var(--panel2)}
+.cm.sys{align-self:center;font-size:11px;color:var(--muted);background:transparent;font-style:italic}
+.cm .who{font-size:10px;color:var(--muted);margin-bottom:1px}
+.cm.me .who{color:#5a4a16}
+.chat-input{display:flex;border-top:1px solid var(--border);padding:8px;gap:6px}
+.chat-input input{flex:1;padding:8px 10px;background:var(--panel2);border:1px solid var(--border);
+  border-radius:6px;color:var(--text);font-size:13px}
+.chat-input button{padding:8px 14px;background:var(--gold);color:#1c1c1e;border-radius:6px;font-weight:700;font-size:13px}
+
+/* 모달 */
+.modal{position:fixed;inset:0;background:rgba(0,0,0,.8);display:none;align-items:flex-start;justify-content:center;z-index:200;padding:20px;overflow-y:auto;-webkit-overflow-scrolling:touch}
+.modal.show{display:flex}
+.modal-card{background:var(--panel);border:1px solid var(--border);border-radius:16px;padding:24px;max-width:440px;width:100%;text-align:center;margin:auto;position:relative}
+.modal-card h2{font-size:22px;margin-bottom:8px}
+.modal-card .icon{font-size:54px;margin-bottom:10px}
+.modal-card p{color:var(--muted);font-size:14px;line-height:1.6;margin-bottom:14px}
+.modal-card .actions{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;
+  position:sticky;bottom:0;background:var(--panel);
+  padding:12px 24px;margin:12px -24px -24px;
+  border-top:1px solid var(--border);z-index:2}
+.btn{padding:10px 18px;border-radius:8px;font-weight:700;font-size:14px;cursor:pointer;border:none;font-family:inherit}
+.btn-gold{background:linear-gradient(180deg,var(--gold),var(--gold2));color:#1c1c1e}
+.btn-ghost{background:var(--panel2);color:var(--text);border:1px solid var(--border)}
+.btn-blue{background:var(--blue);color:#fff}
+
+.elo-change{font-size:18px;margin:14px 0;padding:10px;background:var(--panel2);border-radius:8px;font-weight:700}
+.elo-change.up{color:var(--green)}
+.elo-change.dn{color:var(--red)}
+
+/* 프로모션 */
+.promo-opts{display:flex;gap:10px;justify-content:center;margin:12px 0}
+.promo-opt{width:60px;height:60px;background:var(--panel2);border:2px solid var(--border);border-radius:10px;
+  display:flex;align-items:center;justify-content:center;font-size:38px;cursor:pointer}
+.promo-opt:hover{border-color:var(--gold);background:var(--panel)}
+.promo-opt.w{color:#fff;text-shadow:0 1px 2px rgba(0,0,0,.5)}
+.promo-opt.b{color:#1a1a1a}
+
+/* 모바일 */
+.mobile-only{display:none}
+.opp-eye-fab{display:none;position:fixed;top:14px;right:12px;z-index:90;
+  width:44px;height:44px;border-radius:50%;
+  background:var(--panel);border:2px solid var(--gold);color:var(--gold);
+  font-size:20px;align-items:center;justify-content:center;
+  box-shadow:0 4px 14px rgba(0,0,0,.5),0 0 0 1px rgba(245,200,66,.3) inset;
+  cursor:pointer}
+.opp-eye-fab:active{transform:scale(.92)}
+
+@media (max-width:820px){
+  html,body{height:auto;min-height:100dvh;overflow-y:auto;overflow-x:hidden}
+  .app{grid-template-columns:1fr;grid-template-rows:auto auto auto auto;padding:6px;gap:6px;
+    min-height:100dvh;height:auto;max-height:none;overflow:visible}
+  .topbar{padding:6px 10px}
+  .tb-mid{font-size:14px;letter-spacing:2px}
+  .side.left{grid-row:2}
+  .side.right{grid-row:4;flex-direction:row;align-items:stretch}
+  .side.right .pcard{flex:0 0 auto}
+  .side.right .hand-card{flex:1}
+  .side.left{flex-direction:row;align-items:stretch;flex-wrap:wrap}
+  .side.left .pcard{flex:1;min-width:0}
+  .side.left .hand-card{display:none}
+  .board-wrap{grid-row:3;width:100%;max-width:100vw;overflow:hidden;min-height:0}
+  .hand-list{flex-direction:row;overflow-x:auto;overflow-y:hidden;padding:2px 14px 2px 2px;scroll-padding-right:14px;-webkit-overflow-scrolling:touch}
+  .hp{flex:0 0 auto;min-width:64px;padding:8px 12px}
+  .pcard .timer{font-size:14px}
+  /* 체크 통계: 모바일에서 한 줄로 압축 */
+  .pcard .check-stats{gap:4px;margin-top:4px}
+  .pcard .check-stats .cs{padding:3px 4px}
+  .pcard .check-stats .cs .lab{font-size:8px}
+  .pcard .check-stats .cs .val{font-size:11px}
+}
+@media (max-width:600px){
+  .mobile-only{display:flex}
+  /* 흑 패널 완전 숨김 — 눈 버튼으로만 확인 */
+  .side.left{display:none}
+  /* 모바일 상단바 컴팩트 */
+  .tb-mid{display:none}
+  .topbar{padding:6px 10px}
+  .tb-btn{padding:5px 8px;font-size:13px}
+  #modeLbl{font-size:11px !important;padding:2px 6px !important}
+  /* 4행 그리드: 상단바 / 보드 / 내 통계 / 내 손패 */
+  .app{grid-template-rows:auto 1fr auto auto;gap:4px;padding:4px}
+  .board-wrap{grid-row:2;width:100%;max-width:100vw;overflow:hidden;min-height:0}
+  /* === 모바일 내 진영: 외부 컨테이너 + 내부 컨테이너 (스택 레이아웃) === */
+  /* 외부 컨테이너 — side.right 자체 */
+  .side.right{grid-row:3 / span 2;flex-direction:column;gap:6px;
+    background:var(--panel2);border:1px solid var(--gold);border-radius:12px;padding:6px}
+
+  /* 내부 컨테이너 — pcard + hand-card 시각적 결합 (한 박스로 보임) */
+  .side.right .pcard{padding:0;background:var(--panel);
+    border:1px solid var(--border);border-bottom:none;border-radius:8px 8px 0 0;
+    box-shadow:none;animation:none;margin:0}
+  .side.right .pcard.active{box-shadow:none;animation:none;border-color:var(--border)}
+  .side.right .pcard .ph{display:none}
+  .side.right .pcard .pe{display:none}
+  .side.right .pcard .ck{display:none}
+  .side.right .pcard .timer{font-size:14px;margin:6px 12px}
+
+  /* 체크 통계 — pcard 내부, 텍스트 라인 + 구분선 */
+  .pcard .check-stats{grid-template-columns:1fr;gap:0;margin:0;width:100%;font-size:13px;
+    border:none}
+  .pcard .check-stats .cs{display:flex;align-items:center;justify-content:space-between;
+    padding:9px 14px;text-align:left;background:transparent;border:none;border-bottom:1px solid var(--border);
+    border-radius:0;overflow:visible}
+  .pcard .check-stats .cs:last-child{border-bottom:none}
+  .pcard .check-stats .cs .lab{font-size:13px;color:var(--muted);letter-spacing:0}
+  .pcard .check-stats .cs .val{font-size:15px;margin-top:0;font-weight:800;color:var(--text)}
+
+  /* 손패 카드 — 내부 컨테이너 하단부 */
+  .side.right .hand-card{padding:10px 12px;margin:0;
+    background:var(--panel);border:1px solid var(--border);border-top:none;border-radius:0 0 8px 8px}
+  .side.right .hand-card h4{font-size:11px;margin-bottom:8px;color:var(--gold);font-weight:800;letter-spacing:1px}
+
+  /* === 손패: 세로 스택 (가로 스크롤 잘림 문제 해결) === */
+  .side.right .hand-list{flex-direction:column;overflow-y:auto;overflow-x:hidden;
+    padding:0;gap:4px;max-height:38vh}
+  .side.right .hp{display:flex;flex-direction:row;align-items:center;
+    width:100%;min-width:0;padding:9px 12px;gap:10px}
+  .side.right .hp .sym{font-size:24px;width:28px;flex-shrink:0}
+  .side.right .hp .nm{flex:1;text-align:left;font-size:14px}
+  .side.right .hp .ct{flex-shrink:0;font-size:16px;margin-left:auto;min-width:24px;text-align:right}
+
+  /* 상대 시트 */
+  .opp-sheet{position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:60;display:none;align-items:flex-end}
+  .opp-sheet.show{display:flex}
+  .opp-sheet-card{background:var(--panel);border-top-left-radius:14px;border-top-right-radius:14px;
+    width:100%;max-height:75vh;padding:16px;overflow-y:auto}
+  .opp-sheet-head{display:flex;align-items:center;gap:10px;margin-bottom:12px;padding-bottom:10px;border-bottom:1px solid var(--border)}
+  .opp-sheet-head .av{width:34px;height:34px;flex-shrink:0;border-radius:50%;background:var(--gold);color:#1c1c1e;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:14px}
+  .opp-sheet-head .av.b{background:#1c1c1e;color:var(--gold);border:1px solid var(--gold)}
+  .opp-sheet-info{flex:1;min-width:0}
+  .opp-sheet-name{font-weight:800;font-size:15px}
+  .opp-sheet-meta{font-size:12px;color:var(--muted);margin-top:2px}
+  .opp-sheet-close{width:32px;height:32px;border-radius:50%;background:var(--panel2);color:var(--muted);font-size:14px;flex-shrink:0;border:1px solid var(--border)}
+  .opp-sheet-close:active{background:var(--border)}
+  .opp-sheet-card .check-stats{margin:0 0 12px;border:1px solid var(--border);border-radius:8px;padding:0;background:var(--panel2)}
+  .opp-sheet-card .check-stats .cs{padding:9px 14px}
+  .opp-sheet-card .hp{display:flex;flex-direction:row;align-items:center;width:100%;padding:9px 12px;gap:10px;margin-bottom:4px}
+  .opp-sheet-card .hp .sym{font-size:24px;width:28px;flex-shrink:0}
+  .opp-sheet-card .hp .nm{flex:1;text-align:left;font-size:14px}
+  .opp-sheet-card .hp .ct{flex-shrink:0;font-size:16px;margin-left:auto;min-width:24px;text-align:right}
+}
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="topbar">
+    <div class="tb-left">
+      <button class="tb-btn" onclick="confirmLeave()">← 로비</button>
+    </div>
+    <div class="tb-mid">FRONTIER</div>
+    <div class="tb-right">
+      <span id="modeLbl" style="font-size:12px;color:var(--gold);font-weight:700;background:rgba(245,200,66,.1);padding:3px 8px;border-radius:6px;border:1px solid rgba(245,200,66,.3)"></span>
+      <button class="tb-btn" onclick="openRules()" title="게임 규칙 보기">📖</button>
+      <button class="tb-btn danger" onclick="confirmForfeit()" id="forfeitBtn" style="display:none">기권</button>
+    </div>
+  </div>
+
+  <!-- 모바일 전용 눈 버튼: 우상단 고정 원형 (sketch 디자인) -->
+  <button class="opp-eye-fab mobile-only" onclick="toggleOppSheet()" title="상대 정보">👁</button>
+
+  <!-- 왼쪽 (데스크탑) / 위쪽 (모바일) - 상대 -->
+  <div class="side left">
+    <div class="pcard" id="oppCard">
+      <div class="ph">
+        <div class="av b" id="oppAv">B</div>
+        <div class="pn" id="oppName">상대</div>
+      </div>
+      <div class="pe" id="oppMeta">—</div>
+      <div class="ck" id="oppCheck"></div>
+      <div class="check-stats" id="oppCheckStats"></div>
+      <div class="timer" id="oppTimer" style="display:none">--:--</div>
+    </div>
+    <div class="hand-card">
+      <h4 id="oppHandTitle">상대 손패</h4>
+      <div class="hand-list" id="oppHand"></div>
+    </div>
+  </div>
+
+  <!-- 보드 -->
+  <div class="board-wrap">
+    <div class="board-outer">
+      <div class="status-float" id="statusFloat"></div>
+      <div class="board" id="board"></div>
+    </div>
+  </div>
+
+  <!-- 오른쪽 (데스크탑) / 아래쪽 (모바일) - 나 -->
+  <div class="side right">
+    <div class="pcard active" id="myCard">
+      <div class="ph">
+        <div class="av" id="myAv">W</div>
+        <div class="pn" id="myName">나</div>
+      </div>
+      <div class="pe" id="myMeta">—</div>
+      <div class="ck" id="myCheck"></div>
+      <div class="check-stats" id="myCheckStats"></div>
+      <div class="timer" id="myTimer" style="display:none">--:--</div>
+    </div>
+    <div class="hand-card">
+      <h4 id="myHandTitle">내 손패</h4>
+      <div class="hand-list" id="myHand"></div>
+    </div>
+  </div>
+</div>
+
+<!-- 모바일: 상대 손패 보기 버튼 -->
+<div class="opp-sheet" id="oppSheet" onclick="if(event.target.id==='oppSheet') toggleOppSheet()">
+  <div class="opp-sheet-card">
+    <div class="opp-sheet-head">
+      <div class="av b" id="oppSheetAv">B</div>
+      <div class="opp-sheet-info">
+        <div class="opp-sheet-name" id="oppSheetName">상대</div>
+        <div class="opp-sheet-meta" id="oppSheetMeta">—</div>
+      </div>
+      <button class="opp-sheet-close" onclick="toggleOppSheet()">✕</button>
+    </div>
+    <div class="check-stats" id="oppSheetStats"></div>
+    <h4 style="margin:14px 0 8px;color:var(--muted);font-size:12px;letter-spacing:1px">상대 손패</h4>
+    <div id="oppHandSheet"></div>
+  </div>
+</div>
+
+<!-- 채팅 -->
+<button class="chat-fab" id="chatFab" onclick="toggleChat()" style="display:none">
+  💬<span class="chat-badge" id="chatBadge" style="display:none">0</span>
+</button>
+<div class="chat-panel" id="chatPanel">
+  <div class="chat-head">
+    <span>채팅</span>
+    <button onclick="toggleChat()" style="font-size:18px;color:var(--muted)">×</button>
+  </div>
+  <div class="chat-msgs" id="chatMsgs"></div>
+  <div class="chat-input">
+    <input type="text" id="chatInput" placeholder="메시지 입력..." maxlength="100">
+    <button onclick="sendChat()">전송</button>
+  </div>
+</div>
+
+<!-- 프로모션 모달 -->
+<div class="modal" id="promoModal">
+  <div class="modal-card">
+    <h2>폰 프로모션</h2>
+    <p>승급할 기물을 선택하세요</p>
+    <div class="promo-opts" id="promoOpts"></div>
+  </div>
+</div>
+
+<!-- 종료 모달 -->
+<div class="modal" id="endModal">
+  <div class="modal-card">
+    <div class="icon" id="endIcon">🏆</div>
+    <h2 id="endTitle">승리!</h2>
+    <p id="endDesc">—</p>
+    <div id="endElo" style="display:none"></div>
+    <div class="actions">
+      <button class="btn btn-ghost" onclick="hideEndModal()">👁 보드 보기</button>
+      <button class="btn btn-ghost" onclick="goLobby()">← 로비로</button>
+      <button class="btn btn-blue" onclick="requestRematch()" id="rematchBtn" style="display:none">🔄 리매치</button>
+    </div>
+  </div>
+</div>
+<!-- 보드 보기 중 띄워둘 작은 복귀 버튼 -->
+<button class="end-restore" id="endRestore" onclick="showEndModal()" style="display:none">🏁 결과 다시 보기</button>
+
+<!-- 리매치 수락 모달 -->
+<div class="modal" id="rematchAskModal">
+  <div class="modal-card">
+    <div class="icon">🔄</div>
+    <h2>리매치 요청</h2>
+    <p id="rematchAskMsg">상대가 리매치를 요청했습니다.</p>
+    <div class="actions">
+      <button class="btn btn-ghost" onclick="rematchReply(false)">거절</button>
+      <button class="btn btn-gold" onclick="rematchReply(true)">수락</button>
+    </div>
+  </div>
+</div>
+
+<!-- 확인 모달 -->
+<div class="modal" id="confirmModal">
+  <div class="modal-card">
+    <h2 id="confirmTitle">확인</h2>
+    <p id="confirmMsg">—</p>
+    <div class="actions">
+      <button class="btn btn-ghost" onclick="closeConfirm()">취소</button>
+      <button class="btn btn-gold" id="confirmYes">확인</button>
+    </div>
+  </div>
+</div>
+
+<!-- 연결 대기 -->
+<div class="modal" id="connectModal">
+  <div class="modal-card">
+    <h2>연결 중...</h2>
+    <p id="connectMsg">상대와 연결을 시도합니다.</p>
+    <div class="actions">
+      <button class="btn btn-ghost" onclick="goLobby()">취소</button>
+    </div>
+  </div>
+</div>
+
+<!-- 규칙 모달: 게임 중 언제든 열람 -->
+<div class="modal" id="rulesModal">
+  <div class="modal-card rules-card">
+    <h2 style="margin-bottom:14px">📖 FRONTIER 규칙</h2>
+    <div class="rules-body">
+      <h4>🎯 승리 조건 (먼저 달성하는 쪽 승)</h4>
+      <ul>
+        <li><b>오목 승리</b>: 자기 색 기물 5개를 가로/세로/대각선으로 일직선 정렬</li>
+        <li><b>체크메이트</b>: 상대 킹이 빠져나갈 모든 수가 막힘</li>
+        <li><b>자멸 유도</b>: 상대를 <b>3연속 체크</b> 하면 체크 건 쪽이 패배 (상대가 자멸)</li>
+        <li><b>스테일메이트</b>: 둘 수가 없는 상태 → 무승부</li>
+      </ul>
+
+      <h4>🛑 체크 한도</h4>
+      <ul>
+        <li>한 게임에서 한 색이 가할 수 있는 <b>총 체크는 5회</b></li>
+        <li>5회 초과의 추가 체크 시도는 무효 처리되어 그 수가 거절됨</li>
+      </ul>
+
+      <h4>📐 보드 영역</h4>
+      <ul>
+        <li><b>4×4 킹 영역</b> (중앙): 킹 배치 가능 — 첫 수는 무조건 킹</li>
+        <li><b>6×4 일반 영역</b> (중앙 확장): 킹/스나이퍼 외 모든 기물 배치</li>
+        <li><b>4 꼭짓점</b> (a1, a8, h1, h8): 스나이퍼 전용 배치 자리</li>
+      </ul>
+
+      <h4>♟ 일반 기물 행마</h4>
+      <ul>
+        <li><span class="r-sym">♕</span> <b>퀸</b>: 8방향 직선/대각선 무제한</li>
+        <li><span class="r-sym">♖</span> <b>룩</b>: 4방향 직선 (가로세로) 무제한</li>
+        <li><span class="r-sym">♗</span> <b>비숍</b>: 대각선 무제한</li>
+        <li><span class="r-sym">♘</span> <b>나이트</b>: L자 점프 (2칸+1칸, 중간 무시)</li>
+        <li><span class="r-sym">♙</span> <b>폰</b>: 1칸 전진. 대각선 1칸 적 공격. 마지막 줄 도달 시 Q/R/B/N 중 프로모션</li>
+      </ul>
+
+      <h4>✨ 특수 기물</h4>
+      <ul>
+        <li><span class="r-sym spec-w">◈</span> <b>방패</b>: 앞/뒤 1칸 이동. 앞 적을 <b>밀기</b> 가능 — 밀린 적이 벽이나 다른 기물에 부딪히면 죽고 방패 쪽 손패로 회수</li>
+        <li><span class="r-sym spec-w">⊕</span> <b>스나이퍼</b>: 4꼭짓점에만 배치. 이동 불가. 직선 1~3칸 거리의 적을 저격 (시야가 막히면 정지). 저격된 적은 손패 회수</li>
+        <li><span class="r-sym spec-w">✦</span> <b>어쌔신</b>: 상하좌우 2칸 점프 (중간 무시)</li>
+      </ul>
+
+      <h4>🎴 캡처 규칙</h4>
+      <ul>
+        <li>일반 기물의 캡처: 잡힌 기물은 <b>영구 제거</b> (손패 회수 X)</li>
+        <li>스나이퍼 저격: 잡힌 기물 손패 회수 ✓</li>
+        <li>방패 밀어 죽이기: 잡힌 기물 손패 회수 ✓</li>
+      </ul>
+
+      <h4>📋 순서</h4>
+      <ul>
+        <li>백이 먼저 시작</li>
+        <li>각 차례에 둘 중 하나: <b>손패에서 기물 배치</b> 또는 <b>보드 위 기물 이동/공격</b></li>
+        <li>이동은 양쪽 킹이 모두 배치된 후부터 가능</li>
+        <li>자기 킹이 체크되는 수는 둘 수 없음</li>
+      </ul>
+    </div>
+    <div class="actions">
+      <button class="btn btn-gold" onclick="closeRules()">닫기</button>
+    </div>
+  </div>
+</div>
+
+<script>
+'use strict';
+
+// ===================================================================
+// 1. URL 파라미터 파싱 + 글로벌 상태
+// ===================================================================
+const Q = new URLSearchParams(location.search);
+// 모드 결정: ?role=host/guest 같이 온라인 신호가 있으면 online, 없으면 ?mode 우선, 둘 다 없으면 local 기본
+const _explicitMode = Q.get('mode');
+const _hasRole = !!Q.get('role');
+const MODE      = _explicitMode || (_hasRole ? 'online' : 'local');   // local | ai | online
+const NET_ROLE  = Q.get('role') || null;       // host | guest | spectator
+const ROOM_CODE = (Q.get('room') || '').toUpperCase();
+const DIFF      = Q.get('difficulty') || 'normal';
+const TIME_LIMIT_RAW = Q.get('time') || 'unlimited';
+const MY_UID    = Q.get('uid') || ('local-' + Math.random().toString(36).slice(2,8));
+const MY_NICK_P = Q.get('nick') || (MODE==='ai' ? '플레이어' : '나');
+const MY_ELO_P  = parseInt(Q.get('elo') || '1200');
+
+// INIT_HAND must be declared BEFORE parsing _handParam to avoid ReferenceError
+const DEFAULT_HAND = {K:1, Q:1, R:2, B:2, N:2, P:8, SH:0, SN:0, JP:0};
+function parseHandStr(s){
+  if(!s) return {...DEFAULT_HAND};
+  const out = {...DEFAULT_HAND};
+  // Format: K1Q1R2B2N2P8SH1SN0JP0
+  const re = /([A-Z]{1,2})(\d+)/g;
+  let m;
+  while((m = re.exec(s)) !== null){
+    if(out.hasOwnProperty(m[1])) out[m[1]] = parseInt(m[2]);
+  }
+  return out;
+}
+const INIT_HAND = parseHandStr(Q.get('hand'));
+
+// 색 결정
+//   local: 화면 항상 백 시점, 백/흑 번갈아 둠
+//   ai:    플레이어=백, AI=흑
+//   online host: 백
+//   online guest: 흑
+//   spectator: 백 시점
+let MY_COLOR = 'w';
+if(NET_ROLE === 'guest') MY_COLOR = 'b';
+const IS_LOCAL = (MODE === 'local');
+const IS_AI    = (MODE === 'ai');
+const IS_NET   = (NET_ROLE === 'host' || NET_ROLE === 'guest');
+const IS_SPEC  = (NET_ROLE === 'spectator');
+
+// 시간 제한
+const TIME_LIMIT = TIME_LIMIT_RAW === 'unlimited' || TIME_LIMIT_RAW === '0'
+  ? 0 : parseInt(TIME_LIMIT_RAW);
+
+// ===================================================================
+// 2. 기물 정의
+// ===================================================================
+const SYMBOLS = {
+  w:{K:'♔',Q:'♕',R:'♖',B:'♗',N:'♘',P:'♙',SH:'◈',SN:'⊕',JP:'✦'},
+  b:{K:'♚',Q:'♛',R:'♜',B:'♝',N:'♞',P:'♟',SH:'◈',SN:'⊕',JP:'✦'}
+};
+const PIECE_NAMES = {K:'킹',Q:'퀸',R:'룩',B:'비숍',N:'나이트',P:'폰',SH:'방패',SN:'스나이퍼',JP:'어쌔신'};
+const SPECIAL_KINDS = ['SH','SN','JP'];
+
+// ===================================================================
+// 3. 게임 상태
+// ===================================================================
+let board = makeEmptyBoard();
+let hands = { w:{...INIT_HAND}, b:{...INIT_HAND} };
+let turn = 'w';                 // 현재 차례
+let kingPlaced = { w:false, b:false };  // 킹 배치 여부
+let lastMove = null;            // {fr, fc, tr, tc} 강조용
+let moveHistory = [];           // 무승부 판정용 (직렬화 상태 리스트)
+let snapshots = [];             // undo 또는 5회 체크 초과 시 복원용
+let checkStreak = { w:0, b:0 }; // 연속 체크 (이쪽이 받은)
+let totalChecks = { w:0, b:0 }; // 총 체크 (이쪽이 건)
+let gameOver = false;
+let myRoomCode = null;          // 페이지 이탈 시 정리할 방 코드
+
+function makeEmptyBoard(){
+  const b = [];
+  for(let r=0;r<8;r++){ b.push(new Array(8).fill(null)); }
+  return b;
+}
+
+// ===================================================================
+// 4. 좌표 / 헬퍼
+// ===================================================================
+const inBounds = (r,c)=> r>=0 && r<8 && c>=0 && c<8;
+const fileLabel = c => 'abcdefgh'[c];
+const rankLabel = r => '87654321'[r];   // row 0 = rank 8 (top)
+const algebraic = (r,c) => fileLabel(c) + rankLabel(r);
+const opp = c => c === 'w' ? 'b' : 'w';
+
+// 일반 배치 영역: 6x4 (b~g, 3~6행) = cols 1-6, rows 2-5
+function inGeneralZone(r,c){ return r>=2 && r<=5 && c>=1 && c<=6; }
+// 킹 배치 영역: 4x4 (c~f, 3~6행) = cols 2-5, rows 2-5
+function inKingZone(r,c){ return r>=2 && r<=5 && c>=2 && c<=5; }
+// 스나이퍼 배치: 4꼭짓점
+function inCornerZone(r,c){ return (r===0||r===7) && (c===0||c===7); }
+
+// ===================================================================
+// 5. 기물 이동 / 공격 가능 좌표
+// ===================================================================
+// 한 기물에 대해 (이동 가능 좌표, 공격 가능 좌표) 반환
+//  - 이동: 그 칸이 비어있어야 갈 수 있음
+//  - 공격: 그 칸에 상대 기물이 있어야 잡을 수 있음
+function pieceMoves(r, c, piece){
+  const moves = [];   // 빈 칸 이동
+  const attacks = []; // 적 기물 공격
+  const k = piece.kind;
+  const col = piece.color;
+
+  if(k === 'K'){
+    for(let dr=-1; dr<=1; dr++){
+      for(let dc=-1; dc<=1; dc++){
+        if(dr===0&&dc===0) continue;
+        const nr=r+dr, nc=c+dc;
+        if(!inBounds(nr,nc)) continue;
+        const t = board[nr][nc];
+        if(!t) moves.push([nr,nc]);
+        else if(t.color !== col) attacks.push([nr,nc]);
+      }
+    }
+  } else if(k === 'Q' || k === 'R' || k === 'B'){
+    const dirs = [];
+    if(k!=='B') dirs.push([-1,0],[1,0],[0,-1],[0,1]);
+    if(k!=='R') dirs.push([-1,-1],[-1,1],[1,-1],[1,1]);
+    for(const [dr,dc] of dirs){
+      let nr=r+dr, nc=c+dc;
+      while(inBounds(nr,nc)){
+        const t = board[nr][nc];
+        if(!t){ moves.push([nr,nc]); }
+        else { if(t.color !== col) attacks.push([nr,nc]); break; }
+        nr+=dr; nc+=dc;
+      }
+    }
+  } else if(k === 'N'){
+    const offs = [[-2,-1],[-2,1],[-1,-2],[-1,2],[1,-2],[1,2],[2,-1],[2,1]];
+    for(const [dr,dc] of offs){
+      const nr=r+dr, nc=c+dc;
+      if(!inBounds(nr,nc)) continue;
+      const t = board[nr][nc];
+      if(!t) moves.push([nr,nc]);
+      else if(t.color !== col) attacks.push([nr,nc]);
+    }
+  } else if(k === 'P'){
+    const dy = (col === 'w') ? -1 : 1;
+    const startRow = (col === 'w') ? 6 : 1;
+    const r1 = r+dy;
+    if(inBounds(r1,c) && !board[r1][c]){
+      moves.push([r1,c]);
+      const r2 = r+2*dy;
+      if(r === startRow && inBounds(r2,c) && !board[r2][c]){
+        moves.push([r2,c]);
+      }
+    }
+    for(const dc of [-1,1]){
+      const nr=r+dy, nc=c+dc;
+      if(!inBounds(nr,nc)) continue;
+      const t = board[nr][nc];
+      if(t && t.color !== col) attacks.push([nr,nc]);
+    }
+  } else if(k === 'SH'){
+    // 방패: 앞/뒤 1칸만, 공격 불가, 이동 방향 기물 밀기
+    const dy = (col === 'w') ? -1 : 1;
+    for(const ddy of [dy, -dy]){
+      const nr = r+ddy;
+      if(!inBounds(nr,c)) continue;
+      const t = board[nr][c];
+      if(!t){
+        moves.push([nr,c]);
+      } else {
+        // 밀기 가능 여부 검사: 그 다음 칸이 비어있고 보드 안이면 밀기 가능
+        const pr = nr + ddy;
+        // 밀기는 항상 가능 (밀린 기물이 사망할 수도 있음, 판 끝 또는 다른 기물)
+        // 밀기는 '이동'으로 처리 → moves에 마킹 (특수)
+        moves.push([nr,c]); // 처리는 applyMove에서
+      }
+    }
+  } else if(k === 'SN'){
+    // 스나이퍼: 이동 불가. 직선 1~3칸 거리의 적을 저격. 시야가 막히면(첫 기물에서) 정지.
+    const dirs = [[-1,0],[1,0],[0,-1],[0,1]];
+    for(const [dr,dc] of dirs){
+      for(let dist=1; dist<=3; dist++){
+        const nr = r + dr*dist, nc = c + dc*dist;
+        if(!inBounds(nr,nc)) break;
+        const t = board[nr][nc];
+        if(t){
+          if(t.color !== col) attacks.push([nr,nc]); // 적이면 저격 가능
+          break; // 첫 기물(적/우군) 만나면 정지 — 그 너머는 못 봄
+        }
+      }
+    }
+  } else if(k === 'JP'){
+    // 어쌔신: 상하좌우 2칸 점프
+    const offs = [[-2,0],[2,0],[0,-2],[0,2]];
+    for(const [dr,dc] of offs){
+      const nr=r+dr, nc=c+dc;
+      if(!inBounds(nr,nc)) continue;
+      const t = board[nr][nc];
+      if(!t) moves.push([nr,nc]);
+      else if(t.color !== col) attacks.push([nr,nc]);
+    }
+  }
+
+  return { moves, attacks };
+}
+
+// 단순히 "그 칸을 공격할 수 있는가"만 체크 (체크 판정용)
+function canAttack(byColor, tr, tc){
+  for(let r=0;r<8;r++){
+    for(let c=0;c<8;c++){
+      const p = board[r][c];
+      if(!p || p.color !== byColor) continue;
+      const {attacks} = pieceMoves(r, c, p);
+      for(const [ar,ac] of attacks){
+        if(ar===tr && ac===tc) return true;
+      }
+    }
+  }
+  return false;
+}
+
+function findKing(color){
+  for(let r=0;r<8;r++) for(let c=0;c<8;c++){
+    const p = board[r][c];
+    if(p && p.color===color && p.kind==='K') return [r,c];
+  }
+  return null;
+}
+
+function isInCheck(color){
+  const k = findKing(color);
+  if(!k) return false;
+  return canAttack(opp(color), k[0], k[1]);
+}
+
+// ===================================================================
+// 6. 5연속 (오목) 검출
+// ===================================================================
+function checkFiveInRow(){
+  const dirs = [[0,1],[1,0],[1,1],[1,-1]];
+  for(let r=0;r<8;r++){
+    for(let c=0;c<8;c++){
+      const p = board[r][c];
+      if(!p) continue;
+      for(const [dr,dc] of dirs){
+        let count = 1;
+        let nr=r+dr, nc=c+dc;
+        while(inBounds(nr,nc) && board[nr][nc] && board[nr][nc].color===p.color){
+          count++;
+          nr+=dr; nc+=dc;
+        }
+        if(count >= 5) return p.color;
+      }
+    }
+  }
+  return null;
+}
+
+// ===================================================================
+// 7. 직렬화 / 스냅샷 (반복 검출 + 5회 체크 복원)
+// ===================================================================
+function serializeBoard(){
+  let s = turn + '|';
+  for(let r=0;r<8;r++) for(let c=0;c<8;c++){
+    const p = board[r][c];
+    s += p ? (p.color + p.kind + ',') : '.';
+  }
+  s += '|h:' + ['w','b'].map(col =>
+    Object.entries(hands[col]).map(([k,v])=>k+v).join('')
+  ).join('/');
+  return s;
+}
+function snapshotState(){
+  return {
+    board: board.map(row => row.map(c => c ? {...c} : null)),
+    hands: { w:{...hands.w}, b:{...hands.b} },
+    turn, kingPlaced:{...kingPlaced},
+    lastMove: lastMove ? {...lastMove} : null,
+    checkStreak:{...checkStreak},
+    totalChecks:{...totalChecks},
+    moveHistory:[...moveHistory]
+  };
+}
+function restoreState(s){
+  board = s.board.map(row => row.map(c => c ? {...c} : null));
+  hands = { w:{...s.hands.w}, b:{...s.hands.b} };
+  turn = s.turn;
+  kingPlaced = {...s.kingPlaced};
+  lastMove = s.lastMove ? {...s.lastMove} : null;
+  checkStreak = {...s.checkStreak};
+  totalChecks = {...s.totalChecks};
+  moveHistory = [...s.moveHistory];
+}
+
+// ===================================================================
+// 8. 액션 (place, move, push, snipe) 실행
+// ===================================================================
+//   action: { type:'place', kind, r, c, color, [promote] }
+//           { type:'move',  fr, fc, tr, tc, [promote] }
+function applyAction(action, opts={}){
+  const { silent = false } = opts;
+  // 스냅샷 (체크 카운팅 5회 초과 시 복원용)
+  const snap = snapshotState();
+
+  if(action.type === 'place'){
+    const { kind, r, c, color } = action;
+    if(!hands[color][kind] || hands[color][kind] <= 0) return { ok:false, err:'손패 없음' };
+    if(board[r][c]) return { ok:false, err:'점유됨' };
+    // 첫 수: 반드시 킹부터
+    if(!kingPlaced[color] && kind !== 'K') return { ok:false, err:'첫 수는 킹' };
+    // 킹은 4x4
+    if(kind === 'K' && !inKingZone(r,c)) return { ok:false, err:'킹 영역 밖' };
+    // 스나이퍼: 4꼭짓점
+    if(kind === 'SN' && !inCornerZone(r,c)) return { ok:false, err:'꼭짓점만' };
+    // 그 외 일반: 6x4 영역
+    if(kind !== 'K' && kind !== 'SN' && !inGeneralZone(r,c)) return { ok:false, err:'배치 영역 밖' };
+
+    board[r][c] = { color, kind };
+    hands[color][kind]--;
+    if(kind === 'K') kingPlaced[color] = true;
+    lastMove = { fr:-1, fc:-1, tr:r, tc:c, type:'place' };
+  } else if(action.type === 'move'){
+    const { fr, fc, tr, tc } = action;
+    const p = board[fr][fc];
+    if(!p) return { ok:false, err:'기물 없음' };
+    if(p.color !== turn) return { ok:false, err:'본인 기물 아님' };
+    // 양쪽 킹 모두 배치 안 됨 → 이동 불가
+    if(!kingPlaced.w || !kingPlaced.b) return { ok:false, err:'킹 미배치' };
+
+    // 방패는 별도 처리 (밀기 가능)
+    if(p.kind === 'SH'){
+      const result = trySHMove(fr, fc, tr, tc, p.color);
+      if(!result.ok) return result;
+    } else if(p.kind === 'SN'){
+      // 스나이퍼는 이동 불가, 공격만
+      const { attacks } = pieceMoves(fr, fc, p);
+      const isAtk = attacks.some(([r,c]) => r===tr && c===tc);
+      if(!isAtk) return { ok:false, err:'공격 불가 위치' };
+      const target = board[tr][tc];
+      // SN 자신은 그대로, 타깃만 제거
+      board[tr][tc] = null;
+      // 공격당한 기물 → 손패 회수 (단 K, SN은 제외)
+      if(target && target.kind !== 'K' && target.kind !== 'SN'){
+        hands[p.color][target.kind] = (hands[p.color][target.kind] || 0) + 1;
+      }
+      lastMove = { fr, fc, tr, tc, type:'snipe' };
+    } else {
+      const { moves, attacks } = pieceMoves(fr, fc, p);
+      const isMove = moves.some(([r,c]) => r===tr && c===tc);
+      const isAtk  = attacks.some(([r,c]) => r===tr && c===tc);
+      if(!isMove && !isAtk) return { ok:false, err:'이동 불가' };
+      const target = board[tr][tc];
+      // 이동 (일반 캡처: 잡힌 기물은 영구 제거 — 손패 회수 X)
+      board[tr][tc] = p;
+      board[fr][fc] = null;
+      // 폰 프로모션
+      if(p.kind === 'P'){
+        if((p.color === 'w' && tr === 0) || (p.color === 'b' && tr === 7)){
+          const promoTo = action.promote || 'Q';
+          board[tr][tc] = { color: p.color, kind: promoTo };
+        }
+      }
+      lastMove = { fr, fc, tr, tc, type:'move' };
+    }
+  } else {
+    return { ok:false, err:'알 수 없는 액션' };
+  }
+
+  // 자기 킹 체크 노출 금지
+  if(kingPlaced[turn] && isInCheck(turn)){
+    restoreState(snap);
+    return { ok:false, err:'자기 킹이 체크됨' };
+  }
+
+  // 체크 부여 처리: 상대가 체크에 빠짐 → 체크한 쪽 totalChecks 증가, 받은 쪽 streak 증가
+  const next = opp(turn);
+  let opponentInCheck = false;
+  if(kingPlaced[next] && isInCheck(next)){
+    opponentInCheck = true;
+    totalChecks[turn]++;
+    checkStreak[next]++;
+    // 5회 체크 초과 → 이 수 무효 (스냅샷 복원)
+    if(totalChecks[turn] > 5){
+      restoreState(snap);
+      return { ok:false, err:'5회 체크 한도 초과 (이전 턴으로 복원)' };
+    }
+    // 3회 연속 체크 → 체크 건 쪽 자멸
+    if(checkStreak[next] >= 3){
+      // 자멸: turn이 패배
+      moveHistory.push(serializeBoard());
+      // 차례 넘기지 않고 즉시 종료
+      lastMove.causedSuicide = true;
+      finalizeAfterMove(opponentInCheck, snap, silent);
+      if(!silent){
+        const winnerColor = next;
+        endGame('🚫', '반칙패!',
+          `${turn==='w'?'백':'흑'}이 3회 연속 체크로 자멸했습니다.`, winnerColor);
+      }
+      return { ok:true, suicide:true, winner: next };
+    }
+  } else {
+    // 체크가 안 들어갔으면 받은 쪽 streak 리셋
+    checkStreak[next] = 0;
+  }
+  // 본인이 받던 체크는 이제 풀린 셈
+  checkStreak[turn] = 0;
+
+  return finalizeAfterMove(opponentInCheck, snap, silent);
+}
+
+function finalizeAfterMove(opponentInCheck, snap, silent=false){
+  // 차례 넘김
+  turn = opp(turn);
+
+  // silent (allLegalActions 합법성 검증 등) 호출에선 종말 검사 건너뜀.
+  // 이게 없으면 hasAnyLegalAction → allLegalActions → applyAction → finalizeAfterMove → ...
+  // 무한재귀로 폭주함.
+  if(silent) return { ok:true };
+
+  // 5연속 검사
+  const fiveWin = checkFiveInRow();
+  if(fiveWin){
+    moveHistory.push(serializeBoard());
+    return { ok:true, fiveWin };
+  }
+
+  // 체크메이트 검사
+  if(opponentInCheck && isCheckmate(turn)){
+    moveHistory.push(serializeBoard());
+    return { ok:true, checkmate: opp(turn) };
+  }
+
+  // 무브 못 둘 수 있는 스테일메이트 → 무승부
+  if(!opponentInCheck && kingPlaced[turn] && !hasAnyLegalAction(turn)){
+    // 손패가 있으면 배치 가능, 그래서 배치 가능성 확인 후 판정
+    moveHistory.push(serializeBoard());
+    return { ok:true, stalemate:true };
+  }
+
+  // 직렬화 후 반복 카운트
+  const ser = serializeBoard();
+  moveHistory.push(ser);
+  // 같은 직렬화 3번 → 무승부
+  const rep = moveHistory.filter(x => x === ser).length;
+  if(rep >= 3){
+    return { ok:true, repetition:true };
+  }
+
+  return { ok:true };
+}
+
+// 방패 이동 처리 (밀기 포함)
+function trySHMove(fr, fc, tr, tc, color){
+  // 앞/뒤 1칸
+  const dy = (color === 'w') ? -1 : 1;
+  const allowedRows = [fr+dy, fr-dy];
+  if(!allowedRows.includes(tr)) return { ok:false, err:'방패는 앞/뒤만' };
+  if(tc !== fc) return { ok:false, err:'방패는 직진만' };
+  const ddy = tr - fr; // +1 or -1
+  const target = board[tr][tc];
+  if(!target){
+    // 단순 이동
+    board[tr][tc] = board[fr][fc];
+    board[fr][fc] = null;
+    lastMove = { fr, fc, tr, tc, type:'move' };
+    return { ok:true };
+  }
+  // 밀기: 다음 칸 검사
+  const pr = tr + ddy;
+  if(!inBounds(pr, tc)){
+    // 판 끝 → 밀린 기물 사망
+    if(target.kind !== 'K' && target.kind !== 'SN'){
+      hands[color][target.kind] = (hands[color][target.kind] || 0) + 1;
+    }
+    board[tr][tc] = board[fr][fc];
+    board[fr][fc] = null;
+    lastMove = { fr, fc, tr, tc, type:'push' };
+    return { ok:true };
+  }
+  const beyond = board[pr][tc];
+  if(beyond){
+    // 다른 기물에 닿음 → 밀린 기물 사망, beyond는 그대로
+    if(target.kind !== 'K' && target.kind !== 'SN'){
+      hands[color][target.kind] = (hands[color][target.kind] || 0) + 1;
+    }
+    board[tr][tc] = board[fr][fc];
+    board[fr][fc] = null;
+    lastMove = { fr, fc, tr, tc, type:'push' };
+    return { ok:true };
+  }
+  // 밀기 성공: target → beyond, SH → target
+  board[pr][tc] = target;
+  board[tr][tc] = board[fr][fc];
+  board[fr][fc] = null;
+  lastMove = { fr, fc, tr, tc, type:'push' };
+  return { ok:true };
+}
+
+// 모든 합법 액션 수집 (체크 검증 포함)
+function allLegalActions(color){
+  const list = [];
+  const handHasPieces = Object.values(hands[color]).some(v => v > 0);
+  // 킹 미배치면 킹 배치만 가능 (단, 자기 킹이 즉시 체크되는 자리는 제외 — 아래 필터에서 걸러짐)
+  if(!kingPlaced[color]){
+    if(hands[color].K > 0){
+      for(let r=2;r<=5;r++) for(let c=2;c<=5;c++){
+        if(!board[r][c]) list.push({type:'place', kind:'K', r, c, color});
+      }
+    }
+    // ⚠ 여기서 early return 하지 않음 — 아래 합법성 필터로 흘려보내서
+    // 상대 킹 인접 등 자기 킹이 즉시 체크되는 자리를 걸러냄 (AI가 무한 거절 안 당하게)
+  } else {
+    // 손패 배치
+    for(const [kind, n] of Object.entries(hands[color])){
+      if(n <= 0) continue;
+      if(kind === 'K') continue; // K 추가 배치 불가 (이미 배치됨)
+      if(kind === 'SN'){
+        [[0,0],[0,7],[7,0],[7,7]].forEach(([r,c]) => {
+          if(!board[r][c]) list.push({type:'place', kind, r, c, color});
+        });
+      } else {
+        for(let r=2;r<=5;r++) for(let c=1;c<=6;c++){
+          if(!board[r][c]) list.push({type:'place', kind, r, c, color});
+        }
+      }
+    }
+  }
+  // 보드상 기물 이동
+  for(let r=0;r<8;r++) for(let c=0;c<8;c++){
+    const p = board[r][c];
+    if(!p || p.color !== color) continue;
+    if(p.kind === 'SN'){
+      const { attacks } = pieceMoves(r, c, p);
+      for(const [tr,tc] of attacks){
+        list.push({type:'move', fr:r, fc:c, tr, tc});
+      }
+    } else if(p.kind === 'SH'){
+      const dy = (color === 'w') ? -1 : 1;
+      for(const ddy of [dy, -dy]){
+        const nr = r+ddy;
+        if(!inBounds(nr,c)) continue;
+        list.push({type:'move', fr:r, fc:c, tr:nr, tc:c});
+      }
+    } else {
+      const { moves, attacks } = pieceMoves(r, c, p);
+      for(const [tr,tc] of moves) list.push({type:'move', fr:r, fc:c, tr, tc});
+      for(const [tr,tc] of attacks) list.push({type:'move', fr:r, fc:c, tr, tc});
+    }
+  }
+
+  // 자기 킹 체크 노출되는 수 제거 + 5회 체크 한도 검증
+  const filtered = list.filter(a => {
+    const snap = snapshotState();
+    const r = applyAction(a, {silent:true});
+    const isLegal = r.ok && !r.suicide;
+    restoreState(snap);
+    return isLegal;
+  });
+  return filtered;
+}
+
+function hasAnyLegalAction(color){
+  // 빠른 검증 (전체 수집은 비싸지만 정확함)
+  // 일단 모두 수집
+  const list = allLegalActions(color);
+  return list.length > 0;
+}
+
+function isCheckmate(color){
+  if(!kingPlaced[color]) return false;
+  if(!isInCheck(color)) return false;
+  return !hasAnyLegalAction(color);
+}
+
+// ===================================================================
+// 9. UI 렌더링
+// ===================================================================
+const boardEl = document.getElementById('board');
+
+function setBoardSize(){
+  const ww = window.innerWidth;
+  const wh = window.innerHeight;
+  let cellSize;
+  if(ww >= 821){
+    // 데스크탑: 좌우 패널 240*2 + 패딩
+    const avail = Math.min(ww - 540, wh - 100);
+    cellSize = Math.max(40, Math.min(72, Math.floor(avail / 8)));
+  } else {
+    // 모바일/태블릿: 보드 영역의 실제 폭 기준 (이젠 grid가 auto-row라 폭이 결정 인자)
+    const wrap = document.querySelector('.board-wrap');
+    const availW = wrap ? Math.max(0, wrap.getBoundingClientRect().width - 6) : (ww - 16);
+    // 세로 여유도 검사 — 카드+손패+탑바 합쳐 대략 320px 정도 여유 두고 클램프
+    const availH = Math.max(180, wh - 320);
+    const sq = Math.min(availW || (ww-16), availH);
+    cellSize = Math.max(28, Math.min(56, Math.floor(sq / 8)));
+  }
+  document.documentElement.style.setProperty('--cs', cellSize + 'px');
+}
+window.addEventListener('resize', setBoardSize);
+window.addEventListener('orientationchange', ()=> setTimeout(setBoardSize, 100));
+// 화면 폭 변경 시 카드/손패 스왑 조건도 재평가
+let _resizeRenderTimer = null;
+window.addEventListener('resize', ()=>{
+  clearTimeout(_resizeRenderTimer);
+  _resizeRenderTimer = setTimeout(()=> { try { renderAll(); } catch(_){} }, 150);
+});
+
+let SEL = null;             // 선택 상태: {kind:'place'|'board', ...}
+let HIGHLIGHTS = [];        // 표시할 [r,c, type] 좌표 리스트
+
+function flipped(){ return MY_COLOR === 'b'; }
+function displayCoords(r, c){
+  // 흑 시점이면 보드 회전
+  return flipped() ? [7-r, 7-c] : [r, c];
+}
+function logicalCoords(dr, dc){
+  return flipped() ? [7-dr, 7-dc] : [dr, dc];
+}
+
+function renderBoard(){
+  boardEl.innerHTML = '';
+  for(let dr=0; dr<8; dr++){
+    for(let dc=0; dc<8; dc++){
+      const [r,c] = logicalCoords(dr, dc);
+      const cell = document.createElement('div');
+      cell.className = 'cell ' + ((r+c)%2===0 ? 'lt' : 'dk');
+      cell.dataset.r = r;
+      cell.dataset.c = c;
+
+      // 좌표 라벨 (시점 기준)
+      if(dc === 0){
+        const lab = document.createElement('span');
+        lab.className = 'coord r';
+        lab.textContent = rankLabel(r);
+        cell.appendChild(lab);
+      }
+      if(dr === 7){
+        const lab = document.createElement('span');
+        lab.className = 'coord f';
+        lab.textContent = fileLabel(c);
+        cell.appendChild(lab);
+      }
+
+      // 배치 영역 표시 (선택된 손패에 따라)
+      if(SEL && SEL.kind === 'place' && !board[r][c] && canPlaceHere(SEL.color, SEL.piece, r, c)){
+        if(SEL.piece === 'K') cell.classList.add('king-zone');
+        else if(SEL.piece === 'SN') cell.classList.add('corner-zone');
+        else cell.classList.add('place-zone');
+      }
+
+      // 기물
+      const p = board[r][c];
+      if(p){
+        const span = document.createElement('span');
+        const isSpec = SPECIAL_KINDS.includes(p.kind);
+        span.className = 'pc ' + p.color + (isSpec?' spec':'');
+        span.textContent = SYMBOLS[p.color][p.kind];
+        cell.appendChild(span);
+      }
+
+      // 폰 배치 미리보기: 손패에서 폰 선택 중이고 이 칸이 배치 가능 영역이면 진행방향 화살표
+      if(SEL && SEL.kind === 'place' && SEL.piece === 'P' && !board[r][c] && canPlaceHere(SEL.color, 'P', r, c)){
+        const arrow = document.createElement('span');
+        arrow.className = 'pawn-place-arrow ' + SEL.color;
+        arrow.textContent = SEL.color === 'w' ? '↑' : '↓';
+        cell.appendChild(arrow);
+      }
+
+      // 마지막 수 강조
+      if(lastMove){
+        if((lastMove.fr === r && lastMove.fc === c) || (lastMove.tr === r && lastMove.tc === c)){
+          cell.classList.add('last');
+        }
+      }
+
+      // 선택된 칸
+      if(SEL && SEL.kind === 'board' && SEL.r === r && SEL.c === c){
+        cell.classList.add('sel');
+      }
+
+      // 이동/공격 표시
+      for(const h of HIGHLIGHTS){
+        if(h.r === r && h.c === c){
+          cell.classList.add(h.type);
+        }
+      }
+
+      // 체크된 킹
+      if(p && p.kind === 'K' && isInCheck(p.color)){
+        cell.classList.add('check');
+      }
+
+      // 폰 진행 방향 점: 이 칸 자체가 어느 폰의 다음 진행 칸이라면 점 표시
+      // (HIGHLIGHTS와 겹치지 않도록 SEL이 활성일 땐 생략)
+      if(!SEL && !board[r][c]){
+        const back = pawnComingFrom(r, c);
+        if(back){
+          const dot = document.createElement('span');
+          dot.className = 'pawn-dir ' + back.color;
+          cell.appendChild(dot);
+        }
+      }
+
+      cell.addEventListener('click', onCellClick);
+      boardEl.appendChild(cell);
+    }
+  }
+}
+
+// 빈 칸 (r,c)로 폰이 한 칸 전진해 올 수 있다면 그 폰의 색을 반환. 없으면 null.
+function pawnComingFrom(r, c){
+  // 백 폰은 r 감소 방향으로 이동 → (r+1, c)에 백 폰이 있으면 (r,c)가 진행 칸
+  // 흑 폰은 r 증가 방향으로 이동 → (r-1, c)에 흑 폰이 있으면 (r,c)가 진행 칸
+  if(inBounds(r+1, c)){
+    const p = board[r+1][c];
+    if(p && p.kind === 'P' && p.color === 'w') return {color:'w'};
+  }
+  if(inBounds(r-1, c)){
+    const p = board[r-1][c];
+    if(p && p.kind === 'P' && p.color === 'b') return {color:'b'};
+  }
+  return null;
+}
+
+function canPlaceHere(color, kind, r, c){
+  if(!kingPlaced[color]){ return kind === 'K' && inKingZone(r,c); }
+  if(kind === 'K') return false; // 이미 배치됨
+  if(kind === 'SN') return inCornerZone(r,c);
+  return inGeneralZone(r,c);
+}
+
+function renderHands(){
+  const myHandEl = document.getElementById('myHand');
+  const oppHandEl = document.getElementById('oppHand');
+  const oppSheetEl = document.getElementById('oppHandSheet');
+  const myTitleEl = document.getElementById('myHandTitle');
+  const oppTitleEl = document.getElementById('oppHandTitle');
+
+  const SMALL_SCREEN = window.innerWidth <= 600;
+  let bottomColor, topColor, bottomInteractive, topInteractive;
+  if(IS_LOCAL && SMALL_SCREEN){
+    // 모바일 로컬: 활성 색이 메인(아래) 패널에. 눈동자 안 써도 즉시 조작.
+    bottomColor = turn;
+    topColor = opp(turn);
+    bottomInteractive = !gameOver;
+    topInteractive = false;
+    if(myTitleEl)  myTitleEl.textContent  = (bottomColor==='w'?'백':'흑') + ' 손패 (활성)';
+    if(oppTitleEl) oppTitleEl.textContent = (topColor==='w'?'백':'흑') + ' 손패 (대기)';
+  } else if(IS_LOCAL){
+    // 큰 화면 로컬: 백=아래, 흑=위 고정. 양쪽 다 클릭 가능 (각자 차례에).
+    bottomColor = 'w';
+    topColor = 'b';
+    bottomInteractive = (turn === 'w') && !gameOver;
+    topInteractive    = (turn === 'b') && !gameOver;
+    if(myTitleEl)  myTitleEl.textContent  = '백 손패' + (turn==='w' ? ' (차례)' : '');
+    if(oppTitleEl) oppTitleEl.textContent = '흑 손패' + (turn==='b' ? ' (차례)' : '');
+  } else {
+    // 네트워크/AI/관전: 본인 색이 메인, 상대 색이 위
+    bottomColor = MY_COLOR;
+    topColor = opp(MY_COLOR);
+    bottomInteractive = (turn === MY_COLOR) && !gameOver;
+    topInteractive = false;
+    if(myTitleEl)  myTitleEl.textContent  = '내 손패';
+    if(oppTitleEl) oppTitleEl.textContent = '상대 손패';
+  }
+
+  myHandEl.innerHTML = renderHandList(bottomColor, bottomInteractive);
+  const oppHandHTML = renderHandList(topColor, topInteractive);
+  oppHandEl.innerHTML = oppHandHTML;
+  oppSheetEl.innerHTML = oppHandHTML;
+}
+function renderHandList(color, interactive){
+  const order = ['K','Q','R','B','N','P','SH','SN','JP'];
+  return order.map(k => {
+    const n = hands[color][k] || 0;
+    const sym = SYMBOLS[color][k];
+    const name = PIECE_NAMES[k];
+    const dis = !interactive || n <= 0 || isMyTurnLocked() === false || gameOver;
+    const isSel = SEL && SEL.kind === 'place' && SEL.piece === k;
+    return `<button class="hp ${isSel?'sel':''} ${dis?'dis':''}"
+              ${interactive && !dis ? `onclick="selectHand('${k}')"` : ''}>
+              <span class="sym hp-${color} ${SPECIAL_KINDS.includes(k)?'spec':''}">${sym}</span>
+              <span class="nm">${name}</span>
+              <span class="ct">${n}</span>
+            </button>`;
+  }).join('');
+}
+
+function renderStatus(){
+  // 체크 표시
+  document.getElementById('myCheck').textContent = isInCheck(MY_COLOR) ? '⚠ 체크!' : '';
+  document.getElementById('oppCheck').textContent = isInCheck(opp(MY_COLOR)) ? '⚠ 체크!' : '';
+
+  // 체크 통계 (양쪽 카드 모두)
+  renderCheckStats('myCheckStats', MY_COLOR);
+  renderCheckStats('oppCheckStats', opp(MY_COLOR));
+
+  // 로컬 모드: 작은 화면(모바일)에선 카드/손패가 활성-기준으로 동적 스왑.
+  // 큰 화면에선 양쪽이 동시에 잘 보이므로 백=아래/흑=위 고정 유지.
+  const SMALL_SCREEN = window.innerWidth <= 600;
+  if(IS_LOCAL && SMALL_SCREEN){
+    const act = turn, idle = opp(turn);
+    // 아래(myCard) = 활성, 위(oppCard) = 대기
+    document.getElementById('myAv').textContent = act==='w' ? 'W' : 'B';
+    document.getElementById('myAv').className = 'av' + (act==='b'?' b':'');
+    document.getElementById('myName').textContent = act==='w' ? '백 (플레이어 1)' : '흑 (플레이어 2)';
+    document.getElementById('myMeta').textContent = (act==='w'?'백':'흑') + ' — 차례';
+
+    document.getElementById('oppAv').textContent = idle==='w' ? 'W' : 'B';
+    document.getElementById('oppAv').className = 'av' + (idle==='b'?' b':'');
+    document.getElementById('oppName').textContent = idle==='w' ? '백 (플레이어 1)' : '흑 (플레이어 2)';
+    document.getElementById('oppMeta').textContent = (idle==='w'?'백':'흑') + ' — 대기';
+
+    // 활성 카드는 항상 myCard
+    document.getElementById('myCard').classList.toggle('active', !gameOver);
+    document.getElementById('oppCard').classList.toggle('active', false);
+
+    // 체크 통계도 활성/대기 매핑
+    renderCheckStats('myCheckStats', act);
+    renderCheckStats('oppCheckStats', idle);
+  } else if(IS_LOCAL){
+    // 큰 화면 로컬: 양쪽 카드 고정 (myCard=백, oppCard=흑) — 활성 펄스만 색에 따라
+    document.getElementById('myAv').textContent = 'W';
+    document.getElementById('myAv').className = 'av';
+    document.getElementById('myName').textContent = '백 (플레이어 1)';
+    document.getElementById('myMeta').textContent = turn==='w' ? '백 — 차례' : '백 — 대기';
+
+    document.getElementById('oppAv').textContent = 'B';
+    document.getElementById('oppAv').className = 'av b';
+    document.getElementById('oppName').textContent = '흑 (플레이어 2)';
+    document.getElementById('oppMeta').textContent = turn==='b' ? '흑 — 차례' : '흑 — 대기';
+
+    // 활성 펄스: 백 차례면 myCard, 흑 차례면 oppCard
+    document.getElementById('myCard').classList.toggle('active', turn==='w' && !gameOver);
+    document.getElementById('oppCard').classList.toggle('active', turn==='b' && !gameOver);
+
+    renderCheckStats('myCheckStats', 'w');
+    renderCheckStats('oppCheckStats', 'b');
+  } else {
+    // 활성 표시 (기본)
+    document.getElementById('myCard').classList.toggle('active', turn === MY_COLOR && !gameOver);
+    document.getElementById('oppCard').classList.toggle('active', turn !== MY_COLOR && !gameOver);
+  }
+
+  // 상태 플로팅
+  const sf = document.getElementById('statusFloat');
+  let msg = '';
+  if(gameOver){
+    msg = '';
+  } else if(IS_SPEC){
+    msg = `${turn==='w'?'백':'흑'} 차례`;
+  } else if(turn === MY_COLOR || IS_LOCAL){
+    const activeCol = IS_LOCAL ? turn : MY_COLOR;
+    if(!kingPlaced[activeCol]){
+      msg = `⚠ ${turn==='w'?'백':'흑'}: 킹부터 배치하세요 (4×4 영역)`;
+    } else if(SEL && SEL.kind === 'place'){
+      msg = `${PIECE_NAMES[SEL.piece]} 배치할 곳 선택`;
+    } else if(SEL && SEL.kind === 'board'){
+      msg = '이동할 칸 선택';
+    } else {
+      msg = `${turn==='w'?'백':'흑'} 차례 - 손패 또는 기물 선택`;
+    }
+  } else {
+    msg = `${turn==='w'?'백':'흑'} 차례 (대기 중)`;
+  }
+  if(msg){ sf.textContent = msg; sf.classList.add('show'); }
+  else sf.classList.remove('show');
+}
+
+// 각 카드에 "가한 연속 체크" / "가한 총 체크" 표시 (자기 공격 통계)
+// streak: 이 색이 가한 연속 체크 = 상대가 받고 있는 수 = checkStreak[opp(color)]
+//   3 도달 시 가한 쪽이 자멸하는 규칙이라, 내 카드만 봐도 위험도 파악 가능
+function renderCheckStats(elId, color){
+  const el = document.getElementById(elId); if(!el) return;
+  const streakGiven = checkStreak[opp(color)] || 0;  // 이 색이 가한 연속 체크
+  const totalGiven  = totalChecks[color] || 0;        // 이 색이 가한 총 체크
+  const sCls = streakGiven >= 2 ? 'danger' : streakGiven >= 1 ? 'warn' : '';
+  const tCls = totalGiven >= 5 ? 'danger' : totalGiven >= 4 ? 'warn' : '';
+  el.innerHTML = `
+    <div class="cs streak ${sCls}" title="가한 연속 체크 (3 도달 시 가한 쪽 자멸)">
+      <div class="lab">연속 체크</div><div class="val">${streakGiven}/3</div>
+    </div>
+    <div class="cs total ${tCls}" title="가한 총 체크 (5 초과 시 그 수 무효)">
+      <div class="lab">총 체크</div><div class="val">${totalGiven}/5</div>
+    </div>`;
+}
+
+function isMyTurnLocked(){
+  if(IS_SPEC) return false;
+  if(IS_LOCAL) return true; // 로컬은 양쪽 다 조작
+  return turn === MY_COLOR;
+}
+
+function renderAll(){
+  setBoardSize();
+  renderBoard();
+  renderHands();
+  renderStatus();
+  // 시트가 열려있으면 데이터 갱신 (수가 진행될 때 시트가 stale 안 되게)
+  const sheet = document.getElementById('oppSheet');
+  if(sheet && sheet.classList.contains('show')) populateOppSheet();
+  if(window._DEBUG_ON) renderDebugOverlay();
+}
+
+// 디버그 오버레이 (URL에 ?debug=1 일 때만 활성)
+window._DEBUG_ON = (Q.get('debug') === '1');
+if(window._DEBUG_ON){
+  const dbg = document.createElement('div');
+  dbg.id = 'dbgOverlay';
+  dbg.style.cssText = 'position:fixed;top:8px;right:8px;background:rgba(0,0,0,.85);color:#0f0;font:11px/1.4 monospace;padding:8px 10px;border-radius:6px;z-index:9999;max-width:280px;border:1px solid #0f0;pointer-events:none';
+  document.body.appendChild(dbg);
+  // 모든 에러를 화면에 표시
+  window.addEventListener('error', e=>{
+    const errBox = document.createElement('div');
+    errBox.style.cssText = 'position:fixed;bottom:8px;left:8px;right:8px;background:rgba(180,0,0,.95);color:#fff;font:12px/1.4 monospace;padding:10px;border-radius:6px;z-index:10000;white-space:pre-wrap';
+    errBox.textContent = '🛑 JS ERROR: ' + e.message + '\n@ ' + (e.filename||'?') + ':' + e.lineno;
+    document.body.appendChild(errBox);
+    setTimeout(()=>errBox.remove(), 8000);
+  });
+}
+function renderDebugOverlay(){
+  const dbg = document.getElementById('dbgOverlay'); if(!dbg) return;
+  const handStr = c => Object.entries(hands[c]).filter(([k,v])=>v>0).map(([k,v])=>`${k}${v}`).join(' ')||'(빈)';
+  dbg.innerHTML =
+    `mode=${MODE} role=${NET_ROLE||'-'}<br>`+
+    `turn=<b style="color:${turn==='w'?'#fff':'#888'}">${turn}</b> myCol=${MY_COLOR}<br>`+
+    `kingPlaced w=${kingPlaced.w?'✓':'✗'} b=${kingPlaced.b?'✓':'✗'}<br>`+
+    `gameOver=${gameOver}<br>`+
+    `SEL=${SEL?JSON.stringify(SEL):'null'}<br>`+
+    `<span style="color:#ccc">w손패:</span> ${handStr('w')}<br>`+
+    `<span style="color:#aaa">b손패:</span> ${handStr('b')}<br>`+
+    `chk:w=${checkStreak.w}/${totalChecks.w} b=${checkStreak.b}/${totalChecks.b}`;
+}
+
+// ===================================================================
+// 10. 클릭 처리
+// ===================================================================
+function selectHand(kind){
+  if(gameOver) return;
+  if(!isMyTurnLocked()) return;
+  if(IS_LOCAL){
+    if(hands[turn][kind] <= 0) return;
+    SEL = { kind:'place', piece:kind, color:turn };
+  } else {
+    if(hands[MY_COLOR][kind] <= 0) return;
+    SEL = { kind:'place', piece:kind, color:MY_COLOR };
+  }
+  HIGHLIGHTS = [];
+  renderAll();
+}
+
+function onCellClick(e){
+  if(gameOver) return;
+  if(IS_SPEC) return;
+  if(!isMyTurnLocked()) return;
+
+  const r = parseInt(e.currentTarget.dataset.r);
+  const c = parseInt(e.currentTarget.dataset.c);
+  const myCol = IS_LOCAL ? turn : MY_COLOR;
+
+  // 손패 배치 모드
+  if(SEL && SEL.kind === 'place'){
+    if(canPlaceHere(SEL.color, SEL.piece, r, c) && !board[r][c]){
+      submitAction({ type:'place', kind:SEL.piece, r, c, color:SEL.color });
+      SEL = null; HIGHLIGHTS = [];
+      return;
+    }
+    // 배치 실패: 다른 칸 클릭으로 취소
+    SEL = null; HIGHLIGHTS = []; renderAll();
+    return;
+  }
+
+  // 보드 기물 선택
+  if(!SEL){
+    const p = board[r][c];
+    if(p && p.color === myCol && kingPlaced.w && kingPlaced.b){
+      SEL = { kind:'board', r, c };
+      HIGHLIGHTS = computeHighlights(r, c, p);
+      renderAll();
+    }
+    return;
+  }
+
+  // 보드 기물 선택됨 → 클릭한 칸이 이동/공격 대상인지
+  if(SEL.kind === 'board'){
+    if(SEL.r === r && SEL.c === c){
+      // 동일 칸 → 선택 해제
+      SEL = null; HIGHLIGHTS = []; renderAll();
+      return;
+    }
+    const p = board[SEL.r][SEL.c];
+    // 같은 색 기물 클릭 → 다른 기물로 선택 변경
+    if(board[r][c] && board[r][c].color === myCol){
+      SEL = { kind:'board', r, c };
+      HIGHLIGHTS = computeHighlights(r, c, board[r][c]);
+      renderAll();
+      return;
+    }
+    const isHL = HIGHLIGHTS.some(h => h.r === r && h.c === c);
+    if(isHL){
+      // 이동 시도
+      // 폰 프로모션 체크
+      if(p.kind === 'P' && ((p.color==='w' && r===0)||(p.color==='b' && r===7))){
+        promptPromotion(p.color).then(promo => {
+          submitAction({ type:'move', fr:SEL.r, fc:SEL.c, tr:r, tc:c, promote: promo });
+          SEL = null; HIGHLIGHTS = [];
+        });
+      } else {
+        submitAction({ type:'move', fr:SEL.r, fc:SEL.c, tr:r, tc:c });
+        SEL = null; HIGHLIGHTS = [];
+      }
+    } else {
+      // 외곽 클릭 → 선택 해제
+      SEL = null; HIGHLIGHTS = []; renderAll();
+    }
+  }
+}
+
+function computeHighlights(r, c, p){
+  const out = [];
+  if(p.kind === 'SN'){
+    const { attacks } = pieceMoves(r, c, p);
+    for(const [tr,tc] of attacks) out.push({r:tr, c:tc, type:'attack'});
+  } else if(p.kind === 'SH'){
+    const dy = (p.color === 'w') ? -1 : 1;
+    for(const ddy of [dy, -dy]){
+      const nr = r+ddy;
+      if(!inBounds(nr,c)) continue;
+      const t = board[nr][c];
+      if(!t) out.push({r:nr, c, type:'move'});
+      else out.push({r:nr, c, type:'attack'}); // 밀기
+    }
+  } else {
+    const { moves, attacks } = pieceMoves(r, c, p);
+    for(const [tr,tc] of moves) out.push({r:tr, c:tc, type:'move'});
+    for(const [tr,tc] of attacks) out.push({r:tr, c:tc, type:'attack'});
+  }
+  // 자기 킹 노출되는 수 제거
+  return out.filter(h => {
+    const snap = snapshotState();
+    const a = { type:'move', fr:r, fc:c, tr:h.r, tc:h.c };
+    if(p.kind === 'P' && ((p.color==='w' && h.r===0)||(p.color==='b' && h.r===7))){
+      a.promote = 'Q';
+    }
+    const res = applyAction(a, {silent:true});
+    restoreState(snap);
+    return res.ok;
+  });
+}
+
+// 프로모션 모달
+function promptPromotion(color){
+  return new Promise(resolve => {
+    const opts = ['Q','R','B','N'];
+    document.getElementById('promoOpts').innerHTML = opts.map(k =>
+      `<button class="promo-opt ${color}" data-k="${k}">${SYMBOLS[color][k]}</button>`
+    ).join('');
+    document.getElementById('promoModal').classList.add('show');
+    document.querySelectorAll('.promo-opt').forEach(b => {
+      b.onclick = () => {
+        document.getElementById('promoModal').classList.remove('show');
+        resolve(b.dataset.k);
+      };
+    });
+  });
+}
+
+// ===================================================================
+// 11. submitAction (로컬/AI/네트워크 분기)
+// ===================================================================
+function submitAction(action){
+  // place 액션의 color는 항상 현재 차례의 색으로 통일
+  // (LOCAL: turn 따라 번갈아 / AI: AI는 흑 차례 / ONLINE: 본인 차례에서만 호출됨)
+  if(action.type === 'place') action.color = turn;
+  
+  const snap = snapshotState();
+  const r = applyAction(action);
+  if(!r.ok){ 
+    // 복원되어있을 것
+    showFlash('❌ ' + r.err);
+    SEL=null; HIGHLIGHTS=[]; renderAll();
+    return;
+  }
+  // 사운드
+  if(action.type === 'place') playSnd('place');
+  else if(lastMove && lastMove.type === 'snipe') playSnd('capture');
+  else if(action.type === 'move'){
+    // 잡힌 기물 있었나?
+    // 간단히: 사운드 항상 move
+    playSnd('move');
+  }
+
+  // 액션 성공: 선택/하이라이트 초기화 후 렌더 (잔상 제거)
+  SEL = null; HIGHLIGHTS = [];
+  renderAll();
+  postMoveCheck(r);
+
+  // 네트워크 전송
+  if(IS_NET){
+    sendToPeer({ t:'MOVE', action });
+    if(NET_ROLE === 'host') publishGameState();
+  }
+
+  // AI 차례
+  if(IS_AI && !gameOver && turn === 'b'){
+    setTimeout(()=> aiTurn(), 250);
+  }
+}
+
+function postMoveCheck(r){
+  if(r.fiveWin){
+    endGame('🏆','오목 승리!', `${r.fiveWin==='w'?'백':'흑'}이 5목을 완성했습니다.`, r.fiveWin);
+    return;
+  }
+  if(r.checkmate){
+    endGame('👑','체크메이트!', `${r.checkmate==='w'?'백':'흑'}의 승리.`, r.checkmate);
+    return;
+  }
+  if(r.stalemate){
+    endGame('🤝','스테일메이트', '둘 곳이 없어 무승부.', 'draw');
+    return;
+  }
+  if(r.repetition){
+    endGame('🔁','3수 동형','동일 형국이 3번 반복되어 무승부.', 'draw');
+    return;
+  }
+  // 체크 알림 — 강조 표시 + 위험 단계 메시지
+  if(isInCheck(turn)){
+    const givenStreak = checkStreak[turn];      // = 체크한 쪽이 가한 연속 (turn이 받는 = opp이 가함)
+    const givenTotal  = totalChecks[opp(turn)]; // 체크한 쪽이 가한 총
+    const checkedColor = turn==='w'?'백':'흑';        // 체크 받은 쪽
+    const giverColor   = turn==='w'?'흑':'백';        // 체크 건 쪽
+    let msg = `⚠ ${checkedColor} 체크! ${giverColor}이 가한 연속 ${givenStreak}/3 · 총 ${givenTotal}/5`;
+    if(givenStreak === 2) msg = `🚨 ${giverColor} 2연속 체크! 한 번 더 = ${giverColor} 자멸`;
+    if(givenTotal === 5) msg = `⛔ ${giverColor} 총 체크 한도 도달 (${givenTotal}/5) — 추가 체크 시 무효`;
+    showFlash(msg, 2800, true);
+  }
+}
+
+let _flashTimer = null;
+function showFlash(msg, ms=2000, isCheckFlash=false){
+  const el = document.getElementById('statusFloat');
+  el.textContent = msg;
+  el.classList.add('show');
+  el.classList.toggle('check-flash', !!isCheckFlash);
+  clearTimeout(_flashTimer);
+  _flashTimer = setTimeout(()=>{
+    el.classList.remove('check-flash');
+    renderStatus();
+  }, ms);
+}
+
+// ===================================================================
+// 12. 게임 종료 + ELO
+// ===================================================================
+let _gameRatingInfo = null; // {whiteUid, whiteElo, blackUid, blackElo, whiteNick, blackNick}
+
+function endGame(emoji, title, desc, winner /* 'w'|'b'|'draw' */){
+  if(gameOver) return;
+  gameOver = true;
+  document.getElementById('endIcon').textContent = emoji;
+  document.getElementById('endTitle').textContent = title;
+  document.getElementById('endDesc').textContent = desc;
+  playSnd('end');
+  const eloEl = document.getElementById('endElo');
+  eloEl.style.display = 'none';
+
+  const rematchBtn = document.getElementById('rematchBtn');
+  rematchBtn.style.display = (IS_NET && !IS_SPEC) ? '' : 'none';
+
+  // ELO 적용 (온라인만)
+  if(IS_NET && !IS_SPEC && _gameRatingInfo && winner){
+    eloEl.textContent = '레이팅 계산 중...';
+    eloEl.style.display = '';
+    applyEloChange(winner).then(diff => {
+      if(diff !== null){
+        const sign = diff > 0 ? '+' : '';
+        eloEl.className = 'elo-change ' + (diff>0?'up':diff<0?'dn':'');
+        eloEl.innerHTML = `레이팅 <b>${sign}${diff}</b> → ${MY_ELO_P + diff}`;
+      } else {
+        eloEl.className = 'elo-change';
+        eloEl.innerHTML = '⚠ ELO 업데이트 실패 (콘솔 확인)';
+      }
+    }).catch(e => {
+      console.error('applyEloChange error:', e);
+      eloEl.className = 'elo-change';
+      eloEl.innerHTML = '⚠ ELO 오류: ' + (e && e.message ? e.message : e);
+    });
+  } else if(IS_AI || IS_LOCAL){
+    eloEl.style.display = '';
+    eloEl.className = 'elo-change';
+    eloEl.innerHTML = `<small style="color:var(--muted)">${IS_AI?'AI 대전':'로컬 모드'}: ELO 변동 없음</small>`;
+  }
+
+  document.getElementById('endModal').classList.add('show');
+
+  // 호스트만 방 상태 업데이트
+  if(IS_NET){
+    if(NET_ROLE === 'host'){
+      _fbDb && _fbDb.ref('rooms/'+ROOM_CODE).update({ gameActive:false }).catch(()=>{});
+    }
+    sendToPeer({ t:'END', winner });
+  }
+}
+
+// 게임 종료 모달 숨기기/복귀 (보드 확인용)
+function hideEndModal(){
+  document.getElementById('endModal').classList.remove('show');
+  document.getElementById('endRestore').style.display = 'block';
+}
+function showEndModal(){
+  document.getElementById('endModal').classList.add('show');
+  document.getElementById('endRestore').style.display = 'none';
+}
+
+// 규칙 보기/닫기
+function openRules(){ document.getElementById('rulesModal').classList.add('show'); }
+function closeRules(){ document.getElementById('rulesModal').classList.remove('show'); }
+
+async function applyEloChange(winner){
+  if(!_gameRatingInfo){ console.warn('[ELO] _gameRatingInfo 없음 — 적용 안 함'); return null; }
+  if(!_fbDb){ console.warn('[ELO] _fbDb 없음 — 적용 안 함'); return null; }
+  const myCol = MY_COLOR;
+  const myInfo = myCol === 'w'
+    ? {uid:_gameRatingInfo.whiteUid, elo:_gameRatingInfo.whiteElo}
+    : {uid:_gameRatingInfo.blackUid, elo:_gameRatingInfo.blackElo};
+  const oppInfo = myCol === 'w'
+    ? {uid:_gameRatingInfo.blackUid, elo:_gameRatingInfo.blackElo}
+    : {uid:_gameRatingInfo.whiteUid, elo:_gameRatingInfo.whiteElo};
+  if(!myInfo.uid || !oppInfo.uid){ console.warn('[ELO] uid 누락', {myInfo, oppInfo}); return null; }
+
+  const score = winner === 'draw' ? 0.5 : (winner === myCol ? 1 : 0);
+  const K = 32;
+  const expected = 1 / (1 + Math.pow(10, (oppInfo.elo - myInfo.elo)/400));
+  const diff = Math.round(K * (score - expected));
+  const newElo = myInfo.elo + diff;
+  console.log(`[ELO] ${myCol} score=${score} expected=${expected.toFixed(3)} diff=${diff} ${myInfo.elo}→${newElo}`);
+
+  // 본인 데이터만 업데이트 (보안 규칙상)
+  try{
+    // auth가 준비됐는지 확인
+    if(_authReady){
+      try { await _authReady; } catch(_) { /* 실패해도 try 내부에서 한 번 더 시도 */ }
+    }
+    if(!_fbAuth.currentUser){
+      console.warn('[ELO] auth.currentUser 없음 — 익명 로그인 시도');
+      try { await _fbAuth.signInAnonymously(); } catch(e){ console.error('[ELO] 익명 로그인 실패', e); }
+    }
+    if(_fbAuth.currentUser && _fbAuth.currentUser.uid !== myInfo.uid){
+      console.warn(`[ELO] auth.uid(${_fbAuth.currentUser.uid}) !== myInfo.uid(${myInfo.uid})`,
+        '— 동일 브라우저로 호스트/게스트 둘 다 테스트하면 발생. 본인 ELO만 갱신됨.');
+      // 그래도 본인이 본인 UID에 쓰는 건 가능 (auth.uid === path uid 인 경우만). 
+      // myInfo.uid가 auth.uid와 다르면 보안규칙이 거부.
+      if(_fbAuth.currentUser.uid !== myInfo.uid){
+        // 잘못된 매칭이면 본인 UID 쪽에만 기록
+        myInfo.uid = _fbAuth.currentUser.uid;
+      }
+    }
+    const ref = _fbDb.ref('users/'+myInfo.uid);
+    const snap = await ref.once('value');
+    const cur = snap.val() || {};
+    const upd = {
+      elo: newElo,
+      w: (cur.w||0) + (score===1?1:0),
+      l: (cur.l||0) + (score===0?1:0),
+      d: (cur.d||0) + (score===0.5?1:0)
+    };
+    await ref.update(upd);
+    await _fbDb.ref('leaderboard/'+myInfo.uid).update({
+      nick: cur.nick || MY_NICK_P,
+      elo: newElo, w: upd.w, l: upd.l, d: upd.d
+    });
+    console.log('[ELO] 업데이트 성공', upd);
+  }catch(e){
+    console.error('[ELO] 업데이트 실패',e);
+    throw e; // 위에서 잡아 사용자에게 표시
+  }
+  return diff;
+}
+
+// ===================================================================
+// 13. AI
+// ===================================================================
+const PIECE_VALUES = { K:0, Q:90, R:50, B:35, N:30, P:10, SH:25, SN:60, JP:35 };
+
+function aiTurn(){
+  if(gameOver) return;
+  if(turn !== 'b') return;
+  const list = allLegalActions('b');
+  if(!list.length){
+    // 합법수 없음 = 패배 상황 (이미 finalize에서 처리됐을 수 있음)
+    return;
+  }
+  let best;
+  if(DIFF === 'easy') best = aiEasy(list);
+  else if(DIFF === 'hard') best = aiHard(list);
+  else best = aiNormal(list);
+
+  if(!best) best = list[Math.floor(Math.random()*list.length)];
+  // 폰 프로모션 처리
+  if(best.type === 'move'){
+    const p = board[best.fr][best.fc];
+    if(p && p.kind === 'P' && best.tr === 7) best.promote = 'Q';
+  }
+  submitAction(best);
+}
+
+function aiEasy(list){
+  // 1. 즉시 5연속
+  for(const a of list){
+    const snap = snapshotState();
+    const r = applyAction(a, {silent:true});
+    if(r.ok && r.fiveWin === 'b'){ restoreState(snap); return a; }
+    restoreState(snap);
+  }
+  // 2. 상대 4연속 차단
+  const block = findBlock4(list, 'w');
+  if(block) return block;
+  // 3. 30% 확률 체크
+  if(Math.random() < 0.3){
+    for(const a of list){
+      const snap = snapshotState();
+      applyAction(a, {silent:true});
+      const giveCheck = isInCheck('w');
+      restoreState(snap);
+      if(giveCheck) return a;
+    }
+  }
+  return list[Math.floor(Math.random()*list.length)];
+}
+
+function aiNormal(list){
+  // 1. 즉시 승
+  for(const a of list){
+    const snap = snapshotState();
+    const r = applyAction(a, {silent:true});
+    if(r.ok && (r.fiveWin === 'b' || r.checkmate === 'b')){ restoreState(snap); return a; }
+    restoreState(snap);
+  }
+  // 2. 상대 위협 차단
+  const block = findBlock4(list, 'w');
+  if(block) return block;
+  // 3. 평가 점수 상위 35% 중 랜덤
+  const scored = list.map(a => ({a, s: evaluateAction(a, 'b')}));
+  scored.sort((x,y)=> y.s - x.s);
+  const top = scored.slice(0, Math.max(1, Math.ceil(scored.length * 0.35)));
+  return top[Math.floor(Math.random()*top.length)].a;
+}
+
+function aiHard(list){
+  // 1. 즉시 승
+  for(const a of list){
+    const snap = snapshotState();
+    const r = applyAction(a, {silent:true});
+    if(r.ok && (r.fiveWin === 'b' || r.checkmate === 'b')){ restoreState(snap); return a; }
+    restoreState(snap);
+  }
+  // 2. 상대 위협 차단
+  const block = findBlock4(list, 'w');
+  if(block) return block;
+  // 3. 2수 lookahead
+  const scored = [];
+  // 가지치기: 먼저 1수 평가로 상위 12개만 lookahead
+  const initial = list.map(a => ({a, s: evaluateAction(a, 'b')}));
+  initial.sort((x,y)=> y.s - x.s);
+  const cands = initial.slice(0, Math.min(12, initial.length));
+
+  for(const {a, s:s1} of cands){
+    const snap = snapshotState();
+    const r1 = applyAction(a, {silent:true});
+    if(!r1.ok){ restoreState(snap); continue; }
+    if(r1.fiveWin === 'b' || r1.checkmate === 'b'){ restoreState(snap); return a; }
+    // 상대 최선
+    const oppList = allLegalActions('w');
+    let worstForMe = -Infinity;
+    let bestOppScore = -Infinity;
+    let cutEarly = false;
+    for(const oa of oppList.slice(0, 18)){
+      const snap2 = snapshotState();
+      const r2 = applyAction(oa, {silent:true});
+      if(r2.ok){
+        let s2 = -evaluatePosition('b'); // 상대 입장 점수의 반대
+        // 상대가 즉시 승리하면 매우 안 좋음
+        if(r2.fiveWin === 'w' || r2.checkmate === 'w') s2 = -100000;
+        if(s2 > bestOppScore){ bestOppScore = s2; }
+      }
+      restoreState(snap2);
+      if(bestOppScore < -50000){ cutEarly=true; break; }
+    }
+    restoreState(snap);
+    const finalScore = s1 - (bestOppScore === -Infinity ? 0 : Math.max(0, -bestOppScore - s1));
+    // 단순 결합: 1수 평가 - 상대 최선 응수
+    const combined = s1 + (bestOppScore === -Infinity ? 0 : (-bestOppScore) * 0.5);
+    scored.push({a, s: combined});
+  }
+  scored.sort((x,y)=> y.s - x.s);
+  return scored.length ? scored[0].a : list[0];
+}
+
+// 4연속 위협 차단할 수 찾기
+function findBlock4(list, threatColor){
+  // 적이 4연속을 만들어두었는지 검사 → 있으면 그 자리에 둘 수 있는 액션 찾기
+  // 단순 휴리스틱: 적 색깔로 4연 + 양옆 빈칸 패턴 검사
+  const dirs = [[0,1],[1,0],[1,1],[1,-1]];
+  const threats = [];
+  for(let r=0;r<8;r++){
+    for(let c=0;c<8;c++){
+      for(const [dr,dc] of dirs){
+        // 4 연속 검사
+        const cells = [];
+        for(let i=0;i<4;i++){
+          const nr=r+dr*i, nc=c+dc*i;
+          if(!inBounds(nr,nc)) break;
+          cells.push([nr,nc]);
+        }
+        if(cells.length<4) continue;
+        const allMy = cells.every(([nr,nc]) => board[nr][nc] && board[nr][nc].color===threatColor);
+        if(!allMy) continue;
+        // 양 끝 빈칸
+        const before = [r-dr, c-dc];
+        const after = [r+dr*4, c+dc*4];
+        for(const [tr,tc] of [before, after]){
+          if(inBounds(tr,tc) && !board[tr][tc]) threats.push([tr,tc]);
+        }
+      }
+    }
+  }
+  if(!threats.length) return null;
+  // 위협 자리에 둘 수 있는 액션
+  for(const [tr,tc] of threats){
+    for(const a of list){
+      if(a.type === 'place' && a.r === tr && a.c === tc) return a;
+      if(a.type === 'move' && a.tr === tr && a.tc === tc) return a;
+    }
+  }
+  return null;
+}
+
+function evaluateAction(a, color){
+  const snap = snapshotState();
+  const r = applyAction(a, {silent:true});
+  let score = 0;
+  if(!r.ok){ restoreState(snap); return -99999; }
+  score = evaluatePosition(color);
+  // 즉시 승
+  if(r.fiveWin === color) score += 100000;
+  if(r.fiveWin === opp(color)) score -= 100000;
+  if(r.checkmate === color) score += 100000;
+  // 체크 보너스
+  if(isInCheck(opp(color))) score += 50;
+  // 자기 노출
+  if(isInCheck(color)) score -= 80;
+  restoreState(snap);
+  return score;
+}
+
+function evaluatePosition(color){
+  let score = 0;
+  // 보드 기물
+  for(let r=0;r<8;r++) for(let c=0;c<8;c++){
+    const p = board[r][c];
+    if(!p) continue;
+    const v = PIECE_VALUES[p.kind] || 0;
+    score += (p.color === color) ? v : -v;
+  }
+  // 손패
+  for(const k of Object.keys(hands.w)){
+    const v = (PIECE_VALUES[k] || 0) * 0.5;
+    score += hands[color][k] * v - hands[opp(color)][k] * v;
+  }
+  // 오목 위협
+  score += countLineThreats(color) - countLineThreats(opp(color));
+  return score;
+}
+
+function countLineThreats(col){
+  const dirs = [[0,1],[1,0],[1,1],[1,-1]];
+  let total = 0;
+  for(let r=0;r<8;r++){
+    for(let c=0;c<8;c++){
+      for(const [dr,dc] of dirs){
+        let count=0;
+        for(let i=0;i<5;i++){
+          const nr=r+dr*i, nc=c+dc*i;
+          if(!inBounds(nr,nc)){ count=-99; break; }
+          const p = board[nr][nc];
+          if(!p){ continue; }
+          if(p.color===col) count++;
+          else { count=-99; break; }
+        }
+        if(count<0) continue;
+        if(count>=5) total += 100000;
+        else if(count===4) total += 2000;
+        else if(count===3) total += 200;
+        else if(count===2) total += 20;
+      }
+    }
+  }
+  return total;
+}
+
+// ===================================================================
+// 14. 사운드 (Web Audio)
+// ===================================================================
+let _audCtx = null;
+function audio(){
+  if(!_audCtx){ try{ _audCtx = new (window.AudioContext||window.webkitAudioContext)(); }catch(e){return null;} }
+  return _audCtx;
+}
+function playSnd(type){
+  const ctx = audio(); if(!ctx) return;
+  if(ctx.state === 'suspended') ctx.resume();
+  const now = ctx.currentTime;
+  const o = ctx.createOscillator();
+  const g = ctx.createGain();
+  o.connect(g); g.connect(ctx.destination);
+  if(type === 'move' || type === 'place'){
+    o.type = 'square';
+    o.frequency.setValueAtTime(220, now);
+    g.gain.setValueAtTime(0.18, now);
+    g.gain.exponentialRampToValueAtTime(0.001, now + 0.07);
+    o.start(now); o.stop(now + 0.08);
+  } else if(type === 'capture'){
+    o.type = 'square';
+    o.frequency.setValueAtTime(180, now);
+    g.gain.setValueAtTime(0.22, now);
+    g.gain.exponentialRampToValueAtTime(0.001, now + 0.1);
+    o.start(now); o.stop(now + 0.11);
+    const o2 = ctx.createOscillator();
+    const g2 = ctx.createGain();
+    o2.connect(g2); g2.connect(ctx.destination);
+    o2.type='square'; o2.frequency.setValueAtTime(150, now+0.06);
+    g2.gain.setValueAtTime(0.18, now+0.06);
+    g2.gain.exponentialRampToValueAtTime(0.001, now+0.16);
+    o2.start(now+0.06); o2.stop(now+0.17);
+  } else if(type === 'end'){
+    o.type='triangle';
+    o.frequency.setValueAtTime(330, now);
+    o.frequency.exponentialRampToValueAtTime(110, now+0.4);
+    g.gain.setValueAtTime(0.2, now);
+    g.gain.exponentialRampToValueAtTime(0.001, now+0.5);
+    o.start(now); o.stop(now+0.5);
+  } else if(type === 'chat'){
+    o.type='sine';
+    o.frequency.setValueAtTime(660, now);
+    g.gain.setValueAtTime(0.1, now);
+    g.gain.exponentialRampToValueAtTime(0.001, now+0.15);
+    o.start(now); o.stop(now+0.16);
+  }
+}
+
+// ===================================================================
+// 15. 네트워크 (Firebase + PeerJS)
+// ===================================================================
+const FB_CONFIG = {
+  apiKey: "AIzaSyD_bv9vLqcMDMZgGHNLS2A94INXqkO8XX8",
+  authDomain: "ooooomok-285e6.firebaseapp.com",
+  databaseURL: "https://ooooomok-285e6-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId: "ooooomok-285e6",
+  storageBucket: "ooooomok-285e6.firebasestorage.app",
+  messagingSenderId: "764275385569",
+  appId: "1:764275385569:web:44cecc18de9aef4d9a43a0"
+};
+var _fbDb = null;
+var _fbAuth = null;
+var _authReady = null;
+function fbInit(){
+  if(_fbDb) return;
+  const app = firebase.apps.length ? firebase.app() : firebase.initializeApp(FB_CONFIG);
+  _fbDb = firebase.database();
+  _fbAuth = firebase.auth();
+  // 이전 페이지(lobby.html)에서 익명 로그인 한 세션이 있으면 자동 복원됨.
+  // 없으면 새로 익명 로그인. ELO 업데이트가 보안규칙상 auth.uid를 필요로 하므로 미리 보장.
+  _authReady = new Promise((resolve, reject)=>{
+    const unsub = _fbAuth.onAuthStateChanged(async u => {
+      unsub();
+      if(u){ console.log('[Auth] 기존 익명 세션 복원:', u.uid); resolve(u); }
+      else {
+        try {
+          const cred = await _fbAuth.signInAnonymously();
+          console.log('[Auth] 새 익명 로그인:', cred.user.uid);
+          resolve(cred.user);
+        } catch(e){
+          console.error('[Auth] 익명 로그인 실패', e);
+          reject(e);
+        }
+      }
+    });
+    setTimeout(()=> { try { reject(new Error('auth timeout')); } catch(_) {} }, 8000);
+  });
+}
+
+let _peer = null;
+let _peerConn = null;
+let _specWatcher = null;
+
+function netInit(){
+  if(!IS_NET && !IS_SPEC) return;
+  fbInit();
+
+  if(IS_SPEC){
+    initSpectator();
+    return;
+  }
+
+  myRoomCode = ROOM_CODE; // 이탈 시 방 정리
+
+  if(NET_ROLE === 'host'){
+    initHost();
+  } else if(NET_ROLE === 'guest'){
+    initGuest();
+  }
+}
+
+function initHost(){
+  document.getElementById('connectModal').classList.add('show');
+  document.getElementById('connectMsg').textContent = '게스트 입장을 기다립니다...';
+  // 유령방 방지: 호스트 연결이 끊기면 Firebase가 자동으로 방 제거
+  if(_fbDb && ROOM_CODE){
+    try {
+      _fbDb.ref('rooms/'+ROOM_CODE).onDisconnect().remove();
+    } catch(e){ console.warn('onDisconnect 등록 실패', e); }
+  }
+  // PeerID = ROOM_CODE
+  _peer = new Peer(ROOM_CODE, {
+    config:{ 'iceServers':[ {urls:'stun:stun.l.google.com:19302'}, {urls:'stun:stun1.l.google.com:19302'} ]}
+  });
+  _peer.on('open', id => {
+    console.log('Host PeerID:', id);
+  });
+  _peer.on('connection', conn => {
+    _peerConn = conn;
+    setupConn(conn);
+  });
+  _peer.on('error', e => {
+    console.error('Peer error', e);
+    showFlash('연결 오류: ' + e.type);
+  });
+}
+
+function initGuest(){
+  document.getElementById('connectModal').classList.add('show');
+  document.getElementById('connectMsg').textContent = '호스트와 연결을 시도합니다...';
+  _peer = new Peer({
+    config:{ 'iceServers':[ {urls:'stun:stun.l.google.com:19302'}, {urls:'stun:stun1.l.google.com:19302'} ]}
+  });
+  _peer.on('open', id => {
+    tryConnect(0);
+  });
+  _peer.on('error', e => console.error('Peer error', e));
+}
+
+function tryConnect(attempt){
+  if(attempt >= 6){
+    document.getElementById('connectMsg').textContent = '연결 실패. 호스트가 없거나 방이 닫혔습니다.';
+    return;
+  }
+  const conn = _peer.connect(ROOM_CODE, { reliable:true });
+  let opened = false;
+  conn.on('open', () => {
+    opened = true;
+    _peerConn = conn;
+    setupConn(conn);
+  });
+  setTimeout(() => {
+    if(!opened) tryConnect(attempt+1);
+  }, 1500);
+}
+
+function setupConn(conn){
+  conn.on('data', data => onPeerMessage(data));
+  conn.on('close', () => {
+    if(!gameOver) showFlash('상대 연결이 끊겼습니다');
+  });
+  conn.on('error', e => console.error('Conn error',e));
+
+  // 연결 완료 → 인사
+  document.getElementById('connectModal').classList.remove('show');
+  document.getElementById('chatFab').style.display = '';
+  document.getElementById('forfeitBtn').style.display = '';
+  // 게임 시작 시점에 myRoomCode null로 (페이지 이동 보호)
+  // 단, 이 페이지를 떠날 때 방 삭제는 여전히 필요
+
+  // 인사 교환
+  if(NET_ROLE === 'host'){
+    sendToPeer({
+      t:'HELLO',
+      hostNick: MY_NICK_P, hostElo: MY_ELO_P, hostUid: MY_UID,
+      hand: INIT_HAND
+    });
+  } else {
+    sendToPeer({
+      t:'HELLO',
+      guestNick: MY_NICK_P, guestElo: MY_ELO_P, guestUid: MY_UID
+    });
+  }
+
+  // gameActive 마크 (호스트만)
+  if(NET_ROLE === 'host'){
+    _fbDb.ref('rooms/'+ROOM_CODE).update({ gameActive:true }).catch(()=>{});
+  }
+}
+
+function onPeerMessage(data){
+  if(!data || !data.t) return;
+  if(data.t === 'HELLO'){
+    if(NET_ROLE === 'host'){
+      // 게스트 정보 받음
+      _gameRatingInfo = {
+        whiteUid: MY_UID, whiteElo: MY_ELO_P, whiteNick: MY_NICK_P,
+        blackUid: data.guestUid, blackElo: data.guestElo, blackNick: data.guestNick
+      };
+      document.getElementById('oppName').textContent = data.guestNick + ` (${data.guestElo})`;
+      document.getElementById('oppMeta').textContent = '흑 ELO ' + data.guestElo;
+    } else {
+      _gameRatingInfo = {
+        whiteUid: data.hostUid, whiteElo: data.hostElo, whiteNick: data.hostNick,
+        blackUid: MY_UID, blackElo: MY_ELO_P, blackNick: MY_NICK_P
+      };
+      document.getElementById('oppName').textContent = data.hostNick + ` (${data.hostElo})`;
+      document.getElementById('oppMeta').textContent = '백 ELO ' + data.hostElo;
+      // 게스트는 호스트 손패 설정을 받음 (URL과 같지만 동기화)
+      if(data.hand){
+        hands.w = {...DEFAULT_HAND, ...data.hand};
+        hands.b = {...DEFAULT_HAND, ...data.hand};
+        renderAll();
+      }
+    }
+    publishGameState();
+    startTimerIfNeeded();
+  } else if(data.t === 'MOVE'){
+    // 상대가 둔 수 적용
+    const r = applyAction(data.action);
+    if(!r.ok){ console.error('상대 액션 실패', r); return; }
+    if(data.action.type === 'place') playSnd('place');
+    else playSnd('move');
+    SEL = null; HIGHLIGHTS = []; // 상대 수 적용 시 내 잔여 선택 정리
+    renderAll();
+    if(NET_ROLE === 'host') publishGameState();
+    postMoveCheck(r);
+  } else if(data.t === 'CHAT'){
+    addChatMsg(data.from || '상대', data.msg, false);
+    playSnd('chat');
+    if(!_chatOpen){
+      _chatUnread++;
+      updateChatBadge();
+    }
+  } else if(data.t === 'REMATCH_REQ'){
+    document.getElementById('rematchAskMsg').textContent = `${data.from || '상대'}가 리매치를 요청했습니다.`;
+    document.getElementById('rematchAskModal').classList.add('show');
+  } else if(data.t === 'REMATCH_REPLY'){
+    if(data.accept) doRematch();
+    else { showFlash('상대가 리매치를 거절했습니다'); addChatMsg('시스템','상대가 리매치를 거절했습니다',null,true); }
+  } else if(data.t === 'FORFEIT'){
+    if(!gameOver){
+      const winner = MY_COLOR;
+      endGame('🏳','상대 기권', `${data.from || '상대'}가 기권했습니다.`, winner);
+    }
+  } else if(data.t === 'END'){
+    // 다른 쪽에서 종료 시 동기화 (이미 종료됐을 수 있음)
+  }
+}
+
+function sendToPeer(obj){
+  if(_peerConn && _peerConn.open){
+    try{ _peerConn.send(obj); }catch(e){console.error(e);}
+  }
+}
+
+function publishGameState(){
+  if(NET_ROLE !== 'host' || !_fbDb) return;
+  const state = {
+    board: board.map(row => row.map(c => c ? {...c} : null)),
+    hands: { w:{...hands.w}, b:{...hands.b} },
+    turn, kingPlaced:{...kingPlaced},
+    lastMove: lastMove ? {...lastMove} : null,
+    checkStreak:{...checkStreak},
+    totalChecks:{...totalChecks},
+    rating: _gameRatingInfo
+  };
+  _fbDb.ref('rooms/'+ROOM_CODE+'/gameState').set(JSON.stringify(state)).catch(()=>{});
+  // 활동 시각 갱신 (유령방 차단용)
+  _fbDb.ref('rooms/'+ROOM_CODE+'/lastActivity').set(Date.now()).catch(()=>{});
+}
+
+// 관전자
+function initSpectator(){
+  document.getElementById('chatFab').style.display = '';
+  document.getElementById('forfeitBtn').style.display = 'none';
+  document.getElementById('chatInput').disabled = true;
+  document.getElementById('chatInput').placeholder = '관전 모드 (읽기 전용)';
+  showFlash('👁 관전 모드 — 게임 상태를 불러오는 중...', 4000);
+  // chatLog 구독
+  _fbDb.ref('rooms/'+ROOM_CODE+'/chatLog').on('value', snap => {
+    const log = JSON.parse(snap.val() || '[]');
+    document.getElementById('chatMsgs').innerHTML = '';
+    log.forEach(m => addChatMsg(m.from, m.msg, false, m.sys));
+  });
+  let _firstStateLoaded = false;
+  _fbDb.ref('rooms/'+ROOM_CODE+'/gameState').on('value', snap => {
+    const raw = snap.val();
+    if(!raw){
+      // 아직 호스트가 publish 안 한 상태일 수 있음.
+      // 방 자체가 사라진 경우는 아래 rooms 리스너에서 처리.
+      // 여기서는 종료 처리하지 않고 대기.
+      return;
+    }
+    try{
+      const s = JSON.parse(raw);
+      board = s.board;
+      hands = s.hands;
+      turn = s.turn;
+      kingPlaced = s.kingPlaced;
+      lastMove = s.lastMove;
+      checkStreak = s.checkStreak || {w:0,b:0};
+      totalChecks = s.totalChecks || {w:0,b:0};
+      _gameRatingInfo = s.rating;
+      if(_gameRatingInfo){
+        document.getElementById('myName').textContent = _gameRatingInfo.whiteNick + ` (${_gameRatingInfo.whiteElo})`;
+        document.getElementById('myMeta').textContent = '백';
+        document.getElementById('oppName').textContent = _gameRatingInfo.blackNick + ` (${_gameRatingInfo.blackElo})`;
+        document.getElementById('oppMeta').textContent = '흑';
+      }
+      renderAll();
+      if(!_firstStateLoaded){
+        _firstStateLoaded = true;
+        showFlash('👁 관전 시작', 1500);
+      }
+    }catch(e){ console.error('관전 상태 파싱 실패',e); }
+  });
+  // 방 자체 감시 — 방이 삭제될 때만 종료 처리
+  _fbDb.ref('rooms/'+ROOM_CODE).on('value', snap => {
+    const r = snap.val();
+    if(!r && !gameOver){
+      endGame('📛','방 종료','호스트가 방을 닫았거나 게임이 종료되었습니다.', null);
+    }
+  });
+}
+
+// ===================================================================
+// 16. 채팅
+// ===================================================================
+let _chatOpen = false;
+let _chatUnread = 0;
+let _chatLog = [];
+
+function toggleChat(){
+  _chatOpen = !_chatOpen;
+  document.getElementById('chatPanel').classList.toggle('show', _chatOpen);
+  if(_chatOpen){ _chatUnread = 0; updateChatBadge(); }
+}
+function updateChatBadge(){
+  const b = document.getElementById('chatBadge');
+  if(_chatUnread > 0){ b.textContent = _chatUnread; b.style.display=''; }
+  else b.style.display = 'none';
+}
+function addChatMsg(from, msg, mine, sys){
+  const el = document.createElement('div');
+  el.className = 'cm ' + (sys?'sys':(mine?'me':'them'));
+  if(sys){ el.textContent = msg; }
+  else el.innerHTML = `<span class="who">${escapeHtml(from)}</span><span>${escapeHtml(msg)}</span>`;
+  document.getElementById('chatMsgs').appendChild(el);
+  document.getElementById('chatMsgs').scrollTop = 1e9;
+  _chatLog.push({from, msg, sys});
+  if(NET_ROLE === 'host'){
+    _fbDb && _fbDb.ref('rooms/'+ROOM_CODE+'/chatLog').set(JSON.stringify(_chatLog)).catch(()=>{});
+  }
+}
+function sendChat(){
+  if(IS_SPEC) return;
+  const inp = document.getElementById('chatInput');
+  const msg = inp.value.trim();
+  if(!msg) return;
+  addChatMsg(MY_NICK_P, msg, true);
+  sendToPeer({ t:'CHAT', from:MY_NICK_P, msg });
+  inp.value = '';
+}
+function escapeHtml(s){return String(s).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c]);}
+document.getElementById('chatInput').addEventListener('keydown', e => { if(e.key==='Enter') sendChat(); });
+
+// ===================================================================
+// 17. 타이머
+// ===================================================================
+let _timerStart = 0;
+let _timerInterval = null;
+let _wTimeLeft = 0;
+let _bTimeLeft = 0;
+
+function startTimerIfNeeded(){
+  if(TIME_LIMIT <= 0) return;
+  document.getElementById('myTimer').style.display = '';
+  document.getElementById('oppTimer').style.display = '';
+  _wTimeLeft = TIME_LIMIT;
+  _bTimeLeft = TIME_LIMIT;
+  _timerStart = Date.now();
+  if(_timerInterval) clearInterval(_timerInterval);
+  _timerInterval = setInterval(updateTimer, 200);
+  updateTimer();
+}
+function updateTimer(){
+  if(gameOver){ clearInterval(_timerInterval); return; }
+  const elapsed = (Date.now() - _timerStart) / 1000;
+  const myLeft = TIME_LIMIT - elapsed;
+  // 1턴당 시간 제한이라 해석 → 매 턴 시작 시 리셋
+  // (단순화: 본인 차례에서 elapsed로 카운트다운)
+  // 더 정확한 구현을 위해 turn 변경 시 _timerStart 리셋
+  const turnLeft = Math.max(0, TIME_LIMIT - elapsed);
+  const fmt = s => {
+    s = Math.max(0, Math.ceil(s));
+    const m = Math.floor(s/60), x = s%60;
+    return (m<10?'0':'')+m+':'+(x<10?'0':'')+x;
+  };
+  // 본인 카드 시간만 카운트
+  if(turn === MY_COLOR || IS_LOCAL){
+    const t = document.getElementById( (IS_LOCAL ? (turn===MY_COLOR?'myTimer':'oppTimer') : 'myTimer') );
+    if(t){ t.textContent = fmt(turnLeft); t.classList.toggle('warn', turnLeft < 10); }
+    const otherT = document.getElementById( (IS_LOCAL ? (turn===MY_COLOR?'oppTimer':'myTimer') : 'oppTimer') );
+    if(otherT){ otherT.textContent = fmt(TIME_LIMIT); otherT.classList.remove('warn'); }
+  } else {
+    document.getElementById('oppTimer').textContent = fmt(turnLeft);
+    document.getElementById('oppTimer').classList.toggle('warn', turnLeft < 10);
+    document.getElementById('myTimer').textContent = fmt(TIME_LIMIT);
+  }
+  if(turnLeft <= 0){
+    clearInterval(_timerInterval);
+    const loser = turn;
+    endGame('⏱','시간 초과', `${loser==='w'?'백':'흑'}의 시간이 초과되었습니다.`, opp(loser));
+  }
+}
+
+// 차례 변경 시 타이머 리셋
+const _origApply = applyAction;
+// hook은 복잡하므로 finalizeAfterMove 안에서 호출하도록 수정
+// 간단하게: turn 변경을 감지하여 리셋
+let _lastTurn = turn;
+function watchTurnForTimer(){
+  if(_lastTurn !== turn){
+    _lastTurn = turn;
+    _timerStart = Date.now();
+  }
+}
+setInterval(watchTurnForTimer, 100);
+
+// ===================================================================
+// 18. 리매치 / 기권 / 로비 이동
+// ===================================================================
+function requestRematch(){
+  if(IS_SPEC) return;
+  sendToPeer({ t:'REMATCH_REQ', from: MY_NICK_P });
+  document.getElementById('rematchBtn').textContent = '요청 보냄...';
+  document.getElementById('rematchBtn').disabled = true;
+}
+function rematchReply(accept){
+  document.getElementById('rematchAskModal').classList.remove('show');
+  sendToPeer({ t:'REMATCH_REPLY', accept });
+  if(accept) doRematch();
+}
+function doRematch(){
+  // 상태 초기화
+  board = makeEmptyBoard();
+  hands = { w:{...INIT_HAND}, b:{...INIT_HAND} };
+  turn = 'w';
+  kingPlaced = { w:false, b:false };
+  lastMove = null;
+  moveHistory = [];
+  checkStreak = { w:0, b:0 };
+  totalChecks = { w:0, b:0 };
+  gameOver = false;
+  SEL = null; HIGHLIGHTS = [];
+  document.getElementById('endModal').classList.remove('show');
+  document.getElementById('rematchBtn').disabled = false;
+  document.getElementById('rematchBtn').textContent = '🔄 리매치';
+  if(TIME_LIMIT > 0){ _wTimeLeft = _bTimeLeft = TIME_LIMIT; _timerStart = Date.now(); }
+  if(NET_ROLE === 'host'){
+    _fbDb && _fbDb.ref('rooms/'+ROOM_CODE).update({ gameActive:true }).catch(()=>{});
+    publishGameState();
+  }
+  renderAll();
+}
+
+function confirmForfeit(){
+  if(gameOver) return;
+  showConfirm('기권', '정말 기권하시겠습니까?', () => {
+    sendToPeer({ t:'FORFEIT', from: MY_NICK_P });
+    endGame('🏳','기권', '기권했습니다.', opp(MY_COLOR));
+  });
+}
+function confirmLeave(){
+  if(gameOver){ goLobby(); return; }
+  if(IS_SPEC){ goLobby(); return; }
+  showConfirm('로비 이동', '게임을 떠나면 기권 처리됩니다. 계속하시겠습니까?', () => {
+    if(IS_NET){
+      sendToPeer({ t:'FORFEIT', from: MY_NICK_P });
+      cleanupRoom();
+    }
+    goLobby();
+  });
+}
+function goLobby(){
+  cleanupRoom();
+  myRoomCode = null;
+  location.href = 'lobby.html';
+}
+function showConfirm(title, msg, onYes){
+  document.getElementById('confirmTitle').textContent = title;
+  document.getElementById('confirmMsg').textContent = msg;
+  document.getElementById('confirmModal').classList.add('show');
+  document.getElementById('confirmYes').onclick = () => {
+    closeConfirm(); onYes();
+  };
+}
+function closeConfirm(){ document.getElementById('confirmModal').classList.remove('show'); }
+
+function cleanupRoom(){
+  if(!IS_NET) return;
+  // 호스트/게스트 모두 방 삭제 가능
+  if(_fbDb && ROOM_CODE){
+    _fbDb.ref('rooms/'+ROOM_CODE).remove().catch(()=>{});
+  }
+  if(_peerConn) try{_peerConn.close();}catch(e){}
+  if(_peer) try{_peer.destroy();}catch(e){}
+}
+window.addEventListener('beforeunload', () => {
+  if(myRoomCode){
+    if(_fbDb) _fbDb.ref('rooms/'+myRoomCode).remove().catch(()=>{});
+  }
+});
+
+// ===================================================================
+// 19. 모바일 상대 손패 시트
+// ===================================================================
+function toggleOppSheet(){
+  const sheet = document.getElementById('oppSheet');
+  const isOpening = !sheet.classList.contains('show');
+  if(isOpening) populateOppSheet();
+  sheet.classList.toggle('show');
+}
+
+function populateOppSheet(){
+  // 헤더: 아바타 / 이름 / 메타 (현재 차례 상태)
+  // 모바일 로컬에선 oppAv/oppName이 idle 색을 가리키므로 그대로 복사
+  const oppAvEl   = document.getElementById('oppAv');
+  const oppNameEl = document.getElementById('oppName');
+  const oppMetaEl = document.getElementById('oppMeta');
+  const sheetAv   = document.getElementById('oppSheetAv');
+  const sheetName = document.getElementById('oppSheetName');
+  const sheetMeta = document.getElementById('oppSheetMeta');
+  if(sheetAv){
+    sheetAv.textContent = oppAvEl ? oppAvEl.textContent : 'B';
+    sheetAv.className   = (oppAvEl ? oppAvEl.className : 'av b');
+  }
+  if(sheetName) sheetName.textContent = oppNameEl ? oppNameEl.textContent : '상대';
+  if(sheetMeta) sheetMeta.textContent = oppMetaEl ? oppMetaEl.textContent : '—';
+
+  // 체크 통계 — 현재 시점 oppCheckStats와 동일 데이터를 시트에 렌더
+  // (oppCheckStats는 모바일에서 숨긴 상태이지만 데이터는 갱신되고 있음)
+  // renderCheckStats는 색을 받아서 그 색의 "가한" 통계를 보여주므로 idle/opp 색을 파악
+  let oppColor;
+  const SMALL_SCREEN = window.innerWidth <= 600;
+  if(IS_LOCAL && SMALL_SCREEN){
+    oppColor = opp(turn);  // idle = 상대
+  } else if(IS_LOCAL){
+    oppColor = 'b';
+  } else {
+    oppColor = opp(MY_COLOR);
+  }
+  renderCheckStats('oppSheetStats', oppColor);
+}
+
+// ===================================================================
+// 20. 초기화
+// ===================================================================
+function init(){
+  // UI 초기 정보
+  document.getElementById('myName').textContent = MY_NICK_P + (IS_NET ? ` (${MY_ELO_P})` : '');
+  document.getElementById('myAv').textContent = (MY_COLOR === 'w' ? 'W' : 'B');
+  document.getElementById('myAv').className = 'av' + (MY_COLOR==='b'?' b':'');
+  document.getElementById('myMeta').textContent = MY_COLOR === 'w' ? '백' : '흑';
+
+  if(IS_AI){
+    document.getElementById('oppName').textContent = `AI (${DIFF==='easy'?'쉬움':DIFF==='hard'?'어려움':'보통'})`;
+    document.getElementById('oppMeta').textContent = '흑';
+    document.getElementById('modeLbl').textContent = 'AI 대전';
+  } else if(IS_LOCAL){
+    document.getElementById('oppName').textContent = '플레이어 2';
+    document.getElementById('oppMeta').textContent = '흑';
+    document.getElementById('modeLbl').textContent = '로컬 2인';
+  } else if(NET_ROLE === 'host'){
+    document.getElementById('oppName').textContent = '게스트 대기 중...';
+    document.getElementById('oppMeta').textContent = '흑';
+    document.getElementById('modeLbl').textContent = `방 ${ROOM_CODE} (호스트)`;
+  } else if(NET_ROLE === 'guest'){
+    document.getElementById('oppName').textContent = '호스트 연결 중...';
+    document.getElementById('oppMeta').textContent = '백';
+    document.getElementById('modeLbl').textContent = `방 ${ROOM_CODE} (게스트)`;
+  } else if(IS_SPEC){
+    document.getElementById('myName').textContent = '백';
+    document.getElementById('oppName').textContent = '흑';
+    document.getElementById('modeLbl').textContent = `방 ${ROOM_CODE} (관전)`;
+    document.getElementById('forfeitBtn').style.display = 'none';
+  }
+
+  if(IS_LOCAL || IS_AI){
+    if(TIME_LIMIT > 0) startTimerIfNeeded();
+  }
+
+  netInit();
+  renderAll();
+}
+init();
+</script>
+</body>
+</html>

@@ -1,0 +1,764 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>FRONTIER — 체스 × 오목</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;900&family=Cinzel:wght@600;800&display=swap" rel="stylesheet">
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+<style>
+:root{
+  --bg:#2C2C2E; --panel:#3A3A3C; --panel2:#48484A; --border:#555558;
+  --gold:#F5C842; --gold2:#E5B832;
+  --text:#F2F2F7; --muted:#AEAEB2;
+  --red:#FF453A; --green:#30D158; --blue:#0A84FF; --orange:#FF9500;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;background:var(--bg);color:var(--text);font-family:'Noto Sans KR','Apple SD Gothic Neo',sans-serif;overflow-x:hidden}
+body{background:radial-gradient(ellipse at top,#3a3a3c 0%,#2c2c2e 50%,#1c1c1e 100%);min-height:100vh}
+button{font-family:inherit;cursor:pointer;border:none;outline:none}
+input{font-family:inherit;outline:none}
+
+.wrap{max-width:1100px;margin:0 auto;padding:24px 20px 60px}
+
+/* 헤더 */
+.head{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:20px;flex-wrap:wrap}
+.brand{display:flex;align-items:baseline;gap:14px}
+.logo{font-family:'Cinzel',serif;font-weight:800;font-size:38px;letter-spacing:6px;color:var(--gold);
+  text-shadow:0 2px 0 #8a6c12, 0 4px 18px rgba(245,200,66,.25)}
+.tagline{color:var(--muted);font-size:13px;letter-spacing:1px}
+
+/* 프로필 카드 */
+.profile{display:flex;align-items:center;gap:12px;background:linear-gradient(135deg,var(--panel),var(--panel2));
+  padding:10px 14px;border-radius:12px;border:1px solid var(--border)}
+.avatar{width:40px;height:40px;border-radius:50%;background:var(--gold);color:#1c1c1e;
+  display:flex;align-items:center;justify-content:center;font-weight:900;font-size:18px;flex-shrink:0}
+.pinfo{display:flex;flex-direction:column;gap:2px;min-width:0}
+.pname{font-weight:700;font-size:15px;display:flex;align-items:center;gap:6px}
+.pname .edit{background:transparent;color:var(--muted);font-size:12px;padding:0;cursor:pointer}
+.pname .edit:hover{color:var(--gold)}
+.pelo{font-size:12px;color:var(--muted);display:flex;gap:8px;align-items:center}
+.tier{padding:1px 7px;border-radius:8px;font-size:11px;font-weight:700;color:#1c1c1e}
+
+/* 모드 선택 카드 */
+.modes{display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin-bottom:24px}
+.mode{background:var(--panel);border:1px solid var(--border);border-radius:14px;padding:18px;
+  cursor:pointer;transition:all .15s;display:flex;flex-direction:column;gap:8px;color:var(--text);text-align:left}
+.mode:hover{transform:translateY(-2px);border-color:var(--gold);box-shadow:0 6px 22px rgba(245,200,66,.15)}
+.mode .icon{font-size:30px}
+.mode .mt{font-weight:800;font-size:16px}
+.mode .md{font-size:12px;color:var(--muted);line-height:1.5}
+.mode.mode-tutorial{border-color:rgba(48,209,88,.45);background:linear-gradient(135deg, var(--panel), rgba(48,209,88,.06))}
+.mode.mode-tutorial:hover{border-color:var(--green);box-shadow:0 0 0 1px var(--green), 0 0 14px rgba(48,209,88,.25)}
+.mode.mode-tutorial .mt{color:var(--green)}
+
+/* AI 난이도 모달 */
+.modal{position:fixed;inset:0;background:rgba(0,0,0,.7);display:none;align-items:flex-start;justify-content:center;z-index:100;padding:20px;overflow-y:auto;-webkit-overflow-scrolling:touch}
+.modal.show{display:flex}
+.modal-card{background:var(--panel);border:1px solid var(--border);border-radius:16px;padding:24px;max-width:420px;width:100%;margin:auto;overflow:visible;position:relative}
+.modal-card h3{margin-bottom:14px;font-size:18px}
+.modal-card .opts{display:flex;flex-direction:column;gap:8px;margin-bottom:14px}
+.modal-card .opt{padding:14px;background:var(--panel2);border:1px solid var(--border);border-radius:10px;
+  cursor:pointer;transition:all .12s;color:var(--text);text-align:left}
+.modal-card .opt:hover{border-color:var(--gold)}
+.modal-card .opt b{display:block;font-size:15px;margin-bottom:2px}
+.modal-card .opt span{font-size:12px;color:var(--muted)}
+.modal-card .actions{display:flex;gap:8px;justify-content:flex-end;
+  position:sticky;bottom:0;background:var(--panel);
+  padding:12px 24px;margin:12px -24px -24px;
+  border-top:1px solid var(--border);z-index:2}
+
+/* 방 목록 */
+.section{background:var(--panel);border:1px solid var(--border);border-radius:14px;padding:18px;margin-bottom:18px}
+.sec-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:8px}
+.sec-title{font-size:17px;font-weight:800;letter-spacing:.5px}
+.sec-title .badge{background:var(--gold);color:#1c1c1e;font-size:11px;padding:2px 8px;border-radius:8px;margin-left:8px}
+.tabs{display:flex;gap:6px}
+.tab{padding:7px 14px;background:var(--panel2);border:1px solid var(--border);border-radius:8px;color:var(--muted);font-size:13px;font-weight:600;cursor:pointer}
+.tab.tab-action{color:var(--gold);border-color:var(--gold);margin-left:6px}
+.tab.tab-action:hover{background:var(--gold);color:#1c1c1e}
+.tab.on{background:var(--gold);color:#1c1c1e;border-color:var(--gold)}
+
+.room-list{display:flex;flex-direction:column;gap:8px;max-height:380px;overflow-y:auto}
+.room-list::-webkit-scrollbar{width:6px}
+.room-list::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}
+.empty{text-align:center;color:var(--muted);padding:30px 10px;font-size:14px}
+
+.room{display:flex;align-items:center;gap:12px;padding:12px 14px;background:var(--panel2);
+  border:1px solid var(--border);border-radius:10px}
+.room .rcode{font-family:'Cinzel',monospace;font-weight:700;color:var(--gold);font-size:14px;
+  background:rgba(245,200,66,.1);padding:3px 8px;border-radius:6px;min-width:75px;text-align:center}
+.room .rinfo{flex:1;min-width:0;display:flex;flex-direction:column;gap:3px}
+.room .rname{font-weight:700;font-size:14px;display:flex;gap:6px;align-items:center}
+.room .rname .lock{color:var(--orange);font-size:11px}
+.room .rmeta{font-size:11px;color:var(--muted);display:flex;gap:8px;flex-wrap:wrap}
+.room .rstatus{font-size:11px;padding:2px 7px;border-radius:6px;font-weight:600}
+.room .rstatus.wait{background:rgba(48,209,88,.15);color:var(--green)}
+.room .rstatus.play{background:rgba(255,149,0,.15);color:var(--orange)}
+.room .renter{padding:8px 14px;background:var(--gold);color:#1c1c1e;font-weight:700;font-size:13px;border-radius:8px}
+.room .renter.spec{background:var(--panel);color:var(--text);border:1px solid var(--border)}
+
+.btn{padding:10px 16px;border-radius:10px;font-weight:700;font-size:14px;cursor:pointer;transition:all .12s;border:none;font-family:inherit}
+.btn-gold{background:linear-gradient(180deg,var(--gold),var(--gold2));color:#1c1c1e}
+.btn-gold:hover{transform:translateY(-1px);box-shadow:0 4px 12px rgba(245,200,66,.3)}
+.btn-ghost{background:var(--panel2);color:var(--text);border:1px solid var(--border)}
+.btn-ghost:hover{background:var(--panel)}
+.btn-blue{background:var(--blue);color:white}
+.btn-link{background:transparent;color:var(--muted);font-size:13px;padding:6px 10px;text-decoration:underline}
+.btn-link:hover{color:var(--gold)}
+
+/* 입장 모달 */
+.enter-form{display:flex;flex-direction:column;gap:10px;margin-bottom:14px}
+.enter-form input{padding:10px 12px;background:var(--panel2);border:1px solid var(--border);
+  border-radius:8px;color:var(--text);font-size:14px}
+.enter-form input:focus{border-color:var(--gold)}
+
+/* 로컬 설정 모달 */
+.local-card{max-width:480px}
+.local-pieces{display:flex;flex-direction:column;gap:5px;margin-bottom:14px;max-height:42vh;overflow-y:auto}
+@media (max-width:600px){
+  .local-pieces{max-height:32vh}
+  .modal-card{padding:18px;border-radius:12px}
+  .modal-card h3{font-size:16px;margin-bottom:10px}
+}
+.local-piece{display:flex;align-items:center;gap:10px;padding:8px 10px;background:var(--panel2);
+  border:1px solid var(--border);border-radius:8px}
+.local-piece .sym{font-size:22px;width:28px;text-align:center;line-height:1;color:var(--text)}
+.local-piece .sym.spec{text-shadow:0 0 2px var(--text),0 0 2px var(--text)}
+.local-piece .info{flex:1;min-width:0}
+.local-piece .pname{font-weight:700;font-size:13px}
+.local-piece .pdesc{font-size:11px;color:var(--muted);line-height:1.3}
+.local-piece .ctl{display:flex;align-items:center;gap:6px}
+.local-piece .cbtn{width:26px;height:26px;border-radius:6px;background:var(--panel);color:var(--text);
+  border:1px solid var(--border);font-weight:700;font-size:14px}
+.local-piece .cbtn:hover:not(:disabled){background:var(--gold);color:#1c1c1e}
+.local-piece .cbtn:disabled{opacity:.3;cursor:not-allowed}
+.local-piece .cnum{min-width:22px;text-align:center;font-weight:700;font-size:14px}
+.local-time-label{font-size:12px;color:var(--muted);margin-bottom:6px;font-weight:600}
+.local-times{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-bottom:12px}
+.local-times .tbtn{padding:8px;background:var(--panel2);border:1px solid var(--border);border-radius:6px;
+  color:var(--text);font-size:12px;font-weight:600;cursor:pointer}
+.local-times .tbtn.on{background:var(--gold);color:#1c1c1e;border-color:var(--gold)}
+.local-summary{padding:10px;background:rgba(245,200,66,.08);border:1px solid rgba(245,200,66,.3);
+  border-radius:8px;margin-bottom:14px;font-size:13px;line-height:1.6}
+
+/* 오프라인 배지 */
+.offline-badge{font-size:11px;background:var(--orange);color:#1c1c1e;padding:2px 8px;border-radius:6px;font-weight:700;margin-left:6px}
+
+@media (max-width:780px){
+  .modes{grid-template-columns:repeat(2,1fr)}
+  .logo{font-size:30px;letter-spacing:4px}
+  .wrap{padding:16px 14px 40px}
+}
+@media (max-width:560px){
+  .modes{grid-template-columns:1fr}
+}
+@media (max-width:420px){
+  .room{flex-wrap:wrap}
+  .room .renter{width:100%;text-align:center;padding:10px}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="head">
+    <div class="brand">
+      <div class="logo">FRONTIER</div>
+      <div class="tagline">체스 × 오목 하이브리드</div>
+    </div>
+    <div class="profile" id="profile">
+      <div class="avatar" id="avatar">?</div>
+      <div class="pinfo">
+        <div class="pname"><span id="nick">로딩…</span><button class="edit" onclick="changeNick()">✎</button></div>
+        <div class="pelo">
+          <span id="elo">—</span>
+          <span class="tier" id="tier" style="background:#CD7F32">—</span>
+          <span id="record">0승 0패</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 모드 선택 -->
+  <div class="modes">
+    <button class="mode mode-tutorial" onclick="askTutorial()">
+      <div class="icon">📚</div>
+      <div class="mt">튜토리얼</div>
+      <div class="md">처음이라면 여기부터</div>
+    </button>
+    <button class="mode" onclick="goLocal()">
+      <div class="icon">👥</div>
+      <div class="mt">로컬 2인</div>
+      <div class="md">한 기기에서 두 명이 번갈아</div>
+    </button>
+    <button class="mode" onclick="openAiModal()">
+      <div class="icon">🤖</div>
+      <div class="mt">AI 대전</div>
+      <div class="md">3가지 난이도의 컴퓨터와</div>
+    </button>
+    <button class="mode" onclick="goCreate()">
+      <div class="icon">🌐</div>
+      <div class="mt">방 만들기</div>
+      <div class="md">온라인으로 친구 초대</div>
+    </button>
+    <button class="mode" onclick="location.href='ranking.html'">
+      <div class="icon">🏆</div>
+      <div class="mt">랭킹</div>
+      <div class="md">전 세계 ELO 순위</div>
+    </button>
+  </div>
+
+  <!-- 튜토리얼 시작 확인 모달 -->
+  <div class="modal" id="tutorialModal">
+    <div class="modal-card">
+      <h3 style="text-align:center">📚 튜토리얼을 하시겠습니까?</h3>
+      <p style="text-align:center;color:var(--muted);font-size:13px;margin-bottom:14px;line-height:1.6">
+        FRONTIER의 보드 구조, 기물별 행마법, 승리 조건, 특수 규칙을 단계별로 익히고<br>
+        마지막에 AI(쉬움)와 연습 대국까지 이어집니다. 약 5분 소요.
+      </p>
+      <div class="actions" style="justify-content:center">
+        <button class="btn btn-ghost" onclick="closeTutorialModal()">아니오</button>
+        <button class="btn btn-gold" onclick="startTutorial()">예 — 시작</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 방 목록 -->
+  <div class="section">
+    <div class="sec-head">
+      <div class="sec-title">온라인 방 <span class="badge" id="rcount">0</span></div>
+      <div class="tabs">
+        <button class="tab on" data-tab="wait" onclick="setTab('wait')">대기 중</button>
+        <button class="tab" data-tab="play" onclick="setTab('play')">진행 중</button>
+        <button class="tab tab-action" onclick="openEnterByCode()" title="방 코드로 직접 입장">🔑 코드 입장</button>
+      </div>
+    </div>
+    <div class="room-list" id="rooms">
+      <div class="empty">로딩 중...</div>
+    </div>
+  </div>
+
+  <!-- 입장 모달 -->
+  <div class="modal" id="enterModal">
+    <div class="modal-card">
+      <h3 id="enterTitle">방 입장</h3>
+      <div class="enter-form">
+        <input type="text" id="enterCode" placeholder="방 코드 (6자리)" maxlength="6">
+        <input type="password" id="enterPw" placeholder="비밀번호 (있는 경우)">
+      </div>
+      <div class="actions">
+        <button class="btn btn-ghost" onclick="closeEnter()">취소</button>
+        <button class="btn btn-gold" onclick="doEnter()">입장</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- AI 대전 설정 -->
+  <div class="modal" id="aiModal">
+    <div class="modal-card local-card">
+      <h3>AI 대전 — 설정</h3>
+      <div class="local-time-label" style="margin-top:0">난이도</div>
+      <div class="local-times" id="aiDifficulties" style="grid-template-columns:repeat(3,1fr);margin-bottom:12px"></div>
+      <div class="local-time-label">기물 구성</div>
+      <div class="local-pieces" id="aiPieces"></div>
+      <div class="local-time-label">⏱ 1턴 시간 제한</div>
+      <div class="local-times" id="aiTimes"></div>
+      <div class="local-summary" id="aiSummary"></div>
+      <div class="actions">
+        <button class="btn btn-ghost" onclick="closeAi()">취소</button>
+        <button class="btn btn-gold" onclick="startAiGame()">AI 대전 시작</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 로컬 2인 설정 모달 -->
+  <div class="modal" id="localModal">
+    <div class="modal-card local-card">
+      <h3>로컬 2인 — 기물 설정</h3>
+      <div class="local-pieces" id="localPieces"></div>
+      <div class="local-time-label">⏱ 1턴 시간 제한</div>
+      <div class="local-times" id="localTimes"></div>
+      <div class="local-summary" id="localSummary"></div>
+      <div class="actions">
+        <button class="btn btn-ghost" onclick="closeLocalModal()">취소</button>
+        <button class="btn btn-gold" onclick="startLocalGame()">게임 시작</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ================== Block 1: 항상 동작하는 핸들러 (Firebase 실패해도 살아남음) ================== -->
+<script>
+// 로컬/AI 모드는 Firebase 없이도 동작해야 한다.
+// 모든 버튼 핸들러를 window에 즉시 부착하여 후속 스크립트가 실패해도 클릭이 살아 있게 한다.
+
+// ----- 로컬 설정 상태 -----
+window._localCounts = {Q:1, R:2, B:2, N:2, P:8, SH:0, SN:0, JP:0};
+window._localTime = '300';
+const _LOCAL_PIECE_DEFS = {
+  Q:{sym:'♕',name:'퀸',  desc:'8방향 직선 이동',         max:2},
+  R:{sym:'♖',name:'룩',  desc:'4방향 직선 이동',         max:4},
+  B:{sym:'♗',name:'비숍',desc:'대각선 이동',             max:4},
+  N:{sym:'♘',name:'나이트',desc:'L자 점프',              max:4},
+  P:{sym:'♙',name:'폰',  desc:'1칸 전진, 대각 공격',     max:8},
+  SH:{sym:'◈',name:'방패',desc:'앞/뒤 1칸, 기물 밀기 가능',max:2,spec:true},
+  SN:{sym:'⊕',name:'스나이퍼',desc:'4꼭짓점 배치, 직선 1-3칸 저격',max:1,spec:true},
+  JP:{sym:'✦',name:'어쌔신',desc:'상하좌우 2칸 점프',    max:2,spec:true}
+};
+const _LOCAL_PIECE_ORDER = ['Q','R','B','N','P','SH','SN','JP'];
+const _LOCAL_TIME_OPTS = [
+  {v:'30',l:'30초'},{v:'60',l:'1분'},{v:'300',l:'5분'},
+  {v:'600',l:'10분'},{v:'1800',l:'30분'},{v:'3600',l:'1시간'},
+  {v:'unlimited',l:'제한없음'}
+];
+
+window.openLocalModal = function(){
+  renderLocalSetup();
+  document.getElementById('localModal').classList.add('show');
+};
+window.closeLocalModal = function(){
+  document.getElementById('localModal').classList.remove('show');
+};
+window.adjLocal = function(k, delta){
+  const def = _LOCAL_PIECE_DEFS[k]; if(!def) return;
+  window._localCounts[k] = Math.max(0, Math.min(def.max, (window._localCounts[k]||0) + delta));
+  renderLocalSetup();
+};
+window.setLocalTime = function(v){
+  window._localTime = v;
+  renderLocalSetup();
+};
+
+function renderLocalSetup(){
+  const pe = document.getElementById('localPieces');
+  pe.innerHTML = _LOCAL_PIECE_ORDER.map(k=>{
+    const d = _LOCAL_PIECE_DEFS[k];
+    const c = window._localCounts[k] || 0;
+    return `
+    <div class="local-piece">
+      <div class="sym ${d.spec?'spec':''}">${d.sym}</div>
+      <div class="info">
+        <div class="pname">${d.name}</div>
+        <div class="pdesc">${d.desc}</div>
+      </div>
+      <div class="ctl">
+        <button class="cbtn" onclick="adjLocal('${k}',-1)" ${c<=0?'disabled':''}>−</button>
+        <span class="cnum">${c}</span>
+        <button class="cbtn" onclick="adjLocal('${k}',1)" ${c>=d.max?'disabled':''}>+</button>
+      </div>
+    </div>`;
+  }).join('');
+
+  const te = document.getElementById('localTimes');
+  te.innerHTML = _LOCAL_TIME_OPTS.map(o=>
+    `<button class="tbtn ${o.v===window._localTime?'on':''}" onclick="setLocalTime('${o.v}')">${o.l}</button>`
+  ).join('');
+
+  const total = 1 + Object.values(window._localCounts).reduce((a,b)=>a+b,0); // K1 포함
+  const tlabel = _LOCAL_TIME_OPTS.find(o=>o.v===window._localTime)?.l || '5분';
+  document.getElementById('localSummary').innerHTML = `
+    각 진영 총 기물 수: <b style="color:var(--gold)">${total}</b><br>
+    1턴 시간: <b style="color:var(--gold)">${tlabel}</b>`;
+}
+
+window.startLocalGame = function(){
+  // hand 문자열 빌드: K1Q1R2B2N2P8SH0SN0JP0 형식
+  const hand = _LOCAL_PIECE_ORDER.reduce((s,k)=> s + k + (window._localCounts[k]||0), 'K1');
+  const params = new URLSearchParams({
+    mode:'local',
+    hand: hand,
+    time: window._localTime
+  });
+  location.href = 'FRONTIER.html?' + params.toString();
+};
+
+// ----- AI 모드 (난이도 + 기물 + 시간) -----
+window._aiCounts = {Q:1, R:2, B:2, N:2, P:8, SH:1, SN:0, JP:0};
+window._aiTime = 'unlimited';
+window._aiDiff = 'normal';
+
+window.openAiModal = function(){
+  renderAiSetup();
+  document.getElementById('aiModal').classList.add('show');
+};
+window.closeAi = function(){ document.getElementById('aiModal').classList.remove('show'); };
+window.adjAi = function(k, delta){
+  const def = _LOCAL_PIECE_DEFS[k]; if(!def) return;
+  window._aiCounts[k] = Math.max(0, Math.min(def.max, (window._aiCounts[k]||0) + delta));
+  renderAiSetup();
+};
+window.setAiTime = function(v){ window._aiTime = v; renderAiSetup(); };
+window.setAiDiff = function(v){ window._aiDiff = v; renderAiSetup(); };
+
+function renderAiSetup(){
+  // 난이도
+  const diffOpts = [
+    {v:'easy',   l:'🟢 쉬움'},
+    {v:'normal', l:'🟡 보통'},
+    {v:'hard',   l:'🔴 어려움'}
+  ];
+  document.getElementById('aiDifficulties').innerHTML = diffOpts.map(o =>
+    `<button class="tbtn ${o.v===window._aiDiff?'on':''}" onclick="setAiDiff('${o.v}')">${o.l}</button>`
+  ).join('');
+
+  // 기물
+  const pe = document.getElementById('aiPieces');
+  pe.innerHTML = _LOCAL_PIECE_ORDER.map(k=>{
+    const d = _LOCAL_PIECE_DEFS[k];
+    const c = window._aiCounts[k] || 0;
+    return `
+    <div class="local-piece">
+      <div class="sym ${d.spec?'spec':''}">${d.sym}</div>
+      <div class="info">
+        <div class="pname">${d.name}</div>
+        <div class="pdesc">${d.desc}</div>
+      </div>
+      <div class="ctl">
+        <button class="cbtn" onclick="adjAi('${k}',-1)" ${c<=0?'disabled':''}>−</button>
+        <span class="cnum">${c}</span>
+        <button class="cbtn" onclick="adjAi('${k}',1)" ${c>=d.max?'disabled':''}>+</button>
+      </div>
+    </div>`;
+  }).join('');
+
+  // 시간
+  document.getElementById('aiTimes').innerHTML = _LOCAL_TIME_OPTS.map(o=>
+    `<button class="tbtn ${o.v===window._aiTime?'on':''}" onclick="setAiTime('${o.v}')">${o.l}</button>`
+  ).join('');
+
+  const total = 1 + Object.values(window._aiCounts).reduce((a,b)=>a+b,0);
+  const tlabel = _LOCAL_TIME_OPTS.find(o=>o.v===window._aiTime)?.l || '제한없음';
+  const dlabel = diffOpts.find(o=>o.v===window._aiDiff)?.l || '보통';
+  document.getElementById('aiSummary').innerHTML = `
+    난이도: <b style="color:var(--gold)">${dlabel}</b> ·
+    각 진영 총 기물: <b style="color:var(--gold)">${total}</b> ·
+    1턴 시간: <b style="color:var(--gold)">${tlabel}</b>`;
+}
+
+window.startAiGame = function(){
+  const hand = _LOCAL_PIECE_ORDER.reduce((s,k)=> s + k + (window._aiCounts[k]||0), 'K1');
+  const params = new URLSearchParams({
+    mode:'ai',
+    difficulty: window._aiDiff,
+    hand: hand,
+    time: window._aiTime
+  });
+  location.href = 'FRONTIER.html?' + params.toString();
+};
+
+// 호환용 — 기존 직접 goAi 호출 경로가 있다면
+window.goAi = function(d){ window._aiDiff = d || 'normal'; window.startAiGame(); };
+
+// 호환용 (이전 코드가 goLocal을 부르는 경우 대비)
+window.goLocal = window.openLocalModal;
+
+// ----- 튜토리얼 -----
+window.askTutorial = function(){
+  document.getElementById('tutorialModal').classList.add('show');
+};
+window.closeTutorialModal = function(){
+  document.getElementById('tutorialModal').classList.remove('show');
+};
+window.startTutorial = function(){
+  location.href = 'tutorial.html';
+};
+</script>
+
+<!-- ================== Block 2: Firebase / 로비 (실패해도 위 핸들러는 정상) ================== -->
+<script>
+(function(){
+  // 페이지 어딘가에서 사용 가능한 헬퍼
+  function escapeHtml(s){return String(s).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c]);}
+  function formatTime(s){
+    if(!s || s==='unlimited' || s==='0') return '제한없음';
+    s = parseInt(s);
+    if(s>=3600) return Math.floor(s/3600)+'시간';
+    if(s>=60) return Math.floor(s/60)+'분';
+    return s+'초';
+  }
+  function tierOf(elo){
+    if(elo<1100) return {name:'브론즈', color:'#CD7F32'};
+    if(elo<1250) return {name:'실버', color:'#C0C0C0'};
+    if(elo<1400) return {name:'골드', color:'#FFD700'};
+    if(elo<1600) return {name:'플래티넘', color:'#30D158'};
+    return {name:'다이아몬드', color:'#0A84FF'};
+  }
+
+  function setOfflineMode(reason){
+    console.warn('[Lobby] 오프라인 모드:', reason);
+    const av = document.getElementById('avatar');
+    const nk = document.getElementById('nick');
+    const el = document.getElementById('elo');
+    const rc = document.getElementById('record');
+    const tr = document.getElementById('tier');
+    if(av) av.textContent = '✕';
+    if(nk) nk.innerHTML = '오프라인 <span class="offline-badge">로컬/AI 가능</span>';
+    if(el) el.textContent = '서버 연결 실패';
+    if(rc) rc.textContent = '— ';
+    if(tr){ tr.textContent = '—'; tr.style.background = 'var(--panel2)'; }
+    const list = document.getElementById('rooms');
+    if(list) list.innerHTML = `<div class="empty">⚠ 서버에 연결할 수 없습니다.<br>로컬 2인 / AI 대전은 정상 작동합니다.<br><small style="color:var(--muted)">사유: ${escapeHtml(reason)}</small></div>`;
+    // 온라인 버튼은 안내 후 작동 차단
+    window.goCreate = function(){ alert('서버 연결 실패 — 온라인 기능을 사용할 수 없습니다. 새로고침하거나 인터넷 연결을 확인해 주세요.'); };
+    window.openEnter = window.goCreate;
+    window.openEnterByCode = window.goCreate;
+    window.spectate = window.goCreate;
+    window.changeNick = function(){ alert('서버 연결 실패 상태입니다.'); };
+    window.setTab = function(t){
+      TAB = t;
+      document.querySelectorAll('.tab').forEach(b=>b.classList.toggle('on', b.dataset.tab===t));
+    };
+  }
+
+  // ===== Firebase 설정 =====
+  const FB_CONFIG = {
+    apiKey: "AIzaSyD_bv9vLqcMDMZgGHNLS2A94INXqkO8XX8",
+    authDomain: "ooooomok-285e6.firebaseapp.com",
+    databaseURL: "https://ooooomok-285e6-default-rtdb.asia-southeast1.firebasedatabase.app",
+    projectId: "ooooomok-285e6",
+    storageBucket: "ooooomok-285e6.firebasestorage.app",
+    messagingSenderId: "764275385569",
+    appId: "1:764275385569:web:44cecc18de9aef4d9a43a0"
+  };
+
+  // Firebase 라이브러리 자체가 로드 안 됐으면 즉시 오프라인
+  if(typeof firebase === 'undefined'){
+    setOfflineMode('Firebase 라이브러리 로드 실패 (네트워크 또는 광고차단기 확인)');
+    return;
+  }
+
+  let _fbApp = null, _fbDb = null, _fbAuth = null;
+  try {
+    _fbApp = firebase.apps && firebase.apps.length ? firebase.app() : firebase.initializeApp(FB_CONFIG);
+    _fbDb = firebase.database();
+    _fbAuth = firebase.auth();
+  } catch(e){
+    setOfflineMode('Firebase 초기화 실패: ' + (e && e.message ? e.message : e));
+    return;
+  }
+
+  // ===== 사용자 정보 =====
+  let MY_UID = null, MY_NICK = '', MY_ELO = 1200, MY_W=0, MY_L=0, MY_D=0;
+  let _authTimedOut = false;
+  const authTimeout = setTimeout(()=>{
+    if(!MY_UID){
+      _authTimedOut = true;
+      setOfflineMode('익명 로그인 시간 초과 (8초 경과)');
+    }
+  }, 8000);
+
+  _fbAuth.onAuthStateChanged(async user=>{
+    if(_authTimedOut) return;
+    try {
+      if(!user){
+        try { await _fbAuth.signInAnonymously(); }
+        catch(e){ clearTimeout(authTimeout); setOfflineMode('익명 로그인 실패: ' + (e.message||e)); }
+        return;
+      }
+      clearTimeout(authTimeout);
+      MY_UID = user.uid;
+      const snap = await _fbDb.ref('users/'+MY_UID).once('value');
+      const u = snap.val();
+      if(!u || !u.nick){
+        let nick = prompt('닉네임을 입력하세요 (12자 이내)','플레이어'+Math.floor(Math.random()*9000+1000));
+        if(!nick) nick = '플레이어'+Math.floor(Math.random()*9000+1000);
+        nick = nick.slice(0,12);
+        MY_NICK = nick; MY_ELO = 1200;
+        await _fbDb.ref('users/'+MY_UID).set({nick, elo:1200, w:0, l:0, d:0, t:Date.now()});
+        await _fbDb.ref('leaderboard/'+MY_UID).set({nick, elo:1200, w:0, l:0, d:0});
+      } else {
+        MY_NICK = u.nick || '익명';
+        MY_ELO = u.elo || 1200;
+        MY_W = u.w || 0; MY_L = u.l || 0; MY_D = u.d || 0;
+      }
+      renderProfile();
+      watchRooms();
+    } catch(e){
+      clearTimeout(authTimeout);
+      setOfflineMode('사용자 정보 로드 실패: ' + (e.message||e));
+    }
+  });
+
+  function renderProfile(){
+    document.getElementById('avatar').textContent = MY_NICK.charAt(0).toUpperCase();
+    document.getElementById('nick').textContent = MY_NICK;
+    document.getElementById('elo').textContent = MY_ELO + ' ELO';
+    document.getElementById('record').textContent = `${MY_W}승 ${MY_L}패${MY_D?` ${MY_D}무`:''}`;
+    const t = tierOf(MY_ELO);
+    const tEl = document.getElementById('tier');
+    tEl.textContent = t.name;
+    tEl.style.background = t.color;
+  }
+
+  window.changeNick = async function(){
+    const cur = MY_NICK;
+    let nv = prompt('새 닉네임 (12자 이내)', cur);
+    if(!nv) return;
+    nv = nv.slice(0,12).trim();
+    if(!nv || nv === cur) return;
+    MY_NICK = nv;
+    try{
+      await _fbDb.ref('users/'+MY_UID).update({nick:nv});
+      await _fbDb.ref('leaderboard/'+MY_UID).update({nick:nv});
+    } catch(e){ alert('닉네임 변경 실패: '+(e.message||e)); return; }
+    renderProfile();
+  };
+
+  // ===== 방 목록 =====
+  let TAB = 'wait';
+  let ROOMS = {};
+  function watchRooms(){
+    _fbDb.ref('rooms').on('value', snap=>{
+      ROOMS = snap.val() || {};
+      renderRooms();
+    }, err=>{
+      console.error('rooms 감시 실패', err);
+      const list = document.getElementById('rooms');
+      if(list) list.innerHTML = `<div class="empty">방 목록 로드 실패: ${escapeHtml(err.message||'알 수 없는 오류')}</div>`;
+    });
+  }
+  window.setTab = function(t){
+    TAB = t;
+    document.querySelectorAll('.tab').forEach(b=>b.classList.toggle('on', b.dataset.tab===t));
+    renderRooms();
+  };
+  function renderRooms(){
+    const list = document.getElementById('rooms');
+    const arr = Object.entries(ROOMS).map(([code,r])=>({code,...r}));
+    const now = Date.now();
+    // 유령방 차단:
+    //  - 대기 중: 24시간 이상 묵은 방 제외
+    //  - 진행 중: 1) 진행 중인데 마지막 활동(또는 생성)이 30분 이상 지난 방 제외
+    //              2) 호스트 닉이 없는 방 (정상 생성된 방엔 닉이 있음) — 유실/유령 신호
+    const fresh = arr.filter(r => {
+      if(!r.createdAt) return false; // 생성시각 없으면 의심스러운 유령
+      const age = now - r.createdAt;
+      if(!r.started){
+        return age < 24*3600*1000;
+      } else {
+        const lastAct = r.lastActivity || r.createdAt;
+        const idle = now - lastAct;
+        if(idle > 30*60*1000) return false;          // 30분 이상 비활성
+        if(!r.hostNick) return false;                  // 호스트 닉 유실 = 유령
+        if(r.gameActive === false) return false;       // 종료된 게임 잔재
+        return true;
+      }
+    });
+    const filtered = fresh.filter(r => TAB==='wait' ? !r.started : !!r.started);
+    filtered.sort((a,b)=>(b.createdAt||0)-(a.createdAt||0));
+    document.getElementById('rcount').textContent = filtered.length;
+    if(!filtered.length){
+      list.innerHTML = `<div class="empty">${TAB==='wait'?'대기 중인 방이 없습니다. 방 만들기로 시작하세요!':'진행 중인 게임이 없습니다.'}</div>`;
+      return;
+    }
+    list.innerHTML = filtered.map(r=>{
+      const isPlay = !!r.started;
+      return `
+      <div class="room">
+        <div class="rcode">${r.code}</div>
+        <div class="rinfo">
+          <div class="rname">
+            ${r.name?escapeHtml(r.name):'(이름 없음)'}
+            ${r.password?'<span class="lock">🔒</span>':''}
+          </div>
+          <div class="rmeta">
+            <span>호스트: ${escapeHtml(r.hostNick||'?')}</span>
+            ${r.guestNick?`<span>vs ${escapeHtml(r.guestNick)}</span>`:''}
+            <span>⏱ ${formatTime(r.timeLimit)}</span>
+          </div>
+        </div>
+        <span class="rstatus ${isPlay?'play':'wait'}">${isPlay?'진행중':'대기중'}</span>
+        ${isPlay
+          ? `<button class="btn renter spec" onclick="spectate('${r.code}')">👁 관전</button>`
+          : `<button class="btn renter" onclick="openEnter('${r.code}', ${r.password?'true':'false'})">입장</button>`}
+      </div>`;
+    }).join('');
+  }
+
+  // ===== 입장 =====
+  let _enterCode = null, _enterPwReq = false;
+  window.openEnter = function(code, pwReq){
+    _enterCode = code; _enterPwReq = pwReq;
+    document.getElementById('enterTitle').textContent = `방 ${code} 입장`;
+    document.getElementById('enterCode').value = code;
+    document.getElementById('enterCode').readOnly = true;
+    document.getElementById('enterPw').value = '';
+    document.getElementById('enterPw').style.display = pwReq?'block':'none';
+    document.getElementById('enterModal').classList.add('show');
+  };
+  // 방 코드 직접 입력하여 입장
+  window.openEnterByCode = function(){
+    if(!MY_UID){ alert('로그인이 완료되지 않았습니다. 잠시 후 다시 시도하세요.'); return; }
+    _enterCode = null; _enterPwReq = false;
+    document.getElementById('enterTitle').textContent = '방 코드로 입장';
+    const codeInput = document.getElementById('enterCode');
+    codeInput.value = '';
+    codeInput.readOnly = false;
+    codeInput.placeholder = '6자리 방 코드 (예: ABC123)';
+    document.getElementById('enterPw').value = '';
+    // 비번 입력칸은 일단 표시 — 비번 없는 방은 비워두면 됨
+    document.getElementById('enterPw').style.display = 'block';
+    document.getElementById('enterPw').placeholder = '비밀번호 (없으면 비워두기)';
+    document.getElementById('enterModal').classList.add('show');
+    setTimeout(()=> codeInput.focus(), 50);
+  };
+  window.closeEnter = function(){ document.getElementById('enterModal').classList.remove('show'); };
+
+  window.doEnter = async function(){
+    if(!MY_UID){ alert('로그인이 완료되지 않았습니다. 잠시 후 다시 시도하세요.'); return; }
+    const code = (document.getElementById('enterCode').value || _enterCode || '').trim().toUpperCase();
+    if(!code || code.length!==6){ alert('방 코드는 6자리입니다.'); return; }
+    const pw = document.getElementById('enterPw').value;
+    let r;
+    try {
+      const snap = await _fbDb.ref('rooms/'+code).once('value');
+      r = snap.val();
+    } catch(e){ alert('방 정보를 가져오지 못했습니다: '+(e.message||e)); return; }
+    if(!r){ alert('해당 방이 없습니다.'); return; }
+    if(r.started){ alert('이미 시작된 방입니다. 관전을 이용하세요.'); return; }
+    if(r.password && r.password !== pw){ alert('비밀번호가 틀립니다.'); return; }
+    if(r.guestUid && r.guestUid !== MY_UID){ alert('이미 게스트가 입장했습니다.'); return; }
+    try {
+      await _fbDb.ref('rooms/'+code).update({
+        guestUid: MY_UID, guestNick: MY_NICK, guestElo: MY_ELO
+      });
+    } catch(e){ alert('입장 처리 실패: '+(e.message||e)); return; }
+    const params = new URLSearchParams({
+      role:'guest', room:code, time:r.timeLimit||'unlimited',
+      uid:MY_UID, nick:MY_NICK, elo:MY_ELO,
+      hand:r.hand||'K1Q1R2B2N2P8SH0SN0JP0'
+    });
+    location.href = 'FRONTIER.html?'+params.toString();
+  };
+
+  window.spectate = function(code){
+    const r = ROOMS[code]; if(!r) return;
+    const params = new URLSearchParams({
+      role:'spectator', room:code, time:r.timeLimit||'unlimited',
+      uid:MY_UID||'spec-'+Math.random().toString(36).slice(2,8),
+      nick:MY_NICK||'관전자', elo:MY_ELO||1200,
+      hand:r.hand||'K1Q1R2B2N2P8SH0SN0JP0'
+    });
+    location.href = 'FRONTIER.html?'+params.toString();
+  };
+
+  // ===== 방 만들기 =====
+  window.goCreate = function(){
+    if(!MY_UID){ alert('로그인이 완료되지 않았습니다. 잠시 후 다시 시도하세요.'); return; }
+    const params = new URLSearchParams({uid:MY_UID, nick:MY_NICK, elo:MY_ELO});
+    location.href = 'create-room.html?'+params.toString();
+  };
+
+  // 엔터로 입장
+  const epw = document.getElementById('enterPw');
+  const ecd = document.getElementById('enterCode');
+  if(epw) epw.addEventListener('keydown', e=>{ if(e.key==='Enter') window.doEnter(); });
+  if(ecd) ecd.addEventListener('keydown', e=>{ if(e.key==='Enter') window.doEnter(); });
+})();
+</script>
+</body>
+</html>

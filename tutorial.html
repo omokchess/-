@@ -127,7 +127,7 @@ function miniBoard(opts){
   const size = opts.size || 5;
   const cls = 'size' + size;
   const SYM = { K:{w:'♔',b:'♚'}, Q:{w:'♕',b:'♛'}, R:{w:'♖',b:'♜'}, B:{w:'♗',b:'♝'},
-    N:{w:'♘',b:'♞'}, P:{w:'♙',b:'♟'}, SH:{w:'۩',b:'۩'}, SN:{w:'፬',b:'፬'}, JP:{w:'ᎇ',b:'ᎇ'} };
+    N:{w:'♘',b:'♞'}, P:{w:'♙',b:'♟'}, SH:{w:'◈',b:'◈'}, SN:{w:'⊕',b:'⊕'}, JP:{w:'✦',b:'✦'} };
   let html = `<div class="demo-board ${cls}">`;
   for(let r=0; r<size; r++){
     for(let c=0; c<size; c++){
@@ -270,7 +270,7 @@ const STEPS = [
       <div class="tut-callout">💡 폰 8개로 5목 라인 만들기가 핵심 전술입니다.</div>`
   },
   {
-    title:'۩ 방패 — 밀어내기 특수',
+    title:'◈ 방패 — 밀어내기 특수',
     body:`
       <p>방패는 <em>앞/뒤 1칸</em>으로만 이동하며, 앞 칸에 적이 있으면 <em>밀어낼 수 있습니다</em>.</p>
       ${miniBoard({
@@ -286,7 +286,7 @@ const STEPS = [
       <div class="tut-callout warn">⚠ 방패는 양 옆/대각으로 못 갑니다. 앞뒤 직선 전용.</div>`
   },
   {
-    title:'፬ 스나이퍼 — 꼭짓점 저격수',
+    title:'⊕ 스나이퍼 — 꼭짓점 저격수',
     body:`
       <p>스나이퍼는 <em>4꼭짓점에만 배치</em>됩니다. 이동은 못 하지만 직선 1~3칸 거리의 적을 <em>저격</em>합니다.</p>
       ${miniBoard({
@@ -305,7 +305,7 @@ const STEPS = [
       </ul>`
   },
   {
-    title:'ᎇ 어쌔신 — 점프 암살자',
+    title:'✦ 어쌔신 — 점프 암살자',
     body:`
       <p>어쌔신은 <em>상하좌우 정확히 2칸 점프</em>합니다. 중간 무시.</p>
       ${miniBoard({
@@ -376,14 +376,14 @@ function render(){
 function nextStep(){
   if(cur === STEPS.length-1){
     // 모든 기물 포함 hand로 AI(쉬움) 시작
-    location.href = 'omokgay.html?mode=ai&difficulty=easy&hand=K1Q1R2B2N2P8SH1SN1JP1&time=unlimited';
+    location.href = 'FRONTIER.html?mode=ai&difficulty=easy&hand=K1Q1R2B2N2P8SH1SN1JP1&time=unlimited';
     return;
   }
   cur++; render();
 }
 function prevStep(){ if(cur>0){ cur--; render(); } }
 function exitTutorial(){
-  if(confirm('튜토리얼을 종료하시겠습니까?')) location.href = 'index.html';
+  if(confirm('튜토리얼을 종료하시겠습니까?')) location.href = 'lobby.html';
 }
 
 // 키보드 네비게이션
