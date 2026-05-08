@@ -513,7 +513,7 @@ input{font-family:inherit;outline:none}
       <h4>✨ 특수 기물</h4>
       <ul>
         <li><span class="r-sym spec-w">◈</span> <b>방패</b>: 앞/뒤 1칸 이동. 앞 적을 <b>밀기</b> 가능 — 밀린 적이 벽이나 다른 기물에 부딪히면 죽고 방패 쪽 손패로 회수</li>
-        <li><span class="r-sym spec-w">⊕</span> <b>스나이퍼</b>: 4꼭짓점에만 배치. 이동 불가. 직선 1~3칸 거리의 적을 저격 (시야가 막히면 정지). 저격된 적은 손패 회수</li>
+        <li><span class="r-sym spec-w">⊕</span> <b>스나이퍼</b>: 4꼭짓점에만 배치. 이동 불가. 8방향 1~4칸 시야의 적을 저격 (시야가 막히면 정지). 저격된 적은 손패 회수</li>
         <li><span class="r-sym spec-w">✦</span> <b>어쌔신</b>: 상하좌우 2칸 점프 (중간 무시)</li>
       </ul>
 
@@ -716,10 +716,13 @@ function pieceMoves(r, c, piece){
       }
     }
   } else if(k === 'SN'){
-    // 스나이퍼: 이동 불가. 직선 1~3칸 거리의 적을 저격. 시야가 막히면(첫 기물에서) 정지.
-    const dirs = [[-1,0],[1,0],[0,-1],[0,1]];
+    // 스나이퍼: 이동 불가. 8방향(십자+대각) 1~4칸 시야의 적을 저격. 시야가 막히면(첫 기물에서) 정지.
+    const dirs = [
+      [-1, 0],[ 1, 0],[ 0,-1],[ 0, 1],   // 십자 4방향
+      [-1,-1],[-1, 1],[ 1,-1],[ 1, 1]    // 대각 4방향
+    ];
     for(const [dr,dc] of dirs){
-      for(let dist=1; dist<=3; dist++){
+      for(let dist=1; dist<=4; dist++){
         const nr = r + dr*dist, nc = c + dc*dist;
         if(!inBounds(nr,nc)) break;
         const t = board[nr][nc];
