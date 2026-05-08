@@ -104,6 +104,13 @@ input{font-family:inherit;outline:none}
 .cell.corner-zone::after{content:'';position:absolute;inset:0;background:rgba(255,69,58,.18);pointer-events:none}
 .cell.move::after{content:'';position:absolute;width:30%;height:30%;background:rgba(48,209,88,.55);border-radius:50%;pointer-events:none}
 .cell.attack::after{content:'';position:absolute;inset:8%;border:3px solid rgba(255,69,58,.65);border-radius:50%;pointer-events:none}
+/* 스나이퍼 사정거리 시각화 */
+.cell.sniper-range::after{content:'';position:absolute;width:32%;height:32%;
+  border:2.5px solid rgba(255,159,10,.85);background:rgba(255,159,10,.18);
+  border-radius:50%;pointer-events:none}
+.cell.sniper-blocked::after{content:'';position:absolute;inset:8%;
+  border:3px dashed rgba(255,69,58,.45);border-radius:50%;pointer-events:none;
+  background:rgba(255,69,58,.06)}
 .cell.sel{background:rgba(245,200,66,.5)!important}
 .cell.last{background:rgba(245,200,66,.3)!important}
 .cell.check::before{content:'';position:absolute;inset:0;background:rgba(255,69,58,.4);border-radius:0;animation:checkpulse 1s infinite}
@@ -1540,7 +1547,10 @@ function onCellClick(e){
       return;
     }
     const isHL = HIGHLIGHTS.some(h => h.r === r && h.c === c);
-    if(isHL){
+    // 클릭 가능한 highlight는 'move' / 'attack'만. 'sniper-range', 'sniper-blocked'는 시각 전용.
+    const hl = HIGHLIGHTS.find(h => h.r === r && h.c === c);
+    const isClickable = hl && (hl.type === 'move' || hl.type === 'attack');
+    if(isClickable){
       // 이동 시도
       // 폰 프로모션 체크
       if(p.kind === 'P' && ((p.color==='w' && r===0)||(p.color==='b' && r===7))){
@@ -1552,6 +1562,9 @@ function onCellClick(e){
         submitAction({ type:'move', fr:SEL.r, fc:SEL.c, tr:r, tc:c });
         SEL = null; HIGHLIGHTS = [];
       }
+    } else if(isHL){
+      // 시각 전용 highlight 클릭 (sniper-range/blocked) — 동작 없음, 선택 유지
+      return;
     } else {
       // 외곽 클릭 → 선택 해제
       SEL = null; HIGHLIGHTS = []; renderAll();
@@ -1562,8 +1575,42 @@ function onCellClick(e){
 function computeHighlights(r, c, p){
   const out = [];
   if(p.kind === 'SN'){
+    // 시각: 8방향 1~4칸 전체 사정거리 표시 (시야 차단 무관)
+    //  · 빈 칸 → 'sniper-range' (주황 동그라미)
+    //  · 적 기물 → 'attack' or 'sniper-blocked' (실제 공격 가능 여부에 따라)
+    //  · 우군 기물 → 표시 없음 (orange 안 그림)
+    const dirs = [
+      [-1, 0],[ 1, 0],[ 0,-1],[ 0, 1],
+      [-1,-1],[-1, 1],[ 1,-1],[ 1, 1]
+    ];
+    // 실제 공격 가능 셀 집합 (시야 차단 적용된 결과)
     const { attacks } = pieceMoves(r, c, p);
-    for(const [tr,tc] of attacks) out.push({r:tr, c:tc, type:'attack'});
+    const attackSet = new Set(attacks.map(([ar,ac]) => ar + ',' + ac));
+    for(const [dr, dc] of dirs){
+      for(let dist = 1; dist <= 4; dist++){
+        const nr = r + dr*dist, nc = c + dc*dist;
+        if(!inBounds(nr, nc)) break;          // 보드 밖이면 멈춤
+        const t = board[nr][nc];
+        if(!t){
+          out.push({r:nr, c:nc, type:'sniper-range'});  // 빈: 주황
+        } else if(t.color !== p.color){
+          if(attackSet.has(nr + ',' + nc)){
+            out.push({r:nr, c:nc, type:'attack'});       // 적+공격가능: 빨강
+          } else {
+            out.push({r:nr, c:nc, type:'sniper-blocked'});// 적+시야막힘: 흐린 빨강
+          }
+        }
+        // 우군: 표시 안 함, 그러나 그 너머 셀도 보이도록 break하지 않음
+      }
+    }
+    // 자기 킹 노출 검증 (attack/blocked만 필터; sniper-range는 클릭 무동작이라 스킵)
+    return out.filter(h => {
+      if(h.type !== 'attack') return true;  // 시각 전용은 그대로 통과
+      const snap = snapshotState();
+      const res = applyAction({type:'move', fr:r, fc:c, tr:h.r, tc:h.c}, {silent:true});
+      restoreState(snap);
+      return res.ok;
+    });
   } else if(p.kind === 'SH'){
     const dy = (p.color === 'w') ? -1 : 1;
     for(const ddy of [dy, -dy]){
@@ -1578,7 +1625,7 @@ function computeHighlights(r, c, p){
     for(const [tr,tc] of moves) out.push({r:tr, c:tc, type:'move'});
     for(const [tr,tc] of attacks) out.push({r:tr, c:tc, type:'attack'});
   }
-  // 자기 킹 노출되는 수 제거
+  // 자기 킹 노출되는 수 제거 (SN은 위에서 이미 처리)
   return out.filter(h => {
     const snap = snapshotState();
     const a = { type:'move', fr:r, fc:c, tr:h.r, tc:h.c };
