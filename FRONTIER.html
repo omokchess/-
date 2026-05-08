@@ -141,6 +141,9 @@ input{font-family:inherit;outline:none}
 
 /* 폰 진행 방향 표시 */
 .cell .pawn-dir{position:absolute;width:18%;height:18%;border-radius:50%;pointer-events:none;z-index:0}
+.cell .sn-counter{position:absolute;bottom:1px;right:2px;font-size:9px;font-weight:800;
+  color:#fff;background:rgba(255,69,58,.85);padding:1px 4px;border-radius:6px;
+  pointer-events:none;z-index:3;line-height:1;letter-spacing:.3px}
 .cell .pawn-dir.w{background:rgba(255,255,255,.5);border:1px solid rgba(255,255,255,.8);top:8%;left:50%;transform:translateX(-50%)}
 .cell .pawn-dir.b{background:rgba(20,20,20,.55);border:1px solid rgba(20,20,20,.85);bottom:8%;left:50%;transform:translateX(-50%)}
 .cell .pawn-place-arrow{position:absolute;font-size:14px;font-weight:900;line-height:1;pointer-events:none;z-index:2;
@@ -519,16 +522,15 @@ input{font-family:inherit;outline:none}
 
       <h4>✨ 특수 기물</h4>
       <ul>
-        <li><span class="r-sym spec-w">◈</span> <b>방패</b>: 앞/뒤 1칸 이동. 앞 적을 <b>밀기</b> 가능 — 밀린 적이 벽이나 다른 기물에 부딪히면 죽고 방패 쪽 손패로 회수</li>
-        <li><span class="r-sym spec-w">⊕</span> <b>스나이퍼</b>: 4꼭짓점에만 배치. 이동 불가. 8방향 1~4칸 시야의 적을 저격 (시야가 막히면 정지). 저격된 적은 손패 회수</li>
+        <li><span class="r-sym spec-w">⬢</span> <b>방패</b>: 앞/뒤 1칸 이동. 앞 적을 <b>밀기</b> 가능 — 밀린 적이 벽이나 다른 기물에 부딪히면 죽음 (손패 회수 X)</li>
+        <li><span class="r-sym spec-w">⊕</span> <b>스나이퍼</b>: 4꼭짓점에만 배치. 이동 불가. 8방향 1~4칸 시야의 적을 저격 (시야가 막히면 정지). <b>3회 공격 후 후퇴</b> (자기 손패로 복귀, 재배치 가능)</li>
         <li><span class="r-sym spec-w">✦</span> <b>어쌔신</b>: 상하좌우 2칸 점프 (중간 무시)</li>
       </ul>
 
       <h4>🎴 캡처 규칙</h4>
       <ul>
-        <li>일반 기물의 캡처: 잡힌 기물은 <b>영구 제거</b> (손패 회수 X)</li>
-        <li>스나이퍼 저격: 잡힌 기물 손패 회수 ✓</li>
-        <li>방패 밀어 죽이기: 잡힌 기물 손패 회수 ✓</li>
+        <li>모든 캡처는 <b>영구 제거</b> — 잡힌 기물은 손패 회수 안 됨</li>
+        <li>스나이퍼는 3회 공격 후 본인이 자기 손패로 후퇴해 재배치 가능</li>
       </ul>
 
       <h4>📋 순서</h4>
@@ -600,8 +602,8 @@ const TIME_LIMIT = TIME_LIMIT_RAW === 'unlimited' || TIME_LIMIT_RAW === '0'
 // 2. 기물 정의
 // ===================================================================
 const SYMBOLS = {
-  w:{K:'♔',Q:'♕',R:'♖',B:'♗',N:'♘',P:'♙',SH:'◈',SN:'⊕',JP:'✦'},
-  b:{K:'♚',Q:'♛',R:'♜',B:'♝',N:'♞',P:'♟',SH:'◈',SN:'⊕',JP:'✦'}
+  w:{K:'♔',Q:'♕',R:'♖',B:'♗',N:'♘',P:'♙',SH:'⬢',SN:'⊕',JP:'✦'},
+  b:{K:'♚',Q:'♛',R:'♜',B:'♝',N:'♞',P:'♟',SH:'⬢',SN:'⊕',JP:'✦'}
 };
 const PIECE_NAMES = {K:'킹',Q:'퀸',R:'룩',B:'비숍',N:'나이트',P:'폰',SH:'방패',SN:'스나이퍼',JP:'어쌔신'};
 const SPECIAL_KINDS = ['SH','SN','JP'];
@@ -865,7 +867,7 @@ function applyAction(action, opts={}){
     // 그 외 일반: 6x4 영역
     if(kind !== 'K' && kind !== 'SN' && !inGeneralZone(r,c)) return { ok:false, err:'배치 영역 밖' };
 
-    board[r][c] = { color, kind };
+    board[r][c] = (kind === 'SN') ? { color, kind, attacks: 0 } : { color, kind };
     hands[color][kind]--;
     if(kind === 'K') kingPlaced[color] = true;
     lastMove = { fr:-1, fc:-1, tr:r, tc:c, type:'place' };
@@ -887,13 +889,18 @@ function applyAction(action, opts={}){
       const isAtk = attacks.some(([r,c]) => r===tr && c===tc);
       if(!isAtk) return { ok:false, err:'공격 불가 위치' };
       const target = board[tr][tc];
-      // SN 자신은 그대로, 타깃만 제거
+      // 타깃은 영구 제거 (손패 회수 X)
       board[tr][tc] = null;
-      // 공격당한 기물 → 손패 회수 (단 K, SN은 제외)
-      if(target && target.kind !== 'K' && target.kind !== 'SN'){
-        hands[p.color][target.kind] = (hands[p.color][target.kind] || 0) + 1;
+      // 스나이퍼 공격 카운터 증가, 3회 도달 시 후퇴 (자기 손패로 회수)
+      p.attacks = (p.attacks || 0) + 1;
+      if(p.attacks >= 3){
+        // 후퇴: SN을 보드에서 제거하고 소유자의 손패로 복귀
+        board[fr][fc] = null;
+        hands[p.color]['SN'] = (hands[p.color]['SN'] || 0) + 1;
+        lastMove = { fr, fc, tr, tc, type:'snipe', retreat:true };
+      } else {
+        lastMove = { fr, fc, tr, tc, type:'snipe' };
       }
-      lastMove = { fr, fc, tr, tc, type:'snipe' };
     } else {
       const { moves, attacks } = pieceMoves(fr, fc, p);
       const isMove = moves.some(([r,c]) => r===tr && c===tc);
@@ -1018,10 +1025,7 @@ function trySHMove(fr, fc, tr, tc, color){
   // 밀기: 다음 칸 검사
   const pr = tr + ddy;
   if(!inBounds(pr, tc)){
-    // 판 끝 → 밀린 기물 사망
-    if(target.kind !== 'K' && target.kind !== 'SN'){
-      hands[color][target.kind] = (hands[color][target.kind] || 0) + 1;
-    }
+    // 판 끝 → 밀린 기물 사망 (손패 회수 X)
     board[tr][tc] = board[fr][fc];
     board[fr][fc] = null;
     lastMove = { fr, fc, tr, tc, type:'push' };
@@ -1029,10 +1033,7 @@ function trySHMove(fr, fc, tr, tc, color){
   }
   const beyond = board[pr][tc];
   if(beyond){
-    // 다른 기물에 닿음 → 밀린 기물 사망, beyond는 그대로
-    if(target.kind !== 'K' && target.kind !== 'SN'){
-      hands[color][target.kind] = (hands[color][target.kind] || 0) + 1;
-    }
+    // 다른 기물에 닿음 → 밀린 기물 사망 (손패 회수 X), beyond는 그대로
     board[tr][tc] = board[fr][fc];
     board[fr][fc] = null;
     lastMove = { fr, fc, tr, tc, type:'push' };
@@ -1206,6 +1207,13 @@ function renderBoard(){
         span.className = 'pc ' + p.color + (isSpec?' spec':'');
         span.textContent = SYMBOLS[p.color][p.kind];
         cell.appendChild(span);
+        // 스나이퍼 공격 카운터 (3회 후퇴)
+        if(p.kind === 'SN' && p.attacks > 0){
+          const ctr = document.createElement('span');
+          ctr.className = 'sn-counter';
+          ctr.textContent = `${p.attacks}/3`;
+          cell.appendChild(ctr);
+        }
       }
 
       // 폰 배치 미리보기: 손패에서 폰 선택 중이고 이 칸이 배치 가능 영역이면 진행방향 화살표
@@ -1678,6 +1686,11 @@ function submitAction(action){
     // 잡힌 기물 있었나?
     // 간단히: 사운드 항상 move
     playSnd('move');
+  }
+
+  // 스나이퍼 후퇴 알림
+  if(lastMove && lastMove.type === 'snipe' && lastMove.retreat){
+    showFlash('🎯 스나이퍼 3회 공격 완료 — 손패로 후퇴', 2200);
   }
 
   // 액션 성공: 선택/하이라이트 초기화 후 렌더 (잔상 제거)
