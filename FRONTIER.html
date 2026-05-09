@@ -2172,7 +2172,7 @@ function fbInit(){
   const app = firebase.apps.length ? firebase.app() : firebase.initializeApp(FB_CONFIG);
   _fbDb = firebase.database();
   _fbAuth = firebase.auth();
-  // 이전 페이지(lobby.html)에서 익명 로그인 한 세션이 있으면 자동 복원됨.
+  // 이전 페이지(index.html)에서 익명 로그인 한 세션이 있으면 자동 복원됨.
   // 없으면 새로 익명 로그인. ELO 업데이트가 보안규칙상 auth.uid를 필요로 하므로 미리 보장.
   _authReady = new Promise((resolve, reject)=>{
     const unsub = _fbAuth.onAuthStateChanged(async u => {
@@ -2602,7 +2602,7 @@ function confirmLeave(){
 function goLobby(){
   cleanupRoom();
   myRoomCode = null;
-  location.href = 'lobby.html';
+  location.href = 'index.html';
 }
 function showConfirm(title, msg, onYes){
   document.getElementById('confirmTitle').textContent = title;
