@@ -346,13 +346,17 @@ input{font-family:inherit;outline:none}
   background:var(--gold);cursor:pointer;border:2px solid #1c1c1e;position:relative;z-index:3}
 .replay-slider::-moz-range-thumb{width:18px;height:18px;border-radius:50%;background:var(--gold);
   cursor:pointer;border:2px solid #1c1c1e}
-.replay-marks{position:absolute;left:0;right:0;top:50%;transform:translateY(-50%);height:14px;
+.replay-marks{position:absolute;left:9px;right:9px;top:50%;transform:translateY(-50%);height:14px;
   pointer-events:none;z-index:2}
 .replay-mark{position:absolute;width:8px;height:8px;top:50%;transform:translate(-50%,-50%) rotate(45deg);
-  cursor:pointer;pointer-events:auto;transition:all .15s;border:1.5px solid #1c1c1e}
-.replay-mark:hover{transform:translate(-50%,-50%) rotate(45deg) scale(1.4);z-index:5}
+  cursor:pointer;pointer-events:auto;transition:opacity .12s,transform .15s;border:1.5px solid #1c1c1e;
+  opacity:1}
+.replay-mark:hover{transform:translate(-50%,-50%) rotate(45deg) scale(1.4);z-index:5;opacity:1 !important}
 .replay-mark.capture{background:var(--green);box-shadow:0 0 4px rgba(48,209,88,.6)}
 .replay-mark.captured{background:var(--red);box-shadow:0 0 4px rgba(255,69,58,.6)}
+/* thumb 근처 마름모는 투명도 낮춰 thumb이 보이게 */
+.replay-mark.near-thumb{opacity:.18}
+.replay-mark.at-thumb{opacity:.08}
 .replay-mark-tooltip{position:absolute;bottom:18px;left:50%;transform:translateX(-50%) rotate(-45deg);
   background:var(--panel);color:var(--text);padding:3px 7px;border-radius:4px;font-size:10px;
   white-space:nowrap;border:1px solid var(--border);opacity:0;pointer-events:none;transition:opacity .12s}
@@ -3224,16 +3228,25 @@ function updateReplayUI(){
   if(_replayCurrentTurn === 0){
     curEl.textContent = '— 시작 —';
     curEl.classList.remove('has-capture');
+    curEl.classList.remove('is-loss');
   } else {
     const meta = _replayData.actions[_replayCurrentTurn - 1];
     const d = describeAction(meta, _replayCurrentTurn - 1);
     let html = `<span class="turn-color ${d.colorClass}" style="display:inline-block">●</span> <b>${d.colorName}</b>: ${d.text}`;
     if(d.captured){
       const capSym = SYMBOLS[d.captured.color]?.[d.captured.kind] || '?';
-      html += ` <span class="cap-mark">잡힘: <span class="pc-sym">${capSym}</span></span>`;
+      // 시점 기준: 캡쳐자가 나면 "획득" 초록, 아니면 "손실" 빨강
+      const captorColor = meta.action.color || ((_replayCurrentTurn - 1) % 2 === 0 ? 'w' : 'b');
+      const isMyCapture = captorColor === MY_COLOR;
+      const label = isMyCapture ? '획득' : '손실';
+      const colorVar = isMyCapture ? 'var(--green)' : 'var(--red)';
+      html += ` <span class="cap-mark" style="color:${colorVar};font-weight:700;margin-left:6px">${label}: <span class="pc-sym">${capSym}</span></span>`;
       curEl.classList.add('has-capture');
+      if(isMyCapture){ curEl.classList.remove('is-loss'); }
+      else { curEl.classList.add('is-loss'); }
     } else {
       curEl.classList.remove('has-capture');
+      curEl.classList.remove('is-loss');
     }
     curEl.innerHTML = html;
   }
@@ -3242,6 +3255,17 @@ function updateReplayUI(){
   document.querySelectorAll('.replay-list-item').forEach(el => {
     if(parseInt(el.dataset.idx) === _replayCurrentTurn) el.classList.add('current');
     else el.classList.remove('current');
+  });
+
+  // thumb 근처 마름모는 투명도 낮춰서 thumb이 보이도록
+  // 정확히 같은 턴 = 가장 흐림(at-thumb), 1턴 차이 = 살짝 흐림(near-thumb)
+  document.querySelectorAll('.replay-mark').forEach(el => {
+    const t = parseInt(el.dataset.turn);
+    el.classList.remove('at-thumb','near-thumb');
+    if(!isFinite(t)) return;
+    const diff = Math.abs(t - _replayCurrentTurn);
+    if(diff === 0) el.classList.add('at-thumb');
+    else if(diff === 1) el.classList.add('near-thumb');
   });
 }
 
