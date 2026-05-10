@@ -112,6 +112,55 @@ input{font-family:inherit;outline:none}
 .room .rstatus.play{background:rgba(255,149,0,.15);color:var(--orange)}
 .room .renter{padding:8px 14px;background:var(--gold);color:#1c1c1e;font-weight:700;font-size:13px;border-radius:8px}
 .room .renter.spec{background:var(--panel);color:var(--text);border:1px solid var(--border)}
+.room .rcustom{font-size:11px;display:flex;gap:8px;align-items:center;margin-top:2px;flex-wrap:wrap}
+.room .rcustom-summary{color:var(--muted);font-family:'Cinzel',monospace;letter-spacing:.3px}
+.room .rcustom-summary.empty{color:var(--muted);opacity:.6;font-style:italic;font-family:inherit}
+.room .rcustom-summary .pdiff{margin-right:6px;display:inline-block;white-space:nowrap}
+.room .rcustom-summary .pdiff .sym{margin-right:1px}
+.room .rcustom-summary .pdiff .plus{color:var(--green);font-weight:700}
+.room .rcustom-summary .pdiff .minus{color:var(--red);font-weight:700}
+.room .rcustom-btn{padding:3px 8px;background:transparent;color:var(--gold);border:1px solid var(--gold);
+  border-radius:6px;font-size:11px;font-weight:600;cursor:pointer;transition:all .15s}
+.room .rcustom-btn:hover{background:var(--gold);color:#1c1c1e}
+
+/* 방 커스텀 상세 모달 */
+.cust-modal{display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:200;
+  align-items:center;justify-content:center;padding:16px}
+.cust-modal.show{display:flex}
+.cust-box{background:var(--panel);border:1px solid var(--border);border-radius:14px;
+  padding:20px 22px;max-width:440px;width:100%;max-height:88vh;overflow-y:auto}
+.cust-box h3{margin:0 0 12px 0;color:var(--gold);font-size:18px;display:flex;align-items:center;gap:10px}
+.cust-box .cust-code{font-family:'Cinzel',monospace;background:var(--panel2);padding:3px 8px;border-radius:6px;
+  font-size:12px;color:var(--gold);letter-spacing:1px}
+.cust-section{margin:14px 0}
+.cust-section h4{font-size:13px;color:var(--muted);margin:0 0 8px 0;font-weight:600;
+  text-transform:uppercase;letter-spacing:.5px}
+.cust-meta{display:grid;grid-template-columns:auto 1fr;gap:6px 12px;font-size:13px}
+.cust-meta .k{color:var(--muted)}
+.cust-meta .v{color:var(--text)}
+.cust-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.cust-cell{background:var(--panel2);border:1px solid var(--border);border-radius:8px;padding:8px 10px;
+  display:flex;align-items:center;justify-content:space-between;gap:8px}
+.cust-cell.diff-up{border-color:rgba(48,209,88,.4);background:rgba(48,209,88,.06)}
+.cust-cell.diff-down{border-color:rgba(255,69,58,.4);background:rgba(255,69,58,.06)}
+.cust-cell .csym{font-size:18px;color:var(--text)}
+.cust-cell .cspec{color:var(--gold)}
+.cust-cell .cnm{font-size:11px;color:var(--muted);flex:1;margin-left:6px}
+.cust-cell .cval{font-weight:800;font-size:14px}
+.cust-cell .cdiff{font-size:10px;font-weight:700}
+.cust-cell .cdiff.up{color:var(--green)}
+.cust-cell .cdiff.down{color:var(--red)}
+.cust-close{margin-top:14px;width:100%;padding:10px;background:var(--gold);color:#1c1c1e;
+  font-weight:700;border-radius:8px;cursor:pointer;font-size:14px}
+@media (max-width:480px){
+  .cust-grid{grid-template-columns:repeat(2,1fr)}
+}
+
+/* 모바일에서 방 카드 레이아웃 */
+@media (max-width:600px){
+  .room .rcustom{font-size:10px}
+  .room .rcustom-btn{padding:2px 6px;font-size:10px}
+}
 
 .btn{padding:10px 16px;border-radius:10px;font-weight:700;font-size:14px;cursor:pointer;transition:all .12s;border:none;font-family:inherit}
 .btn-gold{background:linear-gradient(180deg,var(--gold),var(--gold2));color:#1c1c1e}
@@ -280,6 +329,9 @@ input{font-family:inherit;outline:none}
       </div>
     </div>
   </div>
+
+  <!-- 방 커스텀 상세 모달 -->
+  <div class="cust-modal" id="custModal" onclick="if(event.target===this)closeRoomCustom()"></div>
 
   <!-- AI 대전 설정 -->
   <div class="modal" id="aiModal">
@@ -650,6 +702,97 @@ window.startTutorial = function(){
     document.querySelectorAll('.tab').forEach(b=>b.classList.toggle('on', b.dataset.tab===t));
     renderRooms();
   };
+  // ===== 방 커스텀 헬퍼 =====
+  const PIECE_DEFS_LOBBY = {
+    K:{sym:'♔',name:'킹',def:1,spec:false},
+    Q:{sym:'♕',name:'퀸',def:1,spec:false},
+    R:{sym:'♖',name:'룩',def:2,spec:false},
+    B:{sym:'♗',name:'비숍',def:2,spec:false},
+    N:{sym:'♘',name:'나이트',def:2,spec:false},
+    P:{sym:'♙',name:'폰',def:8,spec:false},
+    SH:{sym:'⬢',name:'방패',def:0,spec:true},
+    SN:{sym:'⊕',name:'스나이퍼',def:0,spec:true},
+    JP:{sym:'✦',name:'어쌔신',def:0,spec:true}
+  };
+  const PIECE_KEYS_LOBBY = ['K','Q','R','B','N','P','SH','SN','JP'];
+
+  function parseHand(handStr){
+    const out = {};
+    if(!handStr) return out;
+    const re = /([A-Z]+)(\d+)/g;
+    let m;
+    while((m = re.exec(handStr)) !== null) out[m[1]] = parseInt(m[2]);
+    return out;
+  }
+
+  function summarizeCustom(handStr){
+    const counts = parseHand(handStr);
+    if(Object.keys(counts).length === 0) return '<span class="empty">기본 설정</span>';
+    const diffs = [];
+    for(const k of ['Q','R','B','N','P','SH','SN','JP']){
+      const c = counts[k] ?? PIECE_DEFS_LOBBY[k].def;
+      const d = PIECE_DEFS_LOBBY[k].def;
+      if(c !== d){
+        const delta = c - d;
+        const cls = delta > 0 ? 'plus' : 'minus';
+        const sign = delta > 0 ? '+' : '';
+        diffs.push(`<span class="pdiff"><span class="sym">${PIECE_DEFS_LOBBY[k].sym}</span><span class="${cls}">${sign}${delta}</span></span>`);
+      }
+    }
+    return diffs.length ? diffs.join('') : '<span class="empty">기본 설정</span>';
+  }
+
+  // 방 커스텀 상세 모달
+  window.showRoomCustom = function(code){
+    const r = ROOMS[code];
+    if(!r){ alert('방 정보를 불러올 수 없습니다.'); return; }
+    const counts = parseHand(r.hand || '');
+
+    const cells = PIECE_KEYS_LOBBY.map(k=>{
+      const c = counts[k] ?? PIECE_DEFS_LOBBY[k].def;
+      const d = PIECE_DEFS_LOBBY[k].def;
+      const delta = c - d;
+      let cls = 'cust-cell';
+      let diffHtml = '';
+      if(delta > 0){ cls += ' diff-up'; diffHtml = `<span class="cdiff up">+${delta}</span>`; }
+      else if(delta < 0){ cls += ' diff-down'; diffHtml = `<span class="cdiff down">${delta}</span>`; }
+      const symCls = PIECE_DEFS_LOBBY[k].spec ? 'csym cspec' : 'csym';
+      return `
+        <div class="${cls}">
+          <span class="${symCls}">${PIECE_DEFS_LOBBY[k].sym}</span>
+          <span class="cnm">${PIECE_DEFS_LOBBY[k].name}</span>
+          <span class="cval">${c}</span>
+          ${diffHtml}
+        </div>`;
+    }).join('');
+
+    const html = `
+      <div class="cust-box">
+        <h3>🏰 방 커스텀 <span class="cust-code">${code}</span></h3>
+        <div class="cust-section">
+          <h4>방 정보</h4>
+          <div class="cust-meta">
+            <span class="k">방 이름</span><span class="v">${r.name?escapeHtml(r.name):'(이름 없음)'}</span>
+            <span class="k">호스트</span><span class="v">${escapeHtml(r.hostNick||'?')}${r.hostElo?` · ${r.hostElo}`:''}</span>
+            <span class="k">시간 제한</span><span class="v">⏱ ${formatTime(r.timeLimit)}</span>
+            <span class="k">비밀번호</span><span class="v">${r.password?'🔒 있음':'없음'}</span>
+            ${r.desc?`<span class="k">설명</span><span class="v">${escapeHtml(r.desc)}</span>`:''}
+          </div>
+        </div>
+        <div class="cust-section">
+          <h4>기물 구성 (양 진영 동일)</h4>
+          <div class="cust-grid">${cells}</div>
+        </div>
+        <button class="cust-close" onclick="closeRoomCustom()">닫기</button>
+      </div>`;
+    const modal = document.getElementById('custModal');
+    modal.innerHTML = html;
+    modal.classList.add('show');
+  };
+  window.closeRoomCustom = function(){
+    document.getElementById('custModal').classList.remove('show');
+  };
+
   function renderRooms(){
     const list = document.getElementById('rooms');
     const arr = Object.entries(ROOMS).map(([code,r])=>({code,...r}));
@@ -681,6 +824,7 @@ window.startTutorial = function(){
     }
     list.innerHTML = filtered.map(r=>{
       const isPlay = !!r.started;
+      const customHtml = summarizeCustom(r.hand || '');
       return `
       <div class="room">
         <div class="rcode">${r.code}</div>
@@ -693,6 +837,10 @@ window.startTutorial = function(){
             <span>호스트: ${escapeHtml(r.hostNick||'?')}</span>
             ${r.guestNick?`<span>vs ${escapeHtml(r.guestNick)}</span>`:''}
             <span>⏱ ${formatTime(r.timeLimit)}</span>
+          </div>
+          <div class="rcustom">
+            <button class="rcustom-btn" onclick="showRoomCustom('${r.code}')">커스텀 보기</button>
+            <span class="rcustom-summary">${customHtml}</span>
           </div>
         </div>
         <span class="rstatus ${isPlay?'play':'wait'}">${isPlay?'진행중':'대기중'}</span>
