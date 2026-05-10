@@ -56,7 +56,7 @@ input{font-family:inherit;outline:none}
 .social-btn.kakao:hover{background:#FDD835}
 
 /* 모드 선택 카드 */
-.modes{display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin-bottom:24px}
+.modes{display:grid;grid-template-columns:repeat(6,1fr);gap:12px;margin-bottom:24px}
 .mode{background:var(--panel);border:1px solid var(--border);border-radius:14px;padding:18px;
   cursor:pointer;transition:all .15s;display:flex;flex-direction:column;gap:8px;color:var(--text);text-align:left}
 .mode:hover{transform:translateY(-2px);border-color:var(--gold);box-shadow:0 6px 22px rgba(245,200,66,.15)}
@@ -282,6 +282,11 @@ input{font-family:inherit;outline:none}
       <div class="icon">🏆</div>
       <div class="mt">랭킹</div>
       <div class="md">전 세계 ELO 순위</div>
+    </button>
+    <button class="mode" onclick="location.href='replays.html'">
+      <div class="icon">📺</div>
+      <div class="mt">내 리플레이</div>
+      <div class="md">이전 게임 다시 보기</div>
     </button>
   </div>
 

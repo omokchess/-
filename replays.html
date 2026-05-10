@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FRONTIER — 내 리플레이</title>
+<style>
+:root{
+  --bg:#0d0d0e; --panel:#1a1a1c; --panel2:#222226; --border:#3a3a3c;
+  --text:#f5f5f7; --muted:#8e8e93;
+  --gold:#d4af37; --green:#30d158; --red:#ff453a; --orange:#ff9500;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','Pretendard Variable',Pretendard,sans-serif;
+  background:var(--bg);color:var(--text);min-height:100vh;padding:14px}
+@font-face{font-family:'Cinzel';src:local('Cinzel'),local('serif')}
+
+.wrap{max-width:980px;margin:0 auto}
+.head{display:flex;justify-content:space-between;align-items:center;margin-bottom:18px;gap:10px;flex-wrap:wrap}
+.title{font-family:'Cinzel',serif;font-weight:800;font-size:24px;color:var(--gold);letter-spacing:1.5px}
+.back{padding:8px 14px;background:var(--panel);color:var(--text);border:1px solid var(--border);
+  border-radius:8px;text-decoration:none;font-size:13px;display:inline-flex;align-items:center;gap:6px}
+.back:hover{border-color:var(--gold);color:var(--gold)}
+
+.toolbar{display:flex;gap:8px;align-items:center;margin-bottom:14px;padding:10px;background:var(--panel);
+  border:1px solid var(--border);border-radius:10px;flex-wrap:wrap}
+.toolbar select,.toolbar input{padding:6px 10px;background:var(--panel2);border:1px solid var(--border);
+  border-radius:6px;color:var(--text);font-size:13px}
+.toolbar .label{color:var(--muted);font-size:12px}
+.btn-danger{padding:6px 12px;background:transparent;color:var(--red);border:1px solid var(--red);
+  border-radius:6px;cursor:pointer;font-size:12px;font-weight:600;margin-left:auto}
+.btn-danger:hover{background:rgba(255,69,58,.1)}
+
+.replay-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:12px}
+.replay-card{background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:14px;
+  cursor:pointer;transition:all .15s;display:flex;flex-direction:column;gap:10px;text-decoration:none;color:var(--text)}
+.replay-card:hover{border-color:var(--gold);transform:translateY(-2px);
+  box-shadow:0 4px 16px rgba(212,175,55,.15)}
+.replay-card .rc-head{display:flex;justify-content:space-between;align-items:flex-start;gap:8px}
+.replay-card .rc-mode{padding:3px 8px;background:var(--panel2);border-radius:5px;font-size:11px;
+  font-weight:700;letter-spacing:.5px;text-transform:uppercase}
+.replay-card .rc-mode.online{color:var(--green);background:rgba(48,209,88,.1)}
+.replay-card .rc-mode.ai{color:var(--orange);background:rgba(255,149,0,.1)}
+.replay-card .rc-mode.local{color:var(--muted)}
+.replay-card .rc-date{font-size:11px;color:var(--muted)}
+.replay-card .rc-players{display:flex;justify-content:space-between;align-items:center;gap:8px;
+  font-size:14px;font-weight:600}
+.replay-card .rc-player{display:flex;align-items:center;gap:6px;flex:1;min-width:0}
+.replay-card .rc-player.b{justify-content:flex-end;text-align:right}
+.replay-card .rc-color{width:14px;height:14px;border-radius:50%;flex-shrink:0}
+.replay-card .rc-color.w{background:#fff;border:1.5px solid #aaa}
+.replay-card .rc-color.b{background:#1c1c1e;border:1.5px solid #888}
+.replay-card .rc-name{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.replay-card .rc-elo{color:var(--muted);font-size:11px;font-weight:500;flex-shrink:0}
+.replay-card .rc-vs{color:var(--muted);font-size:12px;font-weight:400}
+.replay-card .rc-result{padding:8px;background:var(--panel2);border-radius:6px;font-size:12px;
+  display:flex;justify-content:space-between;align-items:center;gap:8px}
+.replay-card .rc-result.win{color:var(--green);background:rgba(48,209,88,.06)}
+.replay-card .rc-result.loss{color:var(--red);background:rgba(255,69,58,.06)}
+.replay-card .rc-result.draw{color:var(--muted)}
+.replay-card .rc-meta{display:flex;justify-content:space-between;font-size:11px;color:var(--muted)}
+.replay-card .rc-actions{display:flex;gap:6px;margin-top:4px}
+.replay-card .rc-action{flex:1;padding:7px;background:var(--gold);color:#1c1c1e;border:none;
+  border-radius:6px;font-size:12px;font-weight:700;cursor:pointer;text-decoration:none;text-align:center}
+.replay-card .rc-action.del{background:transparent;color:var(--red);border:1px solid var(--red);flex:0 0 auto;width:38px}
+.replay-card .rc-action.del:hover{background:rgba(255,69,58,.1)}
+
+.empty-state{text-align:center;padding:60px 20px;color:var(--muted)}
+.empty-state .ico{font-size:60px;opacity:.3;margin-bottom:12px}
+.empty-state h2{font-size:18px;margin-bottom:6px;color:var(--text)}
+
+.storage-info{margin-top:18px;padding:10px 14px;background:var(--panel);border-radius:8px;
+  font-size:12px;color:var(--muted);text-align:center}
+.storage-info b{color:var(--gold)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="head">
+    <a href="index.html" class="back">← 로비</a>
+    <div class="title">📺 내 리플레이</div>
+    <div style="width:60px"></div>
+  </div>
+
+  <div class="toolbar">
+    <span class="label">필터:</span>
+    <select id="filterMode" onchange="renderList()">
+      <option value="all">전체 모드</option>
+      <option value="online">온라인</option>
+      <option value="ai">AI 대전</option>
+      <option value="local">로컬</option>
+    </select>
+    <select id="filterResult" onchange="renderList()">
+      <option value="all">모든 결과</option>
+      <option value="win">승리</option>
+      <option value="loss">패배</option>
+      <option value="draw">무승부</option>
+    </select>
+    <select id="sortBy" onchange="renderList()">
+      <option value="recent">최신순</option>
+      <option value="oldest">오래된순</option>
+      <option value="moves">수 많은순</option>
+    </select>
+    <button class="btn-danger" onclick="confirmClearAll()">🗑 모두 삭제</button>
+  </div>
+
+  <div id="replayList"></div>
+
+  <div class="storage-info" id="storageInfo"></div>
+</div>
+
+<script>
+'use strict';
+
+let _replays = [];
+
+function loadReplays(){
+  try {
+    _replays = JSON.parse(localStorage.getItem('frontier_replay_index') || '[]');
+  } catch(e){ _replays = []; }
+}
+
+function getMyColor(meta){
+  // 로컬: 본인 색 없음. 온라인/AI: myColor 필드 사용
+  return meta.myColor || null;
+}
+
+function getResultLabel(meta){
+  const myColor = getMyColor(meta);
+  if(meta.winner === 'draw') return { text:'무승부', cls:'draw' };
+  if(myColor && meta.winner === myColor) return { text:'승리', cls:'win' };
+  if(myColor && meta.winner !== myColor) return { text:'패배', cls:'loss' };
+  // 로컬 모드: 백/흑 승만 표시
+  if(meta.winner === 'w') return { text:'백 승', cls:'win' };
+  if(meta.winner === 'b') return { text:'흑 승', cls:'loss' };
+  return { text:'?', cls:'draw' };
+}
+
+function fmtDate(ts){
+  const d = new Date(ts);
+  const now = Date.now();
+  const diff = now - ts;
+  if(diff < 60000) return '방금 전';
+  if(diff < 3600000) return `${Math.floor(diff/60000)}분 전`;
+  if(diff < 86400000) return `${Math.floor(diff/3600000)}시간 전`;
+  if(diff < 7*86400000) return `${Math.floor(diff/86400000)}일 전`;
+  const yyyy = d.getFullYear();
+  const mm = String(d.getMonth()+1).padStart(2,'0');
+  const dd = String(d.getDate()).padStart(2,'0');
+  return `${yyyy}-${mm}-${dd}`;
+}
+
+function fmtTime(sec){
+  if(!sec || sec <= 0) return '무제한';
+  const m = Math.floor(sec/60);
+  const s = sec%60;
+  return s ? `${m}분 ${s}초` : `${m}분`;
+}
+
+function renderList(){
+  const list = document.getElementById('replayList');
+  const filterMode = document.getElementById('filterMode').value;
+  const filterResult = document.getElementById('filterResult').value;
+  const sortBy = document.getElementById('sortBy').value;
+
+  let filtered = _replays.slice();
+  if(filterMode !== 'all'){
+    filtered = filtered.filter(r => r.mode === filterMode);
+  }
+  if(filterResult !== 'all'){
+    filtered = filtered.filter(r => {
+      const res = getResultLabel(r);
+      return res.cls === filterResult;
+    });
+  }
+
+  if(sortBy === 'oldest') filtered.sort((a,b) => a.savedAt - b.savedAt);
+  else if(sortBy === 'moves') filtered.sort((a,b) => (b.moveCount||0) - (a.moveCount||0));
+  // recent: 이미 최신순 (저장 시 unshift)
+
+  if(filtered.length === 0){
+    list.innerHTML = `
+      <div class="empty-state">
+        <div class="ico">📺</div>
+        <h2>저장된 리플레이가 없습니다</h2>
+        <p>게임을 한 판 끝내면 자동으로 저장됩니다.</p>
+      </div>`;
+    updateStorageInfo();
+    return;
+  }
+
+  list.innerHTML = '<div class="replay-grid">' + filtered.map(r => {
+    const result = getResultLabel(r);
+    const mode = r.mode || 'local';
+    const modeLabel = ({local:'로컬', ai:`AI ${r.aiDifficulty||''}`, online:'온라인'})[mode] || mode;
+    const wp = r.players?.w || {};
+    const bp = r.players?.b || {};
+    return `
+      <div class="replay-card" onclick="openReplay('${r.id}')">
+        <div class="rc-head">
+          <span class="rc-mode ${mode}">${modeLabel}</span>
+          <span class="rc-date">${fmtDate(r.savedAt)}</span>
+        </div>
+        <div class="rc-players">
+          <div class="rc-player">
+            <span class="rc-color w"></span>
+            <span class="rc-name">${escapeHtml(wp.nick || '백')}</span>
+            ${wp.elo ? `<span class="rc-elo">${wp.elo}</span>` : ''}
+          </div>
+          <span class="rc-vs">vs</span>
+          <div class="rc-player b">
+            ${bp.elo ? `<span class="rc-elo">${bp.elo}</span>` : ''}
+            <span class="rc-name">${escapeHtml(bp.nick || '흑')}</span>
+            <span class="rc-color b"></span>
+          </div>
+        </div>
+        <div class="rc-result ${result.cls}">
+          <span>🏆 ${result.text}</span>
+          <span style="color:var(--muted);font-size:11px">${escapeHtml(r.endTitle || '')}</span>
+        </div>
+        <div class="rc-meta">
+          <span>🎯 ${r.moveCount||0}수</span>
+          <span>⏱ ${fmtTime(r.timeLimit)}</span>
+        </div>
+        <div class="rc-actions">
+          <a class="rc-action" href="FRONTIER.html?role=replay&rid=${r.id}" onclick="event.stopPropagation()">▶ 재생</a>
+          <button class="rc-action del" onclick="event.stopPropagation();confirmDelete('${r.id}')" title="삭제">🗑</button>
+        </div>
+      </div>`;
+  }).join('') + '</div>';
+
+  updateStorageInfo();
+}
+
+function escapeHtml(s){
+  return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+function openReplay(id){
+  location.href = 'FRONTIER.html?role=replay&rid=' + id;
+}
+
+function confirmDelete(id){
+  if(!confirm('이 리플레이를 삭제하시겠습니까?')) return;
+  _replays = _replays.filter(r => r.id !== id);
+  localStorage.setItem('frontier_replay_index', JSON.stringify(_replays));
+  localStorage.removeItem('frontier_replay_' + id);
+  renderList();
+}
+
+function confirmClearAll(){
+  if(!_replays.length){ alert('삭제할 리플레이가 없습니다.'); return; }
+  if(!confirm(`총 ${_replays.length}개의 리플레이를 모두 삭제하시겠습니까?\n복구할 수 없습니다.`)) return;
+  for(const r of _replays){
+    try { localStorage.removeItem('frontier_replay_' + r.id); } catch(e){}
+  }
+  localStorage.removeItem('frontier_replay_index');
+  _replays = [];
+  renderList();
+}
+
+function updateStorageInfo(){
+  // localStorage 사용량 추정
+  let total = 0;
+  for(const r of _replays){
+    try {
+      const data = localStorage.getItem('frontier_replay_' + r.id);
+      if(data) total += data.length;
+    } catch(e){}
+  }
+  // index도 포함
+  try {
+    const idx = localStorage.getItem('frontier_replay_index');
+    if(idx) total += idx.length;
+  } catch(e){}
+  
+  const kb = (total / 1024).toFixed(1);
+  const limitMb = 5; // 일반적인 localStorage 한도
+  const usedPercent = ((total / (limitMb * 1024 * 1024)) * 100).toFixed(1);
+  
+  document.getElementById('storageInfo').innerHTML = 
+    `💾 저장된 리플레이: <b>${_replays.length}개</b> · 사용 용량: <b>${kb} KB</b> (대략 ${usedPercent}%)`;
+}
+
+// 초기 로드
+loadReplays();
+renderList();
+</script>
+</body>
+</html>

@@ -326,6 +326,72 @@ input{font-family:inherit;outline:none}
   .opp-sheet-card .hp .nm{flex:1;text-align:left;font-size:14px}
   .opp-sheet-card .hp .ct{flex-shrink:0;font-size:16px;margin-left:auto;min-width:24px;text-align:right}
 }
+/* 리플레이 컨트롤 */
+.replay-bar{position:fixed;bottom:0;left:0;right:0;background:linear-gradient(180deg,rgba(28,28,30,.96),rgba(20,20,22,.99));
+  border-top:2px solid var(--gold);padding:10px 14px;z-index:90;backdrop-filter:blur(8px);
+  box-shadow:0 -4px 20px rgba(0,0,0,.5)}
+.replay-bar-inner{max-width:980px;margin:0 auto;display:flex;flex-direction:column;gap:8px}
+.replay-meta{display:flex;gap:14px;align-items:center;font-size:13px;flex-wrap:wrap}
+.replay-meta-item{color:var(--muted)}
+.replay-meta-item:first-child{color:var(--gold);font-weight:700;font-family:'Cinzel',serif}
+.replay-progress-row{display:flex;align-items:center;gap:8px}
+.replay-slider{flex:1;-webkit-appearance:none;appearance:none;height:6px;background:var(--panel2);
+  border-radius:3px;outline:none;cursor:pointer}
+.replay-slider::-webkit-slider-thumb{-webkit-appearance:none;width:18px;height:18px;border-radius:50%;
+  background:var(--gold);cursor:pointer;border:2px solid #1c1c1e}
+.replay-slider::-moz-range-thumb{width:18px;height:18px;border-radius:50%;background:var(--gold);
+  cursor:pointer;border:2px solid #1c1c1e}
+.replay-controls{display:flex;gap:6px;align-items:center;justify-content:center}
+.rb-btn{padding:7px 14px;background:var(--panel2);color:var(--text);border:1px solid var(--border);
+  border-radius:8px;cursor:pointer;font-size:14px;font-weight:600;transition:all .12s}
+.rb-btn:hover{background:var(--panel);border-color:var(--gold);color:var(--gold)}
+.rb-btn:active{transform:scale(.95)}
+.replay-turn-display{padding:6px 14px;background:var(--panel);border:1px solid var(--gold);border-radius:8px;
+  font-family:'Cinzel',monospace;font-weight:700;color:var(--gold);font-size:13px;min-width:80px;text-align:center}
+.replay-jump-row{display:flex;gap:6px;align-items:center;justify-content:center;flex-wrap:wrap}
+.replay-jump-input{width:80px;padding:5px 8px;background:var(--panel2);border:1px solid var(--border);
+  border-radius:6px;color:var(--text);font-size:13px;text-align:center}
+.rb-btn-jump,.rb-btn-list{padding:5px 12px;background:var(--gold);color:#1c1c1e;border:none;
+  border-radius:6px;cursor:pointer;font-size:12px;font-weight:700}
+.rb-btn-jump:hover,.rb-btn-list:hover{filter:brightness(1.1)}
+.rb-btn-list{background:var(--panel);color:var(--gold);border:1px solid var(--gold)}
+.replay-current-move{text-align:center;font-size:13px;color:var(--text);padding:6px;
+  background:var(--panel2);border-radius:6px}
+.replay-current-move.has-capture{color:var(--orange);font-weight:600}
+.replay-current-move .pc-sym{font-size:16px;margin:0 2px}
+.replay-current-move .cap-mark{color:var(--red);font-weight:700;margin-left:6px}
+
+/* 리플레이 수순 리스트 */
+.replay-list{max-width:980px;margin:0 auto;max-height:280px;overflow-y:auto;
+  background:var(--panel2);border-radius:10px;padding:8px;margin-top:8px;
+  display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:4px}
+.replay-list-item{padding:6px 10px;background:var(--panel);border:1px solid var(--border);
+  border-radius:6px;cursor:pointer;font-size:12px;display:flex;align-items:center;gap:6px;
+  transition:all .12s}
+.replay-list-item:hover{border-color:var(--gold)}
+.replay-list-item.current{background:rgba(212,175,55,.15);border-color:var(--gold);font-weight:700}
+.replay-list-item .turn-num{color:var(--muted);font-family:'Cinzel',monospace;min-width:24px}
+.replay-list-item .turn-color{font-size:14px}
+.replay-list-item .turn-color.w{color:#fff}
+.replay-list-item .turn-color.b{color:#222;-webkit-text-stroke:1px #fff}
+.replay-list-item .turn-text{flex:1;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.replay-list-item .turn-cap{color:var(--red);font-weight:700;font-size:11px}
+
+/* 리플레이 모드: 화면 아래에 여유 공간 추가 */
+body.replay-mode{padding-bottom:240px}
+body.replay-mode .timer{display:none !important}
+body.replay-mode .hand-card .hand-list{pointer-events:none}
+body.replay-mode .cell{cursor:default !important}
+body.replay-mode #chatBtn,body.replay-mode #chatPanel,body.replay-mode #forfeitBtn{display:none !important}
+
+@media (max-width:600px){
+  body.replay-mode{padding-bottom:280px}
+  .replay-bar{padding:8px}
+  .replay-meta{font-size:11px}
+  .rb-btn{padding:6px 10px;font-size:13px}
+  .replay-turn-display{padding:5px 10px;font-size:12px;min-width:60px}
+  .replay-list{grid-template-columns:repeat(auto-fill,minmax(140px,1fr));max-height:200px}
+}
 </style>
 </head>
 <body>
@@ -547,6 +613,36 @@ input{font-family:inherit;outline:none}
   </div>
 </div>
 
+<!-- 리플레이 컨트롤 (리플레이 모드에서만 표시) -->
+<div class="replay-bar" id="replayBar" style="display:none">
+  <div class="replay-bar-inner">
+    <div class="replay-meta">
+      <span class="replay-meta-item" id="replayMetaTitle">리플레이</span>
+      <span class="replay-meta-item" id="replayMetaResult"></span>
+    </div>
+    <div class="replay-progress-row">
+      <input type="range" id="replayProgress" min="0" max="0" value="0" class="replay-slider">
+    </div>
+    <div class="replay-controls">
+      <button class="rb-btn" onclick="replayJumpStart()" title="처음으로">⏮</button>
+      <button class="rb-btn" onclick="replayPrev()" title="이전 수">◀</button>
+      <div class="replay-turn-display">
+        <span id="replayTurnNow">0</span> / <span id="replayTurnTotal">0</span>
+      </div>
+      <button class="rb-btn" onclick="replayNext()" title="다음 수">▶</button>
+      <button class="rb-btn" onclick="replayJumpEnd()" title="마지막으로">⏭</button>
+    </div>
+    <div class="replay-jump-row">
+      <input type="number" id="replayJumpInput" min="0" placeholder="턴" class="replay-jump-input">
+      <button class="rb-btn-jump" onclick="replayJumpInput()">이동</button>
+      <button class="rb-btn-list" onclick="replayToggleList()" id="replayListBtn">📋 수순</button>
+    </div>
+    <div class="replay-current-move" id="replayCurrent">— 시작 —</div>
+  </div>
+  <!-- 수순 리스트 (펼침 시 표시) -->
+  <div class="replay-list" id="replayList" style="display:none"></div>
+</div>
+
 <script>
 'use strict';
 
@@ -555,10 +651,13 @@ input{font-family:inherit;outline:none}
 // ===================================================================
 const Q = new URLSearchParams(location.search);
 // 모드 결정: ?role=host/guest 같이 온라인 신호가 있으면 online, 없으면 ?mode 우선, 둘 다 없으면 local 기본
+// ?role=replay 면 리플레이 모드
 const _explicitMode = Q.get('mode');
 const _hasRole = !!Q.get('role');
-const MODE      = _explicitMode || (_hasRole ? 'online' : 'local');   // local | ai | online
-const NET_ROLE  = Q.get('role') || null;       // host | guest | spectator
+const _isReplay = Q.get('role') === 'replay';
+const MODE      = _isReplay ? 'replay' : (_explicitMode || (_hasRole ? 'online' : 'local'));   // local | ai | online | replay
+const NET_ROLE  = (_isReplay ? null : Q.get('role')) || null;       // host | guest | spectator
+const REPLAY_ID = Q.get('rid') || null;
 const ROOM_CODE = (Q.get('room') || '').toUpperCase();
 const DIFF      = Q.get('difficulty') || 'normal';
 const TIME_LIMIT_RAW = Q.get('time') || 'unlimited';
@@ -593,6 +692,7 @@ const IS_LOCAL = (MODE === 'local');
 const IS_AI    = (MODE === 'ai');
 const IS_NET   = (NET_ROLE === 'host' || NET_ROLE === 'guest');
 const IS_SPEC  = (NET_ROLE === 'spectator');
+const IS_REPLAY = (MODE === 'replay');
 
 // 시간 제한
 const TIME_LIMIT = TIME_LIMIT_RAW === 'unlimited' || TIME_LIMIT_RAW === '0'
@@ -617,6 +717,7 @@ let turn = 'w';                 // 현재 차례
 let kingPlaced = { w:false, b:false };  // 킹 배치 여부
 let lastMove = null;            // {fr, fc, tr, tc} 강조용
 let moveHistory = [];           // 무승부 판정용 (직렬화 상태 리스트)
+let actionHistory = [];          // 리플레이용 액션 기록 (실제 적용된 액션만)
 let snapshots = [];             // undo 또는 5회 체크 초과 시 복원용
 let checkStreak = { w:0, b:0 }; // 연속 체크 (이쪽이 받은)
 let totalChecks = { w:0, b:0 }; // 총 체크 (이쪽이 건)
@@ -1666,10 +1767,93 @@ function promptPromotion(color){
 // ===================================================================
 // 11. submitAction (로컬/AI/네트워크 분기)
 // ===================================================================
+
+// === 리플레이 기록/저장 ===
+function recordReplayAction(action, captured){
+  if(IS_REPLAY) return; // 리플레이 모드에선 기록 안 함
+  // lastMove에서 추가 메타 추출
+  const meta = {
+    action: {...action},
+    captured: captured || null,
+    moveType: lastMove?.type || (action.type === 'place' ? 'place' : 'move'),
+    retreat: !!(lastMove && lastMove.retreat),
+    ts: Date.now()
+  };
+  actionHistory.push(meta);
+}
+
+function saveReplayToStorage(winner, endTitle, endDesc){
+  if(IS_REPLAY) return; // 리플레이 모드에선 저장 안 함
+  if(!actionHistory.length) return;
+  try {
+    const id = 'r_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8);
+    // 메타데이터 (목록용 — 작게)
+    const meta = {
+      id,
+      savedAt: Date.now(),
+      mode: MODE, // local | ai | online
+      aiDifficulty: IS_AI ? DIFF : null,
+      timeLimit: TIME_LIMIT,
+      handStr: Q.get('hand') || '',
+      players: {
+        w: { 
+          nick: IS_NET ? (_gameRatingInfo?.whiteNick || '백') : (MY_COLOR === 'w' ? MY_NICK_P : (IS_AI ? MY_NICK_P : '백')),
+          elo: IS_NET ? (_gameRatingInfo?.whiteElo || 0) : (MY_COLOR === 'w' ? MY_ELO_P : 0)
+        },
+        b: { 
+          nick: IS_NET ? (_gameRatingInfo?.blackNick || '흑') : (MY_COLOR === 'b' ? MY_NICK_P : (IS_AI ? 'AI' : '흑')),
+          elo: IS_NET ? (_gameRatingInfo?.blackElo || 0) : (MY_COLOR === 'b' ? MY_ELO_P : 0)
+        }
+      },
+      myColor: IS_LOCAL ? null : MY_COLOR,
+      winner: winner || 'draw',
+      endTitle: endTitle || '',
+      endDesc: endDesc || '',
+      moveCount: actionHistory.length
+    };
+    // 전체 데이터
+    const full = { actions: actionHistory };
+
+    // 인덱스 업데이트
+    const indexKey = 'frontier_replay_index';
+    let index = [];
+    try { index = JSON.parse(localStorage.getItem(indexKey) || '[]'); } catch(e){ index = []; }
+    index.unshift(meta);
+
+    // 저장 시도
+    try {
+      localStorage.setItem(indexKey, JSON.stringify(index));
+      localStorage.setItem('frontier_replay_' + id, JSON.stringify(full));
+    } catch(e) {
+      // 용량 초과 → 가장 오래된 거부터 삭제하면서 재시도
+      while(index.length > 1){
+        const oldest = index.pop();
+        try { localStorage.removeItem('frontier_replay_' + oldest.id); } catch(_){}
+        try {
+          localStorage.setItem(indexKey, JSON.stringify(index));
+          localStorage.setItem('frontier_replay_' + id, JSON.stringify(full));
+          console.log('[리플레이] 용량 부족: 오래된 리플레이 삭제 후 저장');
+          break;
+        } catch(_){}
+      }
+    }
+    console.log('[리플레이] 저장 완료:', id, meta.moveCount + '수');
+  } catch(e){
+    console.warn('[리플레이] 저장 실패:', e);
+  }
+}
+
 function submitAction(action){
   // place 액션의 color는 항상 현재 차례의 색으로 통일
   // (LOCAL: turn 따라 번갈아 / AI: AI는 흑 차례 / ONLINE: 본인 차례에서만 호출됨)
   if(action.type === 'place') action.color = turn;
+  
+  // 리플레이 기록용: 액션 적용 전 상태 캡처 (잡힌 기물 추적)
+  let _capturedPiece = null;
+  if(action.type === 'move'){
+    const tgt = board[action.tr] && board[action.tr][action.tc];
+    if(tgt) _capturedPiece = { kind: tgt.kind, color: tgt.color };
+  }
   
   const snap = snapshotState();
   const r = applyAction(action);
@@ -1679,6 +1863,9 @@ function submitAction(action){
     SEL=null; HIGHLIGHTS=[]; renderAll();
     return;
   }
+  
+  // 리플레이 기록
+  recordReplayAction(action, _capturedPiece);
   // 사운드
   if(action.type === 'place') playSnd('place');
   else if(lastMove && lastMove.type === 'snipe') playSnd('capture');
@@ -1761,6 +1948,8 @@ let _gameRatingInfo = null; // {whiteUid, whiteElo, blackUid, blackElo, whiteNic
 function endGame(emoji, title, desc, winner /* 'w'|'b'|'draw' */){
   if(gameOver) return;
   gameOver = true;
+  // 리플레이 저장 (먼저 저장하고 나머지 진행)
+  saveReplayToStorage(winner, title, desc);
   document.getElementById('endIcon').textContent = emoji;
   document.getElementById('endTitle').textContent = title;
   document.getElementById('endDesc').textContent = desc;
@@ -2226,12 +2415,8 @@ function initHost(){
   }
   // PeerID = ROOM_CODE
   _peer = new Peer(ROOM_CODE, {
-  host: 'frontier-peerjs.onrender.com',
-  port: 443,
-  path: '/peerjs',
-  secure: true,
-  config:{ 'iceServers':[ {urls:'stun:stun.l.google.com:19302'}, {urls:'stun:stun1.l.google.com:19302'} ]}
-});
+    config:{ 'iceServers':[ {urls:'stun:stun.l.google.com:19302'}, {urls:'stun:stun1.l.google.com:19302'} ]}
+  });
   _peer.on('open', id => {
     console.log('Host PeerID:', id);
   });
@@ -2249,12 +2434,8 @@ function initGuest(){
   document.getElementById('connectModal').classList.add('show');
   document.getElementById('connectMsg').textContent = '호스트와 연결을 시도합니다...';
   _peer = new Peer({
-  host: 'frontier-peerjs.onrender.com',
-  port: 443,
-  path: '/peerjs',
-  secure: true,
-  config:{ 'iceServers':[ {urls:'stun:stun.l.google.com:19302'}, {urls:'stun:stun1.l.google.com:19302'} ]}
-});
+    config:{ 'iceServers':[ {urls:'stun:stun.l.google.com:19302'}, {urls:'stun:stun1.l.google.com:19302'} ]}
+  });
   _peer.on('open', id => {
     tryConnect(0);
   });
@@ -2341,8 +2522,14 @@ function onPeerMessage(data){
     startTimerIfNeeded();
   } else if(data.t === 'MOVE'){
     // 상대가 둔 수 적용
+    let _captured = null;
+    if(data.action.type === 'move'){
+      const tgt = board[data.action.tr] && board[data.action.tr][data.action.tc];
+      if(tgt) _captured = { kind: tgt.kind, color: tgt.color };
+    }
     const r = applyAction(data.action);
     if(!r.ok){ console.error('상대 액션 실패', r); return; }
+    recordReplayAction(data.action, _captured);
     if(data.action.type === 'place') playSnd('place');
     else playSnd('move');
     SEL = null; HIGHLIGHTS = []; // 상대 수 적용 시 내 잔여 선택 정리
@@ -2681,7 +2868,247 @@ function populateOppSheet(){
 // ===================================================================
 // 20. 초기화
 // ===================================================================
+// ===================================================================
+// 17. 리플레이 모드
+// ===================================================================
+let _replayData = null;
+let _replayMeta = null;
+let _replayCurrentTurn = 0;
+
+function initReplay(){
+  if(!REPLAY_ID){
+    alert('리플레이 ID가 없습니다.');
+    location.href = 'replays.html';
+    return;
+  }
+  // 메타데이터 로드
+  let metaList = [];
+  try { metaList = JSON.parse(localStorage.getItem('frontier_replay_index') || '[]'); } catch(e){}
+  _replayMeta = metaList.find(m => m.id === REPLAY_ID);
+  if(!_replayMeta){
+    alert('리플레이를 찾을 수 없습니다.');
+    location.href = 'replays.html';
+    return;
+  }
+  // 액션 데이터 로드
+  let full = null;
+  try { full = JSON.parse(localStorage.getItem('frontier_replay_' + REPLAY_ID)); } catch(e){}
+  if(!full || !full.actions){
+    alert('리플레이 데이터가 손상되었습니다.');
+    location.href = 'replays.html';
+    return;
+  }
+  _replayData = full;
+
+  // 상태 초기화 (저장된 hand 기준)
+  const savedHand = parseHandStr(_replayMeta.handStr || '');
+  hands = { w: {...savedHand}, b: {...savedHand} };
+  board = makeEmptyBoard();
+  turn = 'w';
+  kingPlaced = { w:false, b:false };
+  lastMove = null;
+  moveHistory = [];
+  checkStreak = { w:0, b:0 };
+  totalChecks = { w:0, b:0 };
+  gameOver = false;
+
+  document.body.classList.add('replay-mode');
+
+  // UI 헤더
+  const wp = _replayMeta.players?.w || {};
+  const bp = _replayMeta.players?.b || {};
+  document.getElementById('myName').textContent = wp.nick || '백';
+  document.getElementById('myAv').textContent = 'W';
+  document.getElementById('myAv').className = 'av';
+  document.getElementById('myMeta').textContent = wp.elo ? `백 · ELO ${wp.elo}` : '백';
+  document.getElementById('oppName').textContent = bp.nick || '흑';
+  document.getElementById('oppAv').textContent = 'B';
+  document.getElementById('oppAv').className = 'av b';
+  document.getElementById('oppMeta').textContent = bp.elo ? `흑 · ELO ${bp.elo}` : '흑';
+
+  const modeLbl = ({local:'로컬', ai:`AI(${_replayMeta.aiDifficulty||'?'})`, online:'온라인'})[_replayMeta.mode] || _replayMeta.mode;
+  document.getElementById('modeLbl').textContent = `📺 리플레이 — ${modeLbl}`;
+
+  // 결과 표시
+  const winnerStr = _replayMeta.winner === 'w' ? '백 승' : _replayMeta.winner === 'b' ? '흑 승' : '무승부';
+  const resultText = _replayMeta.endTitle ? `${_replayMeta.endTitle} (${winnerStr})` : winnerStr;
+
+  // 리플레이 컨트롤 표시
+  const bar = document.getElementById('replayBar');
+  bar.style.display = '';
+  document.getElementById('replayMetaTitle').textContent = `${wp.nick || '백'} vs ${bp.nick || '흑'}`;
+  document.getElementById('replayMetaResult').textContent = resultText;
+
+  const total = _replayData.actions.length;
+  document.getElementById('replayTurnTotal').textContent = total;
+  document.getElementById('replayProgress').max = total;
+  document.getElementById('replayJumpInput').max = total;
+
+  // 슬라이더 입력
+  document.getElementById('replayProgress').addEventListener('input', e => {
+    replayGoTo(parseInt(e.target.value));
+  });
+
+  // 키보드 단축키
+  window.addEventListener('keydown', e => {
+    if(e.target.tagName === 'INPUT') return;
+    if(e.key === 'ArrowLeft'){ e.preventDefault(); replayPrev(); }
+    else if(e.key === 'ArrowRight'){ e.preventDefault(); replayNext(); }
+    else if(e.key === 'Home'){ e.preventDefault(); replayJumpStart(); }
+    else if(e.key === 'End'){ e.preventDefault(); replayJumpEnd(); }
+  });
+
+  // 수순 리스트
+  buildReplayList();
+
+  // 첫 렌더
+  renderAll();
+  updateReplayUI();
+}
+
+function replayResetState(){
+  const savedHand = parseHandStr(_replayMeta.handStr || '');
+  hands = { w: {...savedHand}, b: {...savedHand} };
+  board = makeEmptyBoard();
+  turn = 'w';
+  kingPlaced = { w:false, b:false };
+  lastMove = null;
+  moveHistory = [];
+  checkStreak = { w:0, b:0 };
+  totalChecks = { w:0, b:0 };
+  gameOver = false;
+}
+
+function replayApplyTo(toIndex){
+  // 0 = 시작 상태 (액션 0개 적용)
+  // N = N개 액션 적용
+  toIndex = Math.max(0, Math.min(toIndex, _replayData.actions.length));
+  replayResetState();
+  for(let i=0; i<toIndex; i++){
+    const a = _replayData.actions[i].action;
+    applyAction(a, {silent: true});
+  }
+  // 마지막 액션의 하이라이트 복원
+  if(toIndex > 0){
+    const lastA = _replayData.actions[toIndex-1].action;
+    if(lastA.type === 'place'){
+      lastMove = { fr:-1, fc:-1, tr:lastA.r, tc:lastA.c, type:'place' };
+    } else if(lastA.type === 'move'){
+      lastMove = { fr:lastA.fr, fc:lastA.fc, tr:lastA.tr, tc:lastA.tc, type:'move' };
+    }
+  } else {
+    lastMove = null;
+  }
+  _replayCurrentTurn = toIndex;
+}
+
+function replayGoTo(idx){
+  replayApplyTo(idx);
+  renderAll();
+  updateReplayUI();
+}
+
+window.replayNext = function(){
+  if(_replayCurrentTurn < _replayData.actions.length) replayGoTo(_replayCurrentTurn + 1);
+};
+window.replayPrev = function(){
+  if(_replayCurrentTurn > 0) replayGoTo(_replayCurrentTurn - 1);
+};
+window.replayJumpStart = function(){ replayGoTo(0); };
+window.replayJumpEnd = function(){ replayGoTo(_replayData.actions.length); };
+window.replayJumpInput = function(){
+  const v = parseInt(document.getElementById('replayJumpInput').value);
+  if(isNaN(v)) return;
+  replayGoTo(v);
+};
+window.replayToggleList = function(){
+  const list = document.getElementById('replayList');
+  list.style.display = list.style.display === 'none' ? '' : 'none';
+};
+
+function describeAction(meta, idx){
+  // meta: {action, captured, moveType, retreat}
+  const a = meta.action;
+  const colorName = a.color === 'w' ? '백' : '흑';
+  const colorClass = a.color === 'w' ? 'w' : 'b';
+  const sym = SYMBOLS[a.color][a.kind || (board[a.fr]?.[a.fc]?.kind) || '?'];
+  const FILES = 'abcdefgh';
+  const RANKS = '87654321';
+  function pos(r,c){ return FILES[c] + RANKS[r]; }
+  let text = '';
+  if(a.type === 'place'){
+    const piece = SYMBOLS[a.color][a.kind] || a.kind;
+    const pname = PIECE_NAMES[a.kind] || a.kind;
+    text = `${piece} ${pname} 배치 ${pos(a.r,a.c)}`;
+  } else if(a.type === 'move'){
+    const from = pos(a.fr, a.fc);
+    const to = pos(a.tr, a.tc);
+    if(meta.moveType === 'snipe'){
+      text = `⊕ 저격 ${from}→${to}`;
+      if(meta.retreat) text += ' (3회 완료, 후퇴)';
+    } else if(meta.moveType === 'push'){
+      text = `⬢ 밀기 ${from}→${to}`;
+    } else {
+      const movedSym = SYMBOLS[a.color][meta.captured ? '?' : 'P']; // approximation
+      text = `이동 ${from}→${to}`;
+    }
+  }
+  return { text, colorName, colorClass, captured: meta.captured };
+}
+
+function buildReplayList(){
+  const list = document.getElementById('replayList');
+  if(!_replayData?.actions?.length){ list.innerHTML = '<div style="padding:8px;color:var(--muted)">기록 없음</div>'; return; }
+  list.innerHTML = _replayData.actions.map((meta, i) => {
+    const d = describeAction(meta, i);
+    const capHtml = d.captured ? `<span class="turn-cap">×${SYMBOLS[d.captured.color]?.[d.captured.kind] || '?'}</span>` : '';
+    return `<div class="replay-list-item" data-idx="${i+1}" onclick="replayGoTo(${i+1})">
+      <span class="turn-num">${i+1}.</span>
+      <span class="turn-color ${d.colorClass}">●</span>
+      <span class="turn-text">${d.text}</span>
+      ${capHtml}
+    </div>`;
+  }).join('');
+}
+
+function updateReplayUI(){
+  document.getElementById('replayTurnNow').textContent = _replayCurrentTurn;
+  document.getElementById('replayProgress').value = _replayCurrentTurn;
+  document.getElementById('replayJumpInput').value = _replayCurrentTurn;
+
+  // 현재 수 설명
+  const curEl = document.getElementById('replayCurrent');
+  if(_replayCurrentTurn === 0){
+    curEl.textContent = '— 시작 —';
+    curEl.classList.remove('has-capture');
+  } else {
+    const meta = _replayData.actions[_replayCurrentTurn - 1];
+    const d = describeAction(meta, _replayCurrentTurn - 1);
+    let html = `<span class="turn-color ${d.colorClass}" style="display:inline-block">●</span> <b>${d.colorName}</b>: ${d.text}`;
+    if(d.captured){
+      const capSym = SYMBOLS[d.captured.color]?.[d.captured.kind] || '?';
+      html += ` <span class="cap-mark">잡힘: <span class="pc-sym">${capSym}</span></span>`;
+      curEl.classList.add('has-capture');
+    } else {
+      curEl.classList.remove('has-capture');
+    }
+    curEl.innerHTML = html;
+  }
+
+  // 리스트 항목 하이라이트
+  document.querySelectorAll('.replay-list-item').forEach(el => {
+    if(parseInt(el.dataset.idx) === _replayCurrentTurn) el.classList.add('current');
+    else el.classList.remove('current');
+  });
+}
+
 function init(){
+  // 리플레이 모드: 별도 init
+  if(IS_REPLAY){
+    initReplay();
+    return;
+  }
+
   // UI 초기 정보
   document.getElementById('myName').textContent = MY_NICK_P + (IS_NET ? ` (${MY_ELO_P})` : '');
   document.getElementById('myAv').textContent = (MY_COLOR === 'w' ? 'W' : 'B');
