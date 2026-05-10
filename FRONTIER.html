@@ -2214,53 +2214,76 @@ function aiHard(list){
   // 2. 상대 위협 차단
   const block = findBlock4(list, 'w');
   if(block) return block;
-  // 3. 2수 lookahead
-  const scored = [];
-  // 가지치기: 먼저 1수 평가로 상위 12개만 lookahead
-  const initial = list.map(a => ({a, s: evaluateAction(a, 'b')}));
-  initial.sort((x,y)=> y.s - x.s);
-  const cands = initial.slice(0, Math.min(12, initial.length));
 
-  for(const {a, s:s1} of cands){
+  // 3. 모든 합법수에 대한 1수 평가 + 반복 카운트
+  const all = [];
+  for(const a of list){
     const snap = snapshotState();
-    const r1 = applyAction(a, {silent:true});
+    const r = applyAction(a, {silent:true});
+    if(!r.ok){ restoreState(snap); continue; }
+    const sBase = evaluatePosition('b');
+    // 추가 휴리스틱
+    let extra = 0;
+    if(r.fiveWin === 'b' || r.checkmate === 'b') extra += 100000;
+    if(isInCheck('w')) extra += 50;
+    if(isInCheck('b')) extra -= 80;
+    // 반복 카운트
+    const ser = serializeBoard();
+    const repCount = moveHistory.filter(s => s === ser).length;
+    restoreState(snap);
+    all.push({a, score: sBase + extra, repCount});
+  }
+  if(!all.length) return list[0];
+
+  // 4. 강력한 반복 페널티 — 후보 선정 단계부터 적용
+  // 한 번 본 상태: -1500 / 두 번 본 상태 (다음 가면 3수 동형 무승부 트리거): -100000
+  all.forEach(x => {
+    if(x.repCount >= 2) x.adj = x.score - 100000;
+    else if(x.repCount === 1) x.adj = x.score - 1500;
+    else x.adj = x.score;
+  });
+  all.sort((x,y) => y.adj - x.adj);
+
+  // 5. 상위 12개에 대해 2수 lookahead
+  const cands = all.slice(0, Math.min(12, all.length));
+  const scored = [];
+  for(const c of cands){
+    const snap = snapshotState();
+    const r1 = applyAction(c.a, {silent:true});
     if(!r1.ok){ restoreState(snap); continue; }
-    if(r1.fiveWin === 'b' || r1.checkmate === 'b'){ restoreState(snap); return a; }
+    if(r1.fiveWin === 'b' || r1.checkmate === 'b'){ restoreState(snap); return c.a; }
     // 상대 최선
     const oppList = allLegalActions('w');
     let bestOppScore = -Infinity;
-    let cutEarly = false;
     for(const oa of oppList.slice(0, 18)){
       const snap2 = snapshotState();
       const r2 = applyAction(oa, {silent:true});
       if(r2.ok){
         let s2 = -evaluatePosition('b');
         if(r2.fiveWin === 'w' || r2.checkmate === 'w') s2 = -100000;
-        if(s2 > bestOppScore){ bestOppScore = s2; }
+        if(s2 > bestOppScore) bestOppScore = s2;
       }
       restoreState(snap2);
-      if(bestOppScore < -50000){ cutEarly=true; break; }
+      if(bestOppScore < -50000) break;
     }
-    // === 반복수 페널티: 같은 보드 상태가 moveHistory에 이미 있으면 점수 깎기 ===
-    // applyAction이 적용된 상태에서 serializeBoard 호출
-    let repeatPenalty = 0;
-    try {
-      const futureSer = serializeBoard();
-      const repeatCount = moveHistory.filter(s => s === futureSer).length;
-      if(repeatCount > 0) repeatPenalty = repeatCount * 250;
-    } catch(e){}
     restoreState(snap);
-    const combined = s1 + (bestOppScore === -Infinity ? 0 : (-bestOppScore) * 0.5) - repeatPenalty;
-    scored.push({a, s: combined});
+    const combined = c.adj + (bestOppScore === -Infinity ? 0 : (-bestOppScore) * 0.5);
+    scored.push({a: c.a, s: combined, repCount: c.repCount});
   }
-  scored.sort((x,y)=> y.s - x.s);
-  if(!scored.length) return list[0];
+  if(!scored.length) return all[0].a;
 
-  // === 동률/근접 점수 랜덤화: 매번 같은 수가 나오는 결정성 제거 ===
-  // 최고점에서 5% 이내 또는 절댓값 차이 8 이내인 수들 중 랜덤 선택
-  const bestS = scored[0].s;
+  scored.sort((x,y)=> y.s - x.s);
+
+  // 6. 최종 결정: 신규 상태 풀에서 우선 선택
+  //    신규(repCount=0) 수가 하나라도 있으면 그 중에서만 결정
+  //    (반복 회피 강제 — 페널티만으론 부족하므로 풀 자체를 제한)
+  const fresh = scored.filter(x => x.repCount === 0);
+  const pool = fresh.length > 0 ? fresh : scored;
+
+  // 7. 상위 점수 동률 랜덤 (5% 이내 또는 ±8 이내)
+  const bestS = pool[0].s;
   const tol = Math.max(Math.abs(bestS) * 0.05, 8);
-  const topTied = scored.filter(x => bestS - x.s <= tol);
+  const topTied = pool.filter(x => bestS - x.s <= tol);
   return topTied[Math.floor(Math.random() * topTied.length)].a;
 }
 
