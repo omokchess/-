@@ -140,16 +140,21 @@ input{font-family:inherit;outline:none}
 @keyframes flashPulse{0%,100%{transform:translateX(-50%) scale(1)}50%{transform:translateX(-50%) scale(1.08)}}
 
 /* 폰 진행 방향 표시 */
-.cell .pawn-dir{position:absolute;width:18%;height:18%;border-radius:50%;pointer-events:none;z-index:0}
+.cell .pawn-dir{position:absolute;width:18%;height:18%;border-radius:50%;pointer-events:none;z-index:0;
+  left:50%;transform:translateX(-50%)}
+.cell .pawn-dir.up{top:8%}
+.cell .pawn-dir.down{bottom:8%}
+.cell .pawn-dir.w{background:rgba(255,255,255,.5);border:1px solid rgba(255,255,255,.8)}
+.cell .pawn-dir.b{background:rgba(20,20,20,.55);border:1px solid rgba(20,20,20,.85)}
+.cell .pawn-place-arrow{position:absolute;font-size:14px;font-weight:900;line-height:1;pointer-events:none;z-index:2;
+  left:50%;transform:translateX(-50%);text-shadow:0 0 4px rgba(0,0,0,.5)}
+.cell .pawn-place-arrow.up{top:6%}
+.cell .pawn-place-arrow.down{bottom:6%}
+.cell .pawn-place-arrow.w{color:rgba(255,255,255,.85)}
+.cell .pawn-place-arrow.b{color:rgba(20,20,20,.85);text-shadow:0 0 4px rgba(255,255,255,.6)}
 .cell .sn-counter{position:absolute;bottom:1px;right:2px;font-size:9px;font-weight:800;
   color:#fff;background:rgba(255,69,58,.85);padding:1px 4px;border-radius:6px;
   pointer-events:none;z-index:3;line-height:1;letter-spacing:.3px}
-.cell .pawn-dir.w{background:rgba(255,255,255,.5);border:1px solid rgba(255,255,255,.8);top:8%;left:50%;transform:translateX(-50%)}
-.cell .pawn-dir.b{background:rgba(20,20,20,.55);border:1px solid rgba(20,20,20,.85);bottom:8%;left:50%;transform:translateX(-50%)}
-.cell .pawn-place-arrow{position:absolute;font-size:14px;font-weight:900;line-height:1;pointer-events:none;z-index:2;
-  text-shadow:0 1px 2px rgba(0,0,0,.5)}
-.cell .pawn-place-arrow.w{top:6%;left:50%;transform:translateX(-50%);color:rgba(255,255,255,.85)}
-.cell .pawn-place-arrow.b{bottom:6%;left:50%;transform:translateX(-50%);color:rgba(20,20,20,.85)}
 
 /* 게임 종료 후 결과 모달을 잠시 닫고 보드 볼 때의 복귀 버튼 */
 .end-restore{position:fixed;top:60px;left:50%;transform:translateX(-50%);z-index:80;
@@ -334,13 +339,28 @@ input{font-family:inherit;outline:none}
 .replay-meta{display:flex;gap:14px;align-items:center;font-size:13px;flex-wrap:wrap}
 .replay-meta-item{color:var(--muted)}
 .replay-meta-item:first-child{color:var(--gold);font-weight:700;font-family:'Cinzel',serif}
-.replay-progress-row{display:flex;align-items:center;gap:8px}
+.replay-progress-row{display:flex;align-items:center;gap:8px;position:relative}
 .replay-slider{flex:1;-webkit-appearance:none;appearance:none;height:6px;background:var(--panel2);
-  border-radius:3px;outline:none;cursor:pointer}
+  border-radius:3px;outline:none;cursor:pointer;position:relative;z-index:1}
 .replay-slider::-webkit-slider-thumb{-webkit-appearance:none;width:18px;height:18px;border-radius:50%;
-  background:var(--gold);cursor:pointer;border:2px solid #1c1c1e}
+  background:var(--gold);cursor:pointer;border:2px solid #1c1c1e;position:relative;z-index:3}
 .replay-slider::-moz-range-thumb{width:18px;height:18px;border-radius:50%;background:var(--gold);
   cursor:pointer;border:2px solid #1c1c1e}
+.replay-marks{position:absolute;left:0;right:0;top:50%;transform:translateY(-50%);height:14px;
+  pointer-events:none;z-index:2}
+.replay-mark{position:absolute;width:8px;height:8px;top:50%;transform:translate(-50%,-50%) rotate(45deg);
+  cursor:pointer;pointer-events:auto;transition:all .15s;border:1.5px solid #1c1c1e}
+.replay-mark:hover{transform:translate(-50%,-50%) rotate(45deg) scale(1.4);z-index:5}
+.replay-mark.capture{background:var(--green);box-shadow:0 0 4px rgba(48,209,88,.6)}
+.replay-mark.captured{background:var(--red);box-shadow:0 0 4px rgba(255,69,58,.6)}
+.replay-mark-tooltip{position:absolute;bottom:18px;left:50%;transform:translateX(-50%) rotate(-45deg);
+  background:var(--panel);color:var(--text);padding:3px 7px;border-radius:4px;font-size:10px;
+  white-space:nowrap;border:1px solid var(--border);opacity:0;pointer-events:none;transition:opacity .12s}
+.replay-mark:hover .replay-mark-tooltip{opacity:1}
+
+.rb-btn-flip{padding:5px 12px;background:transparent;color:var(--gold);border:1px solid var(--gold);
+  border-radius:6px;cursor:pointer;font-size:12px;font-weight:700}
+.rb-btn-flip:hover{background:var(--gold);color:#1c1c1e}
 .replay-controls{display:flex;gap:6px;align-items:center;justify-content:center}
 .rb-btn{padding:7px 14px;background:var(--panel2);color:var(--text);border:1px solid var(--border);
   border-radius:8px;cursor:pointer;font-size:14px;font-weight:600;transition:all .12s}
@@ -507,7 +527,7 @@ body.replay-mode #chatBtn,body.replay-mode #chatPanel,body.replay-mode #forfeitB
     <div id="endElo" style="display:none"></div>
     <div class="actions">
       <button class="btn btn-ghost" onclick="hideEndModal()">👁 보드 보기</button>
-      <button class="btn btn-ghost" onclick="goLobby()">← 로비로</button>
+      <button class="btn btn-ghost" id="endLobbyBtn" onclick="tryGoLobbyFromEnd()">← 로비로</button>
       <button class="btn btn-blue" onclick="requestRematch()" id="rematchBtn" style="display:none">🔄 리매치</button>
     </div>
   </div>
@@ -622,6 +642,7 @@ body.replay-mode #chatBtn,body.replay-mode #chatPanel,body.replay-mode #forfeitB
     </div>
     <div class="replay-progress-row">
       <input type="range" id="replayProgress" min="0" max="0" value="0" class="replay-slider">
+      <div class="replay-marks" id="replayMarks"></div>
     </div>
     <div class="replay-controls">
       <button class="rb-btn" onclick="replayJumpStart()" title="처음으로">⏮</button>
@@ -635,6 +656,7 @@ body.replay-mode #chatBtn,body.replay-mode #chatPanel,body.replay-mode #forfeitB
     <div class="replay-jump-row">
       <input type="number" id="replayJumpInput" min="0" placeholder="턴" class="replay-jump-input">
       <button class="rb-btn-jump" onclick="replayJumpInput()">이동</button>
+      <button class="rb-btn-flip" onclick="replayFlip()">↕ 시점</button>
       <button class="rb-btn-list" onclick="replayToggleList()" id="replayListBtn">📋 수순</button>
     </div>
     <div class="replay-current-move" id="replayCurrent">— 시작 —</div>
@@ -1320,8 +1342,11 @@ function renderBoard(){
       // 폰 배치 미리보기: 손패에서 폰 선택 중이고 이 칸이 배치 가능 영역이면 진행방향 화살표
       if(SEL && SEL.kind === 'place' && SEL.piece === 'P' && !board[r][c] && canPlaceHere(SEL.color, 'P', r, c)){
         const arrow = document.createElement('span');
-        arrow.className = 'pawn-place-arrow ' + SEL.color;
-        arrow.textContent = SEL.color === 'w' ? '↑' : '↓';
+        // 시각적 방향: 백은 r 감소 방향(논리적 위), 흑은 r 증가(논리적 아래)
+        // flipped()=true면 화면이 뒤집혀 시각적으로 반대
+        const movesUpVisually = (SEL.color === 'w') !== flipped();
+        arrow.className = 'pawn-place-arrow ' + SEL.color + ' ' + (movesUpVisually ? 'up' : 'down');
+        arrow.textContent = movesUpVisually ? '↑' : '↓';
         cell.appendChild(arrow);
       }
 
@@ -1355,7 +1380,9 @@ function renderBoard(){
         const back = pawnComingFrom(r, c);
         if(back){
           const dot = document.createElement('span');
-          dot.className = 'pawn-dir ' + back.color;
+          // 폰이 시각적으로 어느 방향에서 오는가? = 그 폰의 진행 방향과 같음
+          const movesUpVisually = (back.color === 'w') !== flipped();
+          dot.className = 'pawn-dir ' + back.color + ' ' + (movesUpVisually ? 'up' : 'down');
           cell.appendChild(dot);
         }
       }
@@ -1944,6 +1971,33 @@ function showFlash(msg, ms=2000, isCheckFlash=false){
 // 12. 게임 종료 + ELO
 // ===================================================================
 let _gameRatingInfo = null; // {whiteUid, whiteElo, blackUid, blackElo, whiteNick, blackNick}
+let _eloPending = false;
+function setEndNavDisabled(disabled){
+  const ids = ['rematchBtn','endLobbyBtn'];
+  for(const id of ids){
+    const el = document.getElementById(id);
+    if(!el) continue;
+    if(disabled){
+      el.disabled = true;
+      el.style.opacity = '.5';
+      el.style.cursor = 'wait';
+      if(!el.dataset.origText) el.dataset.origText = el.textContent;
+      if(id === 'endLobbyBtn') el.textContent = '저장 중...';
+    } else {
+      el.disabled = false;
+      el.style.opacity = '';
+      el.style.cursor = '';
+      if(el.dataset.origText) el.textContent = el.dataset.origText;
+    }
+  }
+}
+window.addEventListener('beforeunload', e => {
+  if(_eloPending){
+    e.preventDefault();
+    e.returnValue = 'ELO 업데이트가 아직 진행 중입니다. 잠시 후 나가주세요.';
+    return e.returnValue;
+  }
+});
 
 function endGame(emoji, title, desc, winner /* 'w'|'b'|'draw' */){
   if(gameOver) return;
@@ -1964,7 +2018,11 @@ function endGame(emoji, title, desc, winner /* 'w'|'b'|'draw' */){
   if(IS_NET && !IS_SPEC && _gameRatingInfo && winner){
     eloEl.textContent = '레이팅 계산 중...';
     eloEl.style.display = '';
+    _eloPending = true;
+    setEndNavDisabled(true);
     applyEloChange(winner).then(diff => {
+      _eloPending = false;
+      setEndNavDisabled(false);
       if(diff !== null){
         const sign = diff > 0 ? '+' : '';
         eloEl.className = 'elo-change ' + (diff>0?'up':diff<0?'dn':'');
@@ -1974,6 +2032,8 @@ function endGame(emoji, title, desc, winner /* 'w'|'b'|'draw' */){
         eloEl.innerHTML = '⚠ ELO 업데이트 실패 (콘솔 확인)';
       }
     }).catch(e => {
+      _eloPending = false;
+      setEndNavDisabled(false);
       console.error('applyEloChange error:', e);
       eloEl.className = 'elo-change';
       eloEl.innerHTML = '⚠ ELO 오류: ' + (e && e.message ? e.message : e);
@@ -2164,29 +2224,40 @@ function aiHard(list){
     if(r1.fiveWin === 'b' || r1.checkmate === 'b'){ restoreState(snap); return a; }
     // 상대 최선
     const oppList = allLegalActions('w');
-    let worstForMe = -Infinity;
     let bestOppScore = -Infinity;
     let cutEarly = false;
     for(const oa of oppList.slice(0, 18)){
       const snap2 = snapshotState();
       const r2 = applyAction(oa, {silent:true});
       if(r2.ok){
-        let s2 = -evaluatePosition('b'); // 상대 입장 점수의 반대
-        // 상대가 즉시 승리하면 매우 안 좋음
+        let s2 = -evaluatePosition('b');
         if(r2.fiveWin === 'w' || r2.checkmate === 'w') s2 = -100000;
         if(s2 > bestOppScore){ bestOppScore = s2; }
       }
       restoreState(snap2);
       if(bestOppScore < -50000){ cutEarly=true; break; }
     }
+    // === 반복수 페널티: 같은 보드 상태가 moveHistory에 이미 있으면 점수 깎기 ===
+    // applyAction이 적용된 상태에서 serializeBoard 호출
+    let repeatPenalty = 0;
+    try {
+      const futureSer = serializeBoard();
+      const repeatCount = moveHistory.filter(s => s === futureSer).length;
+      if(repeatCount > 0) repeatPenalty = repeatCount * 250;
+    } catch(e){}
     restoreState(snap);
-    const finalScore = s1 - (bestOppScore === -Infinity ? 0 : Math.max(0, -bestOppScore - s1));
-    // 단순 결합: 1수 평가 - 상대 최선 응수
-    const combined = s1 + (bestOppScore === -Infinity ? 0 : (-bestOppScore) * 0.5);
+    const combined = s1 + (bestOppScore === -Infinity ? 0 : (-bestOppScore) * 0.5) - repeatPenalty;
     scored.push({a, s: combined});
   }
   scored.sort((x,y)=> y.s - x.s);
-  return scored.length ? scored[0].a : list[0];
+  if(!scored.length) return list[0];
+
+  // === 동률/근접 점수 랜덤화: 매번 같은 수가 나오는 결정성 제거 ===
+  // 최고점에서 5% 이내 또는 절댓값 차이 8 이내인 수들 중 랜덤 선택
+  const bestS = scored[0].s;
+  const tol = Math.max(Math.abs(bestS) * 0.05, 8);
+  const topTied = scored.filter(x => bestS - x.s <= tol);
+  return topTied[Math.floor(Math.random() * topTied.length)].a;
 }
 
 // 4연속 위협 차단할 수 찾기
@@ -2799,6 +2870,15 @@ function goLobby(){
   myRoomCode = null;
   location.href = 'index.html';
 }
+function tryGoLobbyFromEnd(){
+  if(_eloPending){
+    showConfirm('ELO 업데이트 중', 'ELO가 아직 저장되지 않았습니다. 기다리시겠습니까?\n(취소: 잠시 더 기다리기 / 확인: 그래도 나가기 — 이 경우 ELO가 반영되지 않을 수 있습니다.)', () => {
+      goLobby();
+    });
+    return;
+  }
+  goLobby();
+}
 function showConfirm(title, msg, onYes){
   document.getElementById('confirmTitle').textContent = title;
   document.getElementById('confirmMsg').textContent = msg;
@@ -2900,6 +2980,10 @@ function initReplay(){
   }
   _replayData = full;
 
+  // === 시점 설정: 저장된 myColor 기준, 없으면 백 ===
+  // MY_COLOR는 let이라 변경 가능. flipped() 함수가 이걸 사용함.
+  MY_COLOR = _replayMeta.myColor || 'w';
+
   // 상태 초기화 (저장된 hand 기준)
   const savedHand = parseHandStr(_replayMeta.handStr || '');
   hands = { w: {...savedHand}, b: {...savedHand} };
@@ -2914,17 +2998,19 @@ function initReplay(){
 
   document.body.classList.add('replay-mode');
 
-  // UI 헤더
+  // UI 헤더 — 시점에 따라 내/상대 패널 라벨 결정
   const wp = _replayMeta.players?.w || {};
   const bp = _replayMeta.players?.b || {};
-  document.getElementById('myName').textContent = wp.nick || '백';
-  document.getElementById('myAv').textContent = 'W';
-  document.getElementById('myAv').className = 'av';
-  document.getElementById('myMeta').textContent = wp.elo ? `백 · ELO ${wp.elo}` : '백';
-  document.getElementById('oppName').textContent = bp.nick || '흑';
-  document.getElementById('oppAv').textContent = 'B';
-  document.getElementById('oppAv').className = 'av b';
-  document.getElementById('oppMeta').textContent = bp.elo ? `흑 · ELO ${bp.elo}` : '흑';
+  const myP = MY_COLOR === 'w' ? wp : bp;
+  const oppP = MY_COLOR === 'w' ? bp : wp;
+  document.getElementById('myName').textContent = myP.nick || (MY_COLOR === 'w' ? '백' : '흑');
+  document.getElementById('myAv').textContent = MY_COLOR === 'w' ? 'W' : 'B';
+  document.getElementById('myAv').className = 'av' + (MY_COLOR === 'b' ? ' b' : '');
+  document.getElementById('myMeta').textContent = myP.elo ? `${MY_COLOR==='w'?'백':'흑'} · ELO ${myP.elo}` : (MY_COLOR==='w'?'백':'흑');
+  document.getElementById('oppName').textContent = oppP.nick || (MY_COLOR === 'w' ? '흑' : '백');
+  document.getElementById('oppAv').textContent = MY_COLOR === 'w' ? 'B' : 'W';
+  document.getElementById('oppAv').className = 'av' + (MY_COLOR === 'w' ? ' b' : '');
+  document.getElementById('oppMeta').textContent = oppP.elo ? `${MY_COLOR==='w'?'흑':'백'} · ELO ${oppP.elo}` : (MY_COLOR==='w'?'흑':'백');
 
   const modeLbl = ({local:'로컬', ai:`AI(${_replayMeta.aiDifficulty||'?'})`, online:'온라인'})[_replayMeta.mode] || _replayMeta.mode;
   document.getElementById('modeLbl').textContent = `📺 리플레이 — ${modeLbl}`;
@@ -2960,10 +3046,66 @@ function initReplay(){
 
   // 수순 리스트
   buildReplayList();
+  // 캡쳐 마커 렌더 (시점 기준 초/빨)
+  buildReplayCaptureMarks();
 
   // 첫 렌더
   renderAll();
   updateReplayUI();
+}
+
+// 시점 전환 (로컬 리플레이 등에서 양쪽 시점 둘러보기 용)
+window.replayFlip = function(){
+  MY_COLOR = MY_COLOR === 'w' ? 'b' : 'w';
+  // 패널 라벨 다시 적용
+  const wp = _replayMeta.players?.w || {};
+  const bp = _replayMeta.players?.b || {};
+  const myP = MY_COLOR === 'w' ? wp : bp;
+  const oppP = MY_COLOR === 'w' ? bp : wp;
+  document.getElementById('myName').textContent = myP.nick || (MY_COLOR === 'w' ? '백' : '흑');
+  document.getElementById('myAv').textContent = MY_COLOR === 'w' ? 'W' : 'B';
+  document.getElementById('myAv').className = 'av' + (MY_COLOR === 'b' ? ' b' : '');
+  document.getElementById('myMeta').textContent = myP.elo ? `${MY_COLOR==='w'?'백':'흑'} · ELO ${myP.elo}` : (MY_COLOR==='w'?'백':'흑');
+  document.getElementById('oppName').textContent = oppP.nick || (MY_COLOR === 'w' ? '흑' : '백');
+  document.getElementById('oppAv').textContent = MY_COLOR === 'w' ? 'B' : 'W';
+  document.getElementById('oppAv').className = 'av' + (MY_COLOR === 'w' ? ' b' : '');
+  document.getElementById('oppMeta').textContent = oppP.elo ? `${MY_COLOR==='w'?'흑':'백'} · ELO ${oppP.elo}` : (MY_COLOR==='w'?'흑':'백');
+  // 마커 다시 그리기 (시점에 따라 색 바뀜)
+  buildReplayCaptureMarks();
+  renderAll();
+};
+
+function buildReplayCaptureMarks(){
+  const marksEl = document.getElementById('replayMarks');
+  if(!marksEl || !_replayData) return;
+  const total = _replayData.actions.length;
+  if(total === 0){ marksEl.innerHTML = ''; return; }
+
+  // 슬라이더 트랙 길이 기준 위치 계산
+  // %로 left 지정: turn i가 발생한 위치는 i/total
+  const myColor = MY_COLOR;
+  const FILES = 'abcdefgh';
+  const RANKS = '87654321';
+
+  const marks = [];
+  _replayData.actions.forEach((meta, i) => {
+    if(!meta.captured) return;
+    const turnIdx = i + 1;
+    // 캡쳐자 = action.color, 잡힌 기물 = meta.captured.color
+    const captorColor = meta.action.color;
+    // 시점 기준: 내가 잡으면 초록, 내가 잡히면 빨강
+    const isMyCapture = captorColor === myColor;
+    const cls = isMyCapture ? 'capture' : 'captured';
+    const capturedSym = SYMBOLS[meta.captured.color]?.[meta.captured.kind] || '?';
+    const action = meta.action;
+    const posStr = action.type === 'move' ? `${FILES[action.tc]}${RANKS[action.tr]}` : `${FILES[action.c]}${RANKS[action.r]}`;
+    const label = (isMyCapture ? '획득' : '손실') + ` ${capturedSym} ${posStr}`;
+    const leftPct = (turnIdx / total) * 100;
+    marks.push(`<div class="replay-mark ${cls}" style="left:${leftPct}%" data-turn="${turnIdx}" onclick="replayGoTo(${turnIdx})">
+      <span class="replay-mark-tooltip">${turnIdx}수 · ${label}</span>
+    </div>`);
+  });
+  marksEl.innerHTML = marks.join('');
 }
 
 function replayResetState(){
