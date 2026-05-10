@@ -1871,9 +1871,9 @@ function saveReplayToStorage(winner, endTitle, endDesc){
 }
 
 function submitAction(action){
-  // place 액션의 color는 항상 현재 차례의 색으로 통일
+  // 액션의 color는 항상 현재 차례의 색으로 통일 (이동/배치 모두)
   // (LOCAL: turn 따라 번갈아 / AI: AI는 흑 차례 / ONLINE: 본인 차례에서만 호출됨)
-  if(action.type === 'place') action.color = turn;
+  action.color = turn;
   
   // 리플레이 기록용: 액션 적용 전 상태 캡처 (잡힌 기물 추적)
   let _capturedPiece = null;
@@ -3091,8 +3091,9 @@ function buildReplayCaptureMarks(){
   _replayData.actions.forEach((meta, i) => {
     if(!meta.captured) return;
     const turnIdx = i + 1;
-    // 캡쳐자 = action.color, 잡힌 기물 = meta.captured.color
-    const captorColor = meta.action.color;
+    // 캡쳐자 = action.color, 없으면 턴 인덱스 패리티로 추정 (0=백, 1=흑, 2=백...)
+    // 구버전 리플레이는 move 액션에 color가 없을 수 있음
+    const captorColor = meta.action.color || (i % 2 === 0 ? 'w' : 'b');
     // 시점 기준: 내가 잡으면 초록, 내가 잡히면 빨강
     const isMyCapture = captorColor === myColor;
     const cls = isMyCapture ? 'capture' : 'captured';
@@ -3171,15 +3172,16 @@ window.replayToggleList = function(){
 function describeAction(meta, idx){
   // meta: {action, captured, moveType, retreat}
   const a = meta.action;
-  const colorName = a.color === 'w' ? '백' : '흑';
-  const colorClass = a.color === 'w' ? 'w' : 'b';
-  const sym = SYMBOLS[a.color][a.kind || (board[a.fr]?.[a.fc]?.kind) || '?'];
+  // 색 추정: action.color 없으면 인덱스 패리티 (구버전 리플레이 호환)
+  const aColor = a.color || (idx % 2 === 0 ? 'w' : 'b');
+  const colorName = aColor === 'w' ? '백' : '흑';
+  const colorClass = aColor === 'w' ? 'w' : 'b';
   const FILES = 'abcdefgh';
   const RANKS = '87654321';
   function pos(r,c){ return FILES[c] + RANKS[r]; }
   let text = '';
   if(a.type === 'place'){
-    const piece = SYMBOLS[a.color][a.kind] || a.kind;
+    const piece = SYMBOLS[aColor][a.kind] || a.kind;
     const pname = PIECE_NAMES[a.kind] || a.kind;
     text = `${piece} ${pname} 배치 ${pos(a.r,a.c)}`;
   } else if(a.type === 'move'){
@@ -3191,7 +3193,6 @@ function describeAction(meta, idx){
     } else if(meta.moveType === 'push'){
       text = `⬢ 밀기 ${from}→${to}`;
     } else {
-      const movedSym = SYMBOLS[a.color][meta.captured ? '?' : 'P']; // approximation
       text = `이동 ${from}→${to}`;
     }
   }
