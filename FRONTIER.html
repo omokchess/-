@@ -777,9 +777,14 @@ let MY_COLOR = 'w';
 if(NET_ROLE === 'guest') MY_COLOR = 'b';
 const IS_LOCAL = (MODE === 'local');
 const IS_AI    = (MODE === 'ai');
+const IS_AIVAI = (MODE === 'aivai');
 const IS_NET   = (NET_ROLE === 'host' || NET_ROLE === 'guest');
 const IS_SPEC  = (NET_ROLE === 'spectator');
 const IS_REPLAY = (MODE === 'replay');
+
+// AI 난이도 — AI 모드는 단일, AI vs AI는 양쪽 별도
+const W_DIFF = Q.get('wdiff') || DIFF;
+const B_DIFF = Q.get('bdiff') || DIFF;
 
 // 시간 제한 (Fischer-style 총 시간)
 const TIME_LIMIT = TIME_LIMIT_RAW === 'unlimited' || TIME_LIMIT_RAW === '0'
@@ -1894,21 +1899,21 @@ function saveReplayToStorage(winner, endTitle, endDesc){
     const meta = {
       id,
       savedAt: Date.now(),
-      mode: MODE, // local | ai | online
-      aiDifficulty: IS_AI ? DIFF : null,
+      mode: MODE, // local | ai | aivai | online
+      aiDifficulty: IS_AI ? DIFF : (IS_AIVAI ? `${W_DIFF}/${B_DIFF}` : null),
       timeLimit: TIME_LIMIT,
       handStr: Q.get('hand') || '',
       players: {
         w: { 
-          nick: IS_NET ? (_gameRatingInfo?.whiteNick || '백') : (MY_COLOR === 'w' ? MY_NICK_P : (IS_AI ? MY_NICK_P : '백')),
+          nick: IS_AIVAI ? `백 AI(${W_DIFF})` : (IS_NET ? (_gameRatingInfo?.whiteNick || '백') : (MY_COLOR === 'w' ? MY_NICK_P : (IS_AI ? MY_NICK_P : '백'))),
           elo: IS_NET ? (_gameRatingInfo?.whiteElo || 0) : (MY_COLOR === 'w' ? MY_ELO_P : 0)
         },
         b: { 
-          nick: IS_NET ? (_gameRatingInfo?.blackNick || '흑') : (MY_COLOR === 'b' ? MY_NICK_P : (IS_AI ? 'AI' : '흑')),
+          nick: IS_AIVAI ? `흑 AI(${B_DIFF})` : (IS_NET ? (_gameRatingInfo?.blackNick || '흑') : (MY_COLOR === 'b' ? MY_NICK_P : (IS_AI ? 'AI' : '흑'))),
           elo: IS_NET ? (_gameRatingInfo?.blackElo || 0) : (MY_COLOR === 'b' ? MY_ELO_P : 0)
         }
       },
-      myColor: IS_LOCAL ? null : MY_COLOR,
+      myColor: (IS_LOCAL || IS_AIVAI) ? null : MY_COLOR,
       winner: winner || 'draw',
       endTitle: endTitle || '',
       endDesc: endDesc || '',
@@ -1997,6 +2002,9 @@ function submitAction(action){
   // AI 차례
   if(IS_AI && !gameOver && turn === 'b'){
     setTimeout(()=> aiTurn(), 250);
+  } else if(IS_AIVAI && !gameOver){
+    // AI vs AI: 양쪽 모두 자동 진행. 조금 더 긴 딜레이로 관전 가능
+    setTimeout(()=> aiTurn(), 600);
   }
 }
 
@@ -2213,64 +2221,78 @@ const PIECE_VALUES = { K:0, Q:90, R:50, B:35, N:30, P:10, SH:25, SN:60, JP:35 };
 
 function aiTurn(){
   if(gameOver) return;
-  if(turn !== 'b') return;
-  const list = allLegalActions('b');
+  // AI vs AI: 양쪽 turn 다 처리. AI vs Player: 흑 차례에만.
+  const aiColor = IS_AIVAI ? turn : 'b';
+  if(turn !== aiColor) return;
+  const list = allLegalActions(aiColor);
   if(!list.length){
-    // 합법수 없음 = 패배 상황 (이미 finalize에서 처리됐을 수 있음)
     return;
   }
+  const diff = IS_AIVAI ? (aiColor === 'w' ? W_DIFF : B_DIFF) : DIFF;
+
   // 어려움 난이도는 사고 시간이 길어 UI 표시
-  if(DIFF === 'hard'){
-    showAIThinking(true);
-    // 다음 프레임에 실행 → UI가 인디케이터 표시 후 시작
+  if(diff === 'hard'){
+    showAIThinking(true, IS_AIVAI ? aiColor : null);
     setTimeout(() => {
       if(gameOver){ showAIThinking(false); return; }
       let best;
-      try { best = aiHard(list); } catch(e){ console.error('AI 오류', e); best = list[0]; }
+      try { best = aiHard(list, aiColor); } catch(e){ console.error('AI 오류', e); best = list[0]; }
       showAIThinking(false);
       if(!best) best = list[Math.floor(Math.random()*list.length)];
       if(best.type === 'move'){
         const p = board[best.fr][best.fc];
-        if(p && p.kind === 'P' && best.tr === 7) best.promote = 'Q';
+        if(p && p.kind === 'P'){
+          if(aiColor === 'w' && best.tr === 0) best.promote = 'Q';
+          else if(aiColor === 'b' && best.tr === 7) best.promote = 'Q';
+        }
       }
       submitAction(best);
     }, 30);
     return;
   }
   let best;
-  if(DIFF === 'easy') best = aiEasy(list);
-  else best = aiNormal(list);
+  if(diff === 'easy') best = aiEasy(list, aiColor);
+  else best = aiNormal(list, aiColor);
 
   if(!best) best = list[Math.floor(Math.random()*list.length)];
   if(best.type === 'move'){
     const p = board[best.fr][best.fc];
-    if(p && p.kind === 'P' && best.tr === 7) best.promote = 'Q';
+    if(p && p.kind === 'P'){
+      if(aiColor === 'w' && best.tr === 0) best.promote = 'Q';
+      else if(aiColor === 'b' && best.tr === 7) best.promote = 'Q';
+    }
   }
   submitAction(best);
 }
 
-function showAIThinking(show){
+function showAIThinking(show, color){
   const el = document.getElementById('aiThinkingIndicator');
-  if(el) el.style.display = show ? 'flex' : 'none';
+  if(!el) return;
+  if(show){
+    const label = color === 'w' ? '백 AI' : color === 'b' ? '흑 AI' : 'AI';
+    el.querySelector('span:last-child').textContent = `${label} 사고 중...`;
+  }
+  el.style.display = show ? 'flex' : 'none';
 }
 
-function aiEasy(list){
+function aiEasy(list, myColor){
+  const oppC = opp(myColor);
   // 1. 즉시 5연속
   for(const a of list){
     const snap = snapshotState();
     const r = applyAction(a, {silent:true});
-    if(r.ok && r.fiveWin === 'b'){ restoreState(snap); return a; }
+    if(r.ok && r.fiveWin === myColor){ restoreState(snap); return a; }
     restoreState(snap);
   }
   // 2. 상대 4연속 차단
-  const block = findBlock4(list, 'w');
+  const block = findBlock4(list, oppC);
   if(block) return block;
   // 3. 30% 확률 체크
   if(Math.random() < 0.3){
     for(const a of list){
       const snap = snapshotState();
       applyAction(a, {silent:true});
-      const giveCheck = isInCheck('w');
+      const giveCheck = isInCheck(oppC);
       restoreState(snap);
       if(giveCheck) return a;
     }
@@ -2278,19 +2300,23 @@ function aiEasy(list){
   return list[Math.floor(Math.random()*list.length)];
 }
 
-function aiNormal(list){
+function aiNormal(list, myColor){
+  const oppC = opp(myColor);
   // 1. 즉시 승
   for(const a of list){
     const snap = snapshotState();
     const r = applyAction(a, {silent:true});
-    if(r.ok && (r.fiveWin === 'b' || r.checkmate === 'b')){ restoreState(snap); return a; }
+    if(r.ok){
+      if(r.fiveWin === myColor){ restoreState(snap); return a; }
+      if(isInCheck(oppC) && isCheckmate(oppC)){ restoreState(snap); return a; }
+    }
     restoreState(snap);
   }
   // 2. 상대 위협 차단
-  const block = findBlock4(list, 'w');
+  const block = findBlock4(list, oppC);
   if(block) return block;
   // 3. 평가 점수 상위 35% 중 랜덤
-  const scored = list.map(a => ({a, s: evaluateAction(a, 'b')}));
+  const scored = list.map(a => ({a, s: evaluateAction(a, myColor)}));
   scored.sort((x,y)=> y.s - x.s);
   const top = scored.slice(0, Math.max(1, Math.ceil(scored.length * 0.35)));
   return top[Math.floor(Math.random()*top.length)].a;
@@ -2301,36 +2327,36 @@ const AI_HARD_TIME_MS = 2500;     // 최대 사고 시간
 const AI_HARD_MAX_DEPTH = 5;       // 최대 탐색 깊이 (반복 = 5수 lookahead)
 const AI_HARD_TT_MAX = 100000;     // 트랜스포지션 테이블 최대 엔트리
 
-function aiHard(list){
+function aiHard(list, myColor){
+  const oppC = opp(myColor);
   // 1. 즉시 승리 검사 (5목 또는 체크메이트)
   for(const a of list){
     const snap = snapshotState();
     const r = applyAction(a, {silent:true});
     if(r.ok){
-      // silent에선 r.fiveWin은 반환됨, checkmate는 외부 검사 (turn은 이미 'w'로 바뀜)
-      if(r.fiveWin === 'b'){ restoreState(snap); return a; }
-      if(isInCheck('w') && isCheckmate('w')){ restoreState(snap); return a; }
+      if(r.fiveWin === myColor){ restoreState(snap); return a; }
+      if(isInCheck(oppC) && isCheckmate(oppC)){ restoreState(snap); return a; }
     }
     restoreState(snap);
   }
   // 2. 상대 4연속 위협 차단
-  const block = findBlock4(list, 'w');
+  const block = findBlock4(list, oppC);
   if(block) return block;
 
   // 3. 모든 합법수 1차 평가 + 반복 카운트 (반복 회피 사전 점수 적용)
   const startTime = Date.now();
-  const tt = new Map(); // 위치별 캐싱
+  const tt = new Map();
   const allScored = [];
   for(const a of list){
-    if(Date.now() - startTime > AI_HARD_TIME_MS * 0.15) break; // 시드 평가에 너무 오래 안 쓰기
+    if(Date.now() - startTime > AI_HARD_TIME_MS * 0.15) break;
     const snap = snapshotState();
     const r = applyAction(a, {silent:true});
     if(!r.ok){ restoreState(snap); continue; }
-    let baseScore = evaluatePosition('b');
-    if(r.fiveWin === 'b') baseScore = 99000;
-    else if(r.fiveWin === 'w') baseScore = -99000;
-    else if(isInCheck('w') && isCheckmate('w')) baseScore = 99000; // 우리가 메이트
-    else if(isInCheck('b') && isCheckmate('b')) baseScore = -99000; // 우리가 메이트당함
+    let baseScore = evaluatePosition(myColor);
+    if(r.fiveWin === myColor) baseScore = 99000;
+    else if(r.fiveWin === oppC) baseScore = -99000;
+    else if(isInCheck(oppC) && isCheckmate(oppC)) baseScore = 99000;
+    else if(isInCheck(myColor) && isCheckmate(myColor)) baseScore = -99000;
     else if(r.suicide) baseScore = -99000;
     const ser = serializeBoard();
     const repCount = moveHistory.filter(s => s === ser).length;
@@ -2339,7 +2365,6 @@ function aiHard(list){
   }
   if(!allScored.length) return list[0];
 
-  // 반복 페널티 (사전 점수에 반영)
   allScored.forEach(x => {
     x.adj = x.baseScore;
     if(x.repCount === 1) x.adj -= 1500;
@@ -2347,16 +2372,14 @@ function aiHard(list){
   });
   allScored.sort((x,y) => y.adj - x.adj);
 
-  // 4. 루트 후보 — 상위 15개
   const rootCands = allScored.slice(0, Math.min(15, allScored.length));
 
   let bestMove = rootCands[0].a;
   let bestScore = rootCands[0].adj;
   let bestDepth = 1;
 
-  // 5. Iterative deepening (depth 2 → 5)
   for(let depth = 2; depth <= AI_HARD_MAX_DEPTH; depth++){
-    if(Date.now() - startTime > AI_HARD_TIME_MS * 0.55) break; // 절반 넘으면 다음 깊이 안 함
+    if(Date.now() - startTime > AI_HARD_TIME_MS * 0.55) break;
 
     let iterBest = -Infinity;
     let iterMove = null;
@@ -2371,22 +2394,20 @@ function aiHard(list){
       if(!r.ok){ restoreState(snap); continue; }
 
       let score;
-      if(r.fiveWin === 'b'){
+      if(r.fiveWin === myColor){
         score = 50000 - (AI_HARD_MAX_DEPTH - depth);
-      } else if(r.fiveWin === 'w'){
+      } else if(r.fiveWin === oppC){
         score = -50000 + (AI_HARD_MAX_DEPTH - depth);
-      } else if(isInCheck('w') && isCheckmate('w')){
-        score = 50000 - (AI_HARD_MAX_DEPTH - depth); // 우리가 상대 메이트
-      } else if(isInCheck('b') && isCheckmate('b')){
-        score = -50000 + (AI_HARD_MAX_DEPTH - depth); // 우리가 메이트당함
+      } else if(isInCheck(oppC) && isCheckmate(oppC)){
+        score = 50000 - (AI_HARD_MAX_DEPTH - depth);
+      } else if(isInCheck(myColor) && isCheckmate(myColor)){
+        score = -50000 + (AI_HARD_MAX_DEPTH - depth);
       } else if(r.suicide){
         score = -50000;
       } else {
-        // 상대(백) 차례에서 negamax 재귀: 상대 입장 점수의 음수가 우리 점수
-        score = -alphaBetaSearch(depth - 1, -beta, -alpha, 'w', startTime, AI_HARD_TIME_MS, tt);
+        score = -alphaBetaSearch(depth - 1, -beta, -alpha, oppC, startTime, AI_HARD_TIME_MS, tt);
       }
 
-      // 반복 페널티 (실제 결정에도 반영)
       if(repCount === 1) score -= 1500;
       else if(repCount >= 2) score -= 100000;
 
@@ -2399,30 +2420,24 @@ function aiHard(list){
       if(score > alpha) alpha = score;
     }
 
-    // 이번 깊이 완료된 경우만 결과 채택 (시간초과로 부분만 처리됐을 수도)
     if(iterMove && (Date.now() - startTime <= AI_HARD_TIME_MS)){
       bestMove = iterMove;
       bestScore = iterBest;
       bestDepth = depth;
     }
 
-    // 메이트 발견 시 더 깊이 안 가도 됨
     if(Math.abs(bestScore) > 40000) break;
   }
 
-  // 신규 상태 풀에서만 최종 선택 (페널티만으론 부족할 수 있어 풀 자체를 제한)
-  // — 만약 best가 반복 수면, 신규 수 중 가장 가까운 점수 차이가 작으면 신규로 교체
   const freshRoot = rootCands.filter(x => x.repCount === 0);
   if(freshRoot.length > 0){
-    // best가 반복 수일 때만 적용
     const bestEntry = rootCands.find(x => x.a === bestMove);
     if(bestEntry && bestEntry.repCount > 0){
-      // best가 반복 수면 신규 수 중 가장 좋은 것 선택 (페널티 없는 점수 기준)
       bestMove = freshRoot[0].a;
     }
   }
 
-  console.log(`[AI Hard] depth=${bestDepth} score=${bestScore} time=${Date.now()-startTime}ms nodes=${_searchNodes||0}`);
+  console.log(`[AI Hard ${myColor}] depth=${bestDepth} score=${bestScore} time=${Date.now()-startTime}ms nodes=${_searchNodes||0}`);
   _searchNodes = 0;
   return bestMove;
 }
@@ -3628,6 +3643,16 @@ function init(){
     document.getElementById('oppName').textContent = `AI (${DIFF==='easy'?'쉬움':DIFF==='hard'?'어려움':'보통'})`;
     document.getElementById('oppMeta').textContent = '흑';
     document.getElementById('modeLbl').textContent = 'AI 대전';
+  } else if(IS_AIVAI){
+    const wLbl = W_DIFF==='easy'?'쉬움':W_DIFF==='hard'?'어려움':'보통';
+    const bLbl = B_DIFF==='easy'?'쉬움':B_DIFF==='hard'?'어려움':'보통';
+    document.getElementById('myName').textContent = `백 AI (${wLbl})`;
+    document.getElementById('myMeta').textContent = '백';
+    document.getElementById('oppName').textContent = `흑 AI (${bLbl})`;
+    document.getElementById('oppMeta').textContent = '흑';
+    document.getElementById('modeLbl').textContent = '🤖 AI vs AI';
+    // 관전 모드처럼 기권 버튼 숨김
+    document.getElementById('forfeitBtn').style.display = 'none';
   } else if(IS_LOCAL){
     document.getElementById('oppName').textContent = '플레이어 2';
     document.getElementById('oppMeta').textContent = '흑';
@@ -3647,12 +3672,17 @@ function init(){
     document.getElementById('forfeitBtn').style.display = 'none';
   }
 
-  if(IS_LOCAL || IS_AI){
+  if(IS_LOCAL || IS_AI || IS_AIVAI){
     if(TIME_LIMIT > 0) startTimerIfNeeded();
   }
 
   netInit();
   renderAll();
+
+  // AI vs AI: 백부터 자동 시작
+  if(IS_AIVAI && !gameOver){
+    setTimeout(()=> aiTurn(), 800);
+  }
 }
 init();
 </script>

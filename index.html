@@ -273,6 +273,11 @@ input{font-family:inherit;outline:none}
       <div class="mt">AI 대전</div>
       <div class="md">3가지 난이도의 컴퓨터와</div>
     </button>
+    <button class="mode" onclick="openAiVaiModal()">
+      <div class="icon">⚔️</div>
+      <div class="mt">AI vs AI 관전</div>
+      <div class="md">두 AI가 싸우는 걸 구경</div>
+    </button>
     <button class="mode" onclick="goCreate()">
       <div class="icon">🌐</div>
       <div class="mt">방 만들기</div>
@@ -352,6 +357,26 @@ input{font-family:inherit;outline:none}
       <div class="actions">
         <button class="btn btn-ghost" onclick="closeAi()">취소</button>
         <button class="btn btn-gold" onclick="startAiGame()">AI 대전 시작</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- AI vs AI 설정 -->
+  <div class="modal" id="aiVaiModal">
+    <div class="modal-card local-card">
+      <h3>⚔️ AI vs AI — 설정</h3>
+      <div class="local-time-label" style="margin-top:0">백 AI 난이도</div>
+      <div class="local-times" id="aivaiWDiff" style="grid-template-columns:repeat(3,1fr);margin-bottom:12px"></div>
+      <div class="local-time-label">흑 AI 난이도</div>
+      <div class="local-times" id="aivaiBDiff" style="grid-template-columns:repeat(3,1fr);margin-bottom:12px"></div>
+      <div class="local-time-label">기물 구성</div>
+      <div class="local-pieces" id="aivaiPieces"></div>
+      <div class="local-time-label">⏱ 시간 제한</div>
+      <div class="local-times" id="aivaiTimes"></div>
+      <div class="local-summary" id="aivaiSummary"></div>
+      <div class="actions">
+        <button class="btn btn-ghost" onclick="closeAiVai()">취소</button>
+        <button class="btn btn-gold" onclick="startAiVaiGame()">⚔️ 시작</button>
       </div>
     </div>
   </div>
@@ -527,6 +552,85 @@ window.startAiGame = function(){
     difficulty: window._aiDiff,
     hand: hand,
     time: window._aiTime
+  });
+  location.href = 'FRONTIER.html?' + params.toString();
+};
+
+// ----- AI vs AI 모드 -----
+window._aivaiWDiff = 'hard';
+window._aivaiBDiff = 'hard';
+window._aivaiCounts = {Q:1, R:2, B:2, N:2, P:8, SH:1, SN:0, JP:0};
+window._aivaiTime = 'unlimited';
+
+window.openAiVaiModal = function(){
+  renderAiVaiSetup();
+  document.getElementById('aiVaiModal').classList.add('show');
+};
+window.closeAiVai = function(){ document.getElementById('aiVaiModal').classList.remove('show'); };
+window.setAiVaiWDiff = function(v){ window._aivaiWDiff = v; renderAiVaiSetup(); };
+window.setAiVaiBDiff = function(v){ window._aivaiBDiff = v; renderAiVaiSetup(); };
+window.adjAiVai = function(k, delta){
+  const def = _LOCAL_PIECE_DEFS[k]; if(!def) return;
+  window._aivaiCounts[k] = Math.max(0, Math.min(def.max, (window._aivaiCounts[k]||0) + delta));
+  renderAiVaiSetup();
+};
+window.setAiVaiTime = function(v){ window._aivaiTime = v; renderAiVaiSetup(); };
+
+function renderAiVaiSetup(){
+  const diffOpts = [
+    {v:'easy', l:'🟢 쉬움'},
+    {v:'normal', l:'🟡 보통'},
+    {v:'hard', l:'🔴 어려움'}
+  ];
+  document.getElementById('aivaiWDiff').innerHTML = diffOpts.map(o =>
+    `<button class="tbtn ${o.v===window._aivaiWDiff?'on':''}" onclick="setAiVaiWDiff('${o.v}')">${o.l}</button>`
+  ).join('');
+  document.getElementById('aivaiBDiff').innerHTML = diffOpts.map(o =>
+    `<button class="tbtn ${o.v===window._aivaiBDiff?'on':''}" onclick="setAiVaiBDiff('${o.v}')">${o.l}</button>`
+  ).join('');
+
+  // 기물
+  const pe = document.getElementById('aivaiPieces');
+  pe.innerHTML = _LOCAL_PIECE_ORDER.map(k=>{
+    const d = _LOCAL_PIECE_DEFS[k];
+    const c = window._aivaiCounts[k] || 0;
+    return `
+    <div class="local-piece">
+      <div class="sym ${d.spec?'spec':''}">${d.sym}</div>
+      <div class="info">
+        <div class="pname">${d.name}</div>
+        <div class="pdesc">${d.desc}</div>
+      </div>
+      <div class="ctl">
+        <button class="cbtn" onclick="adjAiVai('${k}',-1)" ${c<=0?'disabled':''}>−</button>
+        <span class="cnum">${c}</span>
+        <button class="cbtn" onclick="adjAiVai('${k}',1)" ${c>=d.max?'disabled':''}>+</button>
+      </div>
+    </div>`;
+  }).join('');
+
+  // 시간
+  document.getElementById('aivaiTimes').innerHTML = _LOCAL_TIME_OPTS.map(o=>
+    `<button class="tbtn ${o.v===window._aivaiTime?'on':''}" onclick="setAiVaiTime('${o.v}')">${o.l}</button>`
+  ).join('');
+
+  const total = 1 + Object.values(window._aivaiCounts).reduce((a,b)=>a+b,0);
+  const tlabel = _LOCAL_TIME_OPTS.find(o=>o.v===window._aivaiTime)?.l || '제한없음';
+  const wlbl = diffOpts.find(o=>o.v===window._aivaiWDiff)?.l || '어려움';
+  const blbl = diffOpts.find(o=>o.v===window._aivaiBDiff)?.l || '어려움';
+  document.getElementById('aivaiSummary').innerHTML = `
+    백: <b style="color:var(--gold)">${wlbl}</b> vs 흑: <b style="color:var(--gold)">${blbl}</b><br>
+    각 진영 총 기물: <b style="color:var(--gold)">${total}</b> · 총 시간: <b style="color:var(--gold)">${tlabel}</b>`;
+}
+
+window.startAiVaiGame = function(){
+  const hand = _LOCAL_PIECE_ORDER.reduce((s,k)=> s + k + (window._aivaiCounts[k]||0), 'K1');
+  const params = new URLSearchParams({
+    mode:'aivai',
+    wdiff: window._aivaiWDiff,
+    bdiff: window._aivaiBDiff,
+    hand: hand,
+    time: window._aivaiTime
   });
   location.href = 'FRONTIER.html?' + params.toString();
 };
