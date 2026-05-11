@@ -781,9 +781,11 @@ const IS_NET   = (NET_ROLE === 'host' || NET_ROLE === 'guest');
 const IS_SPEC  = (NET_ROLE === 'spectator');
 const IS_REPLAY = (MODE === 'replay');
 
-// 시간 제한
+// 시간 제한 (Fischer-style 총 시간)
 const TIME_LIMIT = TIME_LIMIT_RAW === 'unlimited' || TIME_LIMIT_RAW === '0'
   ? 0 : parseInt(TIME_LIMIT_RAW);
+// 증분 (한 수 완료 시 추가되는 시간, 초 단위)
+const TIME_INC = parseInt(Q.get('inc') || '0') || 0;
 
 // ===================================================================
 // 2. 기물 정의
@@ -3007,12 +3009,14 @@ function escapeHtml(s){return String(s).replace(/[&<>"']/g, c=>({'&':'&amp;','<'
 document.getElementById('chatInput').addEventListener('keydown', e => { if(e.key==='Enter') sendChat(); });
 
 // ===================================================================
-// 17. 타이머
+// 17. 타이머 — 체스식 총 시간 (Fischer 증분)
 // ===================================================================
-let _timerStart = 0;
+// 각 플레이어는 TIME_LIMIT 만큼의 총 시간을 갖고, 자기 차례에만 차감됨.
+// 한 수 완료 시 그 수를 둔 플레이어에게 TIME_INC 만큼 추가.
+let _turnStartTime = 0;           // 현재 턴 시작 시각
 let _timerInterval = null;
-let _wTimeLeft = 0;
-let _bTimeLeft = 0;
+let _wTimeLeft = 0;               // 백의 남은 총 시간 (초)
+let _bTimeLeft = 0;               // 흑의 남은 총 시간 (초)
 
 function startTimerIfNeeded(){
   if(TIME_LIMIT <= 0) return;
@@ -3021,55 +3025,79 @@ function startTimerIfNeeded(){
   document.getElementById('topbarTimer').style.display = '';
   _wTimeLeft = TIME_LIMIT;
   _bTimeLeft = TIME_LIMIT;
-  _timerStart = Date.now();
+  _turnStartTime = Date.now();
   if(_timerInterval) clearInterval(_timerInterval);
   _timerInterval = setInterval(updateTimer, 200);
   updateTimer();
 }
+
 function updateTimer(){
   if(gameOver){ clearInterval(_timerInterval); return; }
-  const elapsed = (Date.now() - _timerStart) / 1000;
-  const turnLeft = Math.max(0, TIME_LIMIT - elapsed);
+  if(TIME_LIMIT <= 0) return;
+  // 현재 차례인 플레이어의 누적 경과 (이번 턴)
+  const elapsedNow = (Date.now() - _turnStartTime) / 1000;
+  const wDisp = turn === 'w' ? Math.max(0, _wTimeLeft - elapsedNow) : _wTimeLeft;
+  const bDisp = turn === 'b' ? Math.max(0, _bTimeLeft - elapsedNow) : _bTimeLeft;
+
   const fmt = s => {
     s = Math.max(0, Math.ceil(s));
     const m = Math.floor(s/60), x = s%60;
     return (m<10?'0':'')+m+':'+(x<10?'0':'')+x;
   };
 
-  // 양쪽 시간: 현재 차례면 turnLeft, 대기 중이면 TIME_LIMIT 표시
-  const wTime = turn === 'w' ? turnLeft : TIME_LIMIT;
-  const bTime = turn === 'b' ? turnLeft : TIME_LIMIT;
-
-  // 토픽바 듀얼 타이머 (모든 화면에서 보임)
+  // 토픽바 듀얼 타이머
   const ttw = document.getElementById('ttwTime'), ttb = document.getElementById('ttbTime');
   const ttWBox = document.getElementById('ttWhite'), ttBBox = document.getElementById('ttBlack');
-  if(ttw) ttw.textContent = fmt(wTime);
-  if(ttb) ttb.textContent = fmt(bTime);
+  if(ttw) ttw.textContent = fmt(wDisp);
+  if(ttb) ttb.textContent = fmt(bDisp);
   if(ttWBox){
     ttWBox.classList.toggle('active', turn === 'w');
-    ttWBox.classList.toggle('warn', turn === 'w' && turnLeft < 10);
+    ttWBox.classList.toggle('warn', turn === 'w' && wDisp < 10);
   }
   if(ttBBox){
     ttBBox.classList.toggle('active', turn === 'b');
-    ttBBox.classList.toggle('warn', turn === 'b' && turnLeft < 10);
+    ttBBox.classList.toggle('warn', turn === 'b' && bDisp < 10);
   }
 
-  // 사이드 패널 타이머 (데스크탑 기존 유지)
-  if(turn === MY_COLOR || IS_LOCAL){
-    const t = document.getElementById( (IS_LOCAL ? (turn===MY_COLOR?'myTimer':'oppTimer') : 'myTimer') );
-    if(t){ t.textContent = fmt(turnLeft); t.classList.toggle('warn', turnLeft < 10); }
-    const otherT = document.getElementById( (IS_LOCAL ? (turn===MY_COLOR?'oppTimer':'myTimer') : 'oppTimer') );
-    if(otherT){ otherT.textContent = fmt(TIME_LIMIT); otherT.classList.remove('warn'); }
+  // 사이드 패널 타이머 (각 패널은 색깔별이 아니라 'MY'/'OPP' 매핑)
+  // myTimer = MY_COLOR 쪽 시간, oppTimer = opp(MY_COLOR) 쪽 시간
+  if(IS_LOCAL){
+    // 로컬: myTimer = 현재 turn 쪽 (둘이 번갈아 둠)
+    const t = document.getElementById( turn==='w'?'myTimer':'oppTimer' );
+    const o = document.getElementById( turn==='w'?'oppTimer':'myTimer' );
+    if(t){ t.textContent = fmt(turn==='w'?wDisp:bDisp); t.classList.toggle('warn',(turn==='w'?wDisp:bDisp)<10); }
+    if(o){ o.textContent = fmt(turn==='w'?bDisp:wDisp); o.classList.remove('warn'); }
   } else {
-    document.getElementById('oppTimer').textContent = fmt(turnLeft);
-    document.getElementById('oppTimer').classList.toggle('warn', turnLeft < 10);
-    document.getElementById('myTimer').textContent = fmt(TIME_LIMIT);
+    // 온라인/AI: myTimer = MY_COLOR 쪽, oppTimer = 반대쪽
+    const myDisp = MY_COLOR === 'w' ? wDisp : bDisp;
+    const opDisp = MY_COLOR === 'w' ? bDisp : wDisp;
+    const myT = document.getElementById('myTimer');
+    const opT = document.getElementById('oppTimer');
+    if(myT){ myT.textContent = fmt(myDisp); myT.classList.toggle('warn', turn===MY_COLOR && myDisp < 10); }
+    if(opT){ opT.textContent = fmt(opDisp); opT.classList.toggle('warn', turn!==MY_COLOR && opDisp < 10); }
   }
-  if(turnLeft <= 0){
+
+  // 시간 초과 검사
+  const activeDisp = turn === 'w' ? wDisp : bDisp;
+  if(activeDisp <= 0){
     clearInterval(_timerInterval);
     const loser = turn;
     endGame('⏱','시간 초과', `${loser==='w'?'백':'흑'}의 시간이 초과되었습니다.`, opp(loser));
   }
+}
+
+// 한 수 완료 시 호출 — 그 수를 둔 플레이어의 경과 시간 차감 + 증분 추가
+function commitMoveTime(){
+  if(TIME_LIMIT <= 0) return;
+  // 누가 방금 수를 뒀는가? (turn은 이미 바뀐 상태) → opp(turn)
+  const moved = opp(turn);
+  const elapsed = (Date.now() - _turnStartTime) / 1000;
+  if(moved === 'w'){
+    _wTimeLeft = Math.max(0, _wTimeLeft - elapsed + TIME_INC);
+  } else {
+    _bTimeLeft = Math.max(0, _bTimeLeft - elapsed + TIME_INC);
+  }
+  _turnStartTime = Date.now();
 }
 
 // 기물 점수 (재질) 계산 + 표시
@@ -3104,13 +3132,12 @@ function updateMaterial(){
 
 // 차례 변경 시 타이머 리셋
 const _origApply = applyAction;
-// hook은 복잡하므로 finalizeAfterMove 안에서 호출하도록 수정
-// 간단하게: turn 변경을 감지하여 리셋
+// 턴 변경 감지: 한 수 완료된 시점이므로 그 수 둔 사람의 시간 차감 + 증분 적용
 let _lastTurn = turn;
 function watchTurnForTimer(){
   if(_lastTurn !== turn){
     _lastTurn = turn;
-    _timerStart = Date.now();
+    commitMoveTime();
   }
 }
 setInterval(watchTurnForTimer, 100);

@@ -443,7 +443,7 @@ function renderLocalSetup(){
   const tlabel = _LOCAL_TIME_OPTS.find(o=>o.v===window._localTime)?.l || '5분';
   document.getElementById('localSummary').innerHTML = `
     각 진영 총 기물 수: <b style="color:var(--gold)">${total}</b><br>
-    1턴 시간: <b style="color:var(--gold)">${tlabel}</b>`;
+    총 시간: <b style="color:var(--gold)">${tlabel}</b> (체스식 누적)`;
 }
 
 window.startLocalGame = function(){
@@ -905,7 +905,7 @@ window.startTutorial = function(){
       });
     } catch(e){ alert('입장 처리 실패: '+(e.message||e)); return; }
     const params = new URLSearchParams({
-      role:'guest', room:code, time:r.timeLimit||'unlimited',
+      role:'guest', room:code, time:r.timeLimit||'unlimited', inc:r.timeInc||'0',
       uid:MY_UID, nick:MY_NICK, elo:MY_ELO,
       hand:r.hand||'K1Q1R2B2N2P8SH0SN0JP0'
     });
@@ -915,7 +915,7 @@ window.startTutorial = function(){
   window.spectate = function(code){
     const r = ROOMS[code]; if(!r) return;
     const params = new URLSearchParams({
-      role:'spectator', room:code, time:r.timeLimit||'unlimited',
+      role:'spectator', room:code, time:r.timeLimit||'unlimited', inc:r.timeInc||'0',
       uid:MY_UID||'spec-'+Math.random().toString(36).slice(2,8),
       nick:MY_NICK||'관전자', elo:MY_ELO||1200,
       hand:r.hand||'K1Q1R2B2N2P8SH0SN0JP0'

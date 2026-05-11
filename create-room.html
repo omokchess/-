@@ -146,6 +146,8 @@ input,textarea{font-family:inherit;outline:none}
     <div class="card">
       <h3>시간 제한</h3>
       <div class="times" id="times"></div>
+      <h3 style="margin-top:14px">증분 (수당 추가 시간)</h3>
+      <div class="times" id="incs"></div>
       <div class="subtitle" style="margin-top:8px">현재 설정 요약</div>
       <div style="background:var(--panel2);border:1px solid var(--border);border-radius:8px;padding:10px;font-size:12px;color:var(--muted);line-height:1.7;margin-bottom:18px" id="summary"></div>
       <button class="btn btn-gold" onclick="createRoom()" id="createBtn">방 만들기</button>
@@ -277,12 +279,26 @@ function renderTimes(){
 }
 function setTime(v){ SEL_TIME = v; renderTimes(); updateSummary(); }
 
+// =============== 증분 ===============
+const INC_OPTS = [
+  {v:'0',l:'없음'},{v:'1',l:'1초'},{v:'3',l:'3초'},{v:'5',l:'5초'},{v:'10',l:'10초'}
+];
+let SEL_INC = '0';
+function renderIncs(){
+  document.getElementById('incs').innerHTML = INC_OPTS.map(o=>
+    `<button class="tbtn ${o.v===SEL_INC?'on':''}" onclick="setInc('${o.v}')">${o.l}</button>`
+  ).join('');
+}
+function setInc(v){ SEL_INC = v; renderIncs(); updateSummary(); }
+
 function updateSummary(){
   const total = Object.values(counts).reduce((a,b)=>a+b, 0);
   const tlabel = TIME_OPTS.find(o=>o.v===SEL_TIME)?.l || '5분';
+  const ilabel = INC_OPTS.find(o=>o.v===SEL_INC)?.l || '없음';
   document.getElementById('summary').innerHTML = `
     총 기물 수: <b style="color:var(--gold)">${total}</b><br>
-    1턴 시간: <b style="color:var(--gold)">${tlabel}</b><br>
+    총 시간: <b style="color:var(--gold)">${tlabel}</b><br>
+    수당 증분: <b style="color:var(--gold)">${ilabel}</b><br>
     배치 영역: 6×4 (b~g, 3~6행)`;
 }
 
@@ -320,6 +336,7 @@ async function createRoom(){
     password: document.getElementById('roomPw').value.trim() || '',
     hand: buildHandStr(),
     timeLimit: SEL_TIME,
+    timeInc: SEL_INC,
     createdAt: Date.now(),
     lastActivity: Date.now(),
     started: false,
@@ -352,7 +369,7 @@ async function createRoom(){
       _fbDb.ref('rooms/'+MY_CODE).update({started:true}).then(()=>{
         // 페이지 떠나기 전 myRoomCode 보호 (이건 게임 페이지 이슈, 여기선 단순 이동)
         const params = new URLSearchParams({
-          role:'host', room:MY_CODE, time:SEL_TIME,
+          role:'host', room:MY_CODE, time:SEL_TIME, inc:SEL_INC,
           uid:MY_UID, nick:MY_NICK, elo:MY_ELO,
           hand:data.hand
         });
@@ -387,6 +404,8 @@ window.addEventListener('beforeunload', ()=>{
 // =============== 초기화 ===============
 renderPieces();
 renderTimes();
+renderIncs();
+updateSummary();
 </script>
 </body>
 </html>
