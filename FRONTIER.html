@@ -113,6 +113,42 @@ input{font-family:inherit;outline:none}
   background:rgba(255,69,58,.06)}
 .cell.sel{background:rgba(245,200,66,.5)!important}
 .cell.last{background:rgba(245,200,66,.3)!important}
+.cell.last-place{background:rgba(255,69,58,.32)!important;box-shadow:inset 0 0 0 2px rgba(255,69,58,.55)}
+
+/* 토픽바 타이머 (모든 화면 크기에서 보임) */
+.topbar-timer{display:flex;gap:4px;align-items:center;font-family:'Cinzel',monospace}
+.tt-side{display:flex;gap:3px;align-items:center;padding:3px 7px;border-radius:6px;
+  background:var(--panel2);border:1px solid transparent;font-size:13px;font-weight:700;
+  transition:all .15s}
+.tt-side.active{background:rgba(245,200,66,.18);border-color:var(--gold);color:var(--gold)}
+.tt-side.warn{animation:pulse 1s infinite;color:var(--red);background:rgba(255,69,58,.15);border-color:var(--red)}
+.tt-side .ti{font-size:13px;line-height:1}
+.tt-side.w .ti{color:#fff;text-shadow:0 0 2px #000}
+.tt-side.b .ti{color:#1c1c1e;text-shadow:0 0 1px #fff,0 0 2px #fff}
+
+/* 토픽바 기물 점수 */
+.topbar-material{display:flex;gap:3px;align-items:center;font-family:'Cinzel',monospace;font-size:12px}
+.tm-side{display:flex;gap:2px;align-items:center;padding:2px 6px;border-radius:5px;
+  background:var(--panel2);font-weight:700}
+.tm-side .ti{font-size:12px;line-height:1}
+.tm-side.w .ti{color:#fff;text-shadow:0 0 2px #000}
+.tm-side.b .ti{color:#1c1c1e;text-shadow:0 0 1px #fff,0 0 2px #fff}
+.tm-diff{font-size:11px;color:var(--muted);padding:0 2px}
+.tm-diff.adv-w{color:#fff}
+.tm-diff.adv-b{color:#888}
+
+@media (max-width:600px){
+  .topbar-timer{gap:2px}
+  .tt-side{padding:2px 5px;font-size:11px}
+  .tt-side .ti{font-size:11px}
+  .topbar-material{font-size:10px}
+  .tm-side{padding:2px 4px}
+  .tm-side .ti{font-size:10px}
+}
+
+/* 리플레이 마커 추가 색상 */
+.replay-mark.promote{background:#0a84ff;box-shadow:0 0 4px rgba(10,132,255,.6)}
+.replay-mark.place{background:var(--orange);box-shadow:0 0 4px rgba(255,149,0,.6)}
 .cell.check::before{content:'';position:absolute;inset:0;background:rgba(255,69,58,.4);border-radius:0;animation:checkpulse 1s infinite}
 @keyframes checkpulse{50%{background:rgba(255,69,58,.15)}}
 .cell .pc{position:relative;z-index:1}
@@ -426,6 +462,15 @@ body.replay-mode #chatBtn,body.replay-mode #chatPanel,body.replay-mode #forfeitB
     </div>
     <div class="tb-mid">FRONTIER</div>
     <div class="tb-right">
+      <div class="topbar-timer" id="topbarTimer" style="display:none">
+        <span class="tt-side w" id="ttWhite"><span class="ti">♔</span><span class="tv" id="ttwTime">--:--</span></span>
+        <span class="tt-side b" id="ttBlack"><span class="ti">♚</span><span class="tv" id="ttbTime">--:--</span></span>
+      </div>
+      <div class="topbar-material" id="topbarMaterial" style="display:none">
+        <span class="tm-side w"><span class="ti">♔</span><span class="tv" id="tmwScore">0</span></span>
+        <span class="tm-diff" id="tmDiff">=</span>
+        <span class="tm-side b"><span class="ti">♚</span><span class="tv" id="tmbScore">0</span></span>
+      </div>
       <span id="modeLbl" style="font-size:12px;color:var(--gold);font-weight:700;background:rgba(245,200,66,.1);padding:3px 8px;border-radius:6px;border:1px solid rgba(245,200,66,.3)"></span>
       <button class="tb-btn" onclick="openRules()" title="게임 규칙 보기">📖</button>
       <button class="tb-btn danger" onclick="confirmForfeit()" id="forfeitBtn" style="display:none">기권</button>
@@ -501,6 +546,22 @@ body.replay-mode #chatBtn,body.replay-mode #chatPanel,body.replay-mode #forfeitB
 <button class="chat-fab" id="chatFab" onclick="toggleChat()" style="display:none">
   💬<span class="chat-badge" id="chatBadge" style="display:none">0</span>
 </button>
+
+<!-- AI 사고 중 인디케이터 -->
+<div id="aiThinkingIndicator" style="display:none;position:fixed;top:60px;left:50%;transform:translateX(-50%);
+  background:rgba(28,28,30,.94);color:var(--gold);padding:10px 18px;border-radius:20px;
+  font-size:14px;font-weight:700;z-index:200;border:1px solid var(--gold);
+  box-shadow:0 4px 16px rgba(0,0,0,.5);align-items:center;gap:8px;backdrop-filter:blur(6px)">
+  <span style="display:inline-block;animation:thinking 1.4s infinite">🤔</span>
+  <span>AI 사고 중...</span>
+</div>
+<style>
+@keyframes thinking{
+  0%,100%{transform:translateY(0) rotate(0)}
+  25%{transform:translateY(-2px) rotate(-8deg)}
+  75%{transform:translateY(-2px) rotate(8deg)}
+}
+</style>
 <div class="chat-panel" id="chatPanel">
   <div class="chat-head">
     <span>채팅</span>
@@ -1358,8 +1419,14 @@ function renderBoard(){
 
       // 마지막 수 강조
       if(lastMove){
-        if((lastMove.fr === r && lastMove.fc === c) || (lastMove.tr === r && lastMove.tc === c)){
-          cell.classList.add('last');
+        if(lastMove.type === 'place'){
+          // 배치는 빨간 하이라이트 (단일 칸)
+          if(lastMove.tr === r && lastMove.tc === c) cell.classList.add('last-place');
+        } else {
+          // 이동/저격/밀기는 금색 하이라이트 (출발+도착)
+          if((lastMove.fr === r && lastMove.fc === c) || (lastMove.tr === r && lastMove.tc === c)){
+            cell.classList.add('last');
+          }
         }
       }
 
@@ -1588,6 +1655,7 @@ function renderAll(){
   renderBoard();
   renderHands();
   renderStatus();
+  updateMaterial();
   // 시트가 열려있으면 데이터 갱신 (수가 진행될 때 시트가 stale 안 되게)
   const sheet = document.getElementById('oppSheet');
   if(sheet && sheet.classList.contains('show')) populateOppSheet();
@@ -2149,18 +2217,39 @@ function aiTurn(){
     // 합법수 없음 = 패배 상황 (이미 finalize에서 처리됐을 수 있음)
     return;
   }
+  // 어려움 난이도는 사고 시간이 길어 UI 표시
+  if(DIFF === 'hard'){
+    showAIThinking(true);
+    // 다음 프레임에 실행 → UI가 인디케이터 표시 후 시작
+    setTimeout(() => {
+      if(gameOver){ showAIThinking(false); return; }
+      let best;
+      try { best = aiHard(list); } catch(e){ console.error('AI 오류', e); best = list[0]; }
+      showAIThinking(false);
+      if(!best) best = list[Math.floor(Math.random()*list.length)];
+      if(best.type === 'move'){
+        const p = board[best.fr][best.fc];
+        if(p && p.kind === 'P' && best.tr === 7) best.promote = 'Q';
+      }
+      submitAction(best);
+    }, 30);
+    return;
+  }
   let best;
   if(DIFF === 'easy') best = aiEasy(list);
-  else if(DIFF === 'hard') best = aiHard(list);
   else best = aiNormal(list);
 
   if(!best) best = list[Math.floor(Math.random()*list.length)];
-  // 폰 프로모션 처리
   if(best.type === 'move'){
     const p = board[best.fr][best.fc];
     if(p && p.kind === 'P' && best.tr === 7) best.promote = 'Q';
   }
   submitAction(best);
+}
+
+function showAIThinking(show){
+  const el = document.getElementById('aiThinkingIndicator');
+  if(el) el.style.display = show ? 'flex' : 'none';
 }
 
 function aiEasy(list){
@@ -2205,88 +2294,195 @@ function aiNormal(list){
   return top[Math.floor(Math.random()*top.length)].a;
 }
 
+// ===== AI 어려움 — 알파베타 미니맥스 (반복 회피 + 깊이 탐색) =====
+const AI_HARD_TIME_MS = 2500;     // 최대 사고 시간
+const AI_HARD_MAX_DEPTH = 5;       // 최대 탐색 깊이 (반복 = 5수 lookahead)
+const AI_HARD_TT_MAX = 100000;     // 트랜스포지션 테이블 최대 엔트리
+
 function aiHard(list){
-  // 1. 즉시 승
+  // 1. 즉시 승리 검사 (싸고 명확)
   for(const a of list){
     const snap = snapshotState();
     const r = applyAction(a, {silent:true});
     if(r.ok && (r.fiveWin === 'b' || r.checkmate === 'b')){ restoreState(snap); return a; }
     restoreState(snap);
   }
-  // 2. 상대 위협 차단
+  // 2. 상대 4연속 위협 차단
   const block = findBlock4(list, 'w');
   if(block) return block;
 
-  // 3. 모든 합법수에 대한 1수 평가 + 반복 카운트
-  const all = [];
+  // 3. 모든 합법수 1차 평가 + 반복 카운트 (반복 회피 사전 점수 적용)
+  const startTime = Date.now();
+  const tt = new Map(); // 위치별 캐싱
+  const allScored = [];
   for(const a of list){
+    if(Date.now() - startTime > AI_HARD_TIME_MS * 0.15) break; // 시드 평가에 너무 오래 안 쓰기
     const snap = snapshotState();
     const r = applyAction(a, {silent:true});
     if(!r.ok){ restoreState(snap); continue; }
-    const sBase = evaluatePosition('b');
-    // 추가 휴리스틱
-    let extra = 0;
-    if(r.fiveWin === 'b' || r.checkmate === 'b') extra += 100000;
-    if(isInCheck('w')) extra += 50;
-    if(isInCheck('b')) extra -= 80;
-    // 반복 카운트
+    let baseScore = evaluatePosition('b');
+    if(r.fiveWin === 'b' || r.checkmate === 'b') baseScore = 99000;
+    else if(r.fiveWin === 'w' || r.checkmate === 'w') baseScore = -99000;
+    else if(r.suicide) baseScore = -99000;
     const ser = serializeBoard();
     const repCount = moveHistory.filter(s => s === ser).length;
     restoreState(snap);
-    all.push({a, score: sBase + extra, repCount});
+    allScored.push({a, baseScore, repCount});
   }
-  if(!all.length) return list[0];
+  if(!allScored.length) return list[0];
 
-  // 4. 강력한 반복 페널티 — 후보 선정 단계부터 적용
-  // 한 번 본 상태: -1500 / 두 번 본 상태 (다음 가면 3수 동형 무승부 트리거): -100000
-  all.forEach(x => {
-    if(x.repCount >= 2) x.adj = x.score - 100000;
-    else if(x.repCount === 1) x.adj = x.score - 1500;
-    else x.adj = x.score;
+  // 반복 페널티 (사전 점수에 반영)
+  allScored.forEach(x => {
+    x.adj = x.baseScore;
+    if(x.repCount === 1) x.adj -= 1500;
+    else if(x.repCount >= 2) x.adj -= 100000;
   });
-  all.sort((x,y) => y.adj - x.adj);
+  allScored.sort((x,y) => y.adj - x.adj);
 
-  // 5. 상위 12개에 대해 2수 lookahead
-  const cands = all.slice(0, Math.min(12, all.length));
-  const scored = [];
-  for(const c of cands){
-    const snap = snapshotState();
-    const r1 = applyAction(c.a, {silent:true});
-    if(!r1.ok){ restoreState(snap); continue; }
-    if(r1.fiveWin === 'b' || r1.checkmate === 'b'){ restoreState(snap); return c.a; }
-    // 상대 최선
-    const oppList = allLegalActions('w');
-    let bestOppScore = -Infinity;
-    for(const oa of oppList.slice(0, 18)){
-      const snap2 = snapshotState();
-      const r2 = applyAction(oa, {silent:true});
-      if(r2.ok){
-        let s2 = -evaluatePosition('b');
-        if(r2.fiveWin === 'w' || r2.checkmate === 'w') s2 = -100000;
-        if(s2 > bestOppScore) bestOppScore = s2;
+  // 4. 루트 후보 — 상위 15개
+  const rootCands = allScored.slice(0, Math.min(15, allScored.length));
+
+  let bestMove = rootCands[0].a;
+  let bestScore = rootCands[0].adj;
+  let bestDepth = 1;
+
+  // 5. Iterative deepening (depth 2 → 5)
+  for(let depth = 2; depth <= AI_HARD_MAX_DEPTH; depth++){
+    if(Date.now() - startTime > AI_HARD_TIME_MS * 0.55) break; // 절반 넘으면 다음 깊이 안 함
+
+    let iterBest = -Infinity;
+    let iterMove = null;
+    let alpha = -99999;
+    const beta = 99999;
+
+    for(const {a, repCount} of rootCands){
+      if(Date.now() - startTime > AI_HARD_TIME_MS) break;
+
+      const snap = snapshotState();
+      const r = applyAction(a, {silent:true});
+      if(!r.ok){ restoreState(snap); continue; }
+
+      let score;
+      if(r.fiveWin === 'b' || r.checkmate === 'b'){
+        score = 50000 - (AI_HARD_MAX_DEPTH - depth);
+      } else if(r.fiveWin === 'w' || r.checkmate === 'w'){
+        score = -50000 + (AI_HARD_MAX_DEPTH - depth);
+      } else if(r.suicide){
+        score = -50000;
+      } else {
+        // 상대(백) 차례에서 negamax 재귀: 상대 입장 점수의 음수가 우리 점수
+        score = -alphaBetaSearch(depth - 1, -beta, -alpha, 'w', startTime, AI_HARD_TIME_MS, tt);
       }
-      restoreState(snap2);
-      if(bestOppScore < -50000) break;
+
+      // 반복 페널티 (실제 결정에도 반영)
+      if(repCount === 1) score -= 1500;
+      else if(repCount >= 2) score -= 100000;
+
+      restoreState(snap);
+
+      if(score > iterBest){
+        iterBest = score;
+        iterMove = a;
+      }
+      if(score > alpha) alpha = score;
     }
-    restoreState(snap);
-    const combined = c.adj + (bestOppScore === -Infinity ? 0 : (-bestOppScore) * 0.5);
-    scored.push({a: c.a, s: combined, repCount: c.repCount});
+
+    // 이번 깊이 완료된 경우만 결과 채택 (시간초과로 부분만 처리됐을 수도)
+    if(iterMove && (Date.now() - startTime <= AI_HARD_TIME_MS)){
+      bestMove = iterMove;
+      bestScore = iterBest;
+      bestDepth = depth;
+    }
+
+    // 메이트 발견 시 더 깊이 안 가도 됨
+    if(Math.abs(bestScore) > 40000) break;
   }
-  if(!scored.length) return all[0].a;
 
-  scored.sort((x,y)=> y.s - x.s);
+  // 신규 상태 풀에서만 최종 선택 (페널티만으론 부족할 수 있어 풀 자체를 제한)
+  // — 만약 best가 반복 수면, 신규 수 중 가장 가까운 점수 차이가 작으면 신규로 교체
+  const freshRoot = rootCands.filter(x => x.repCount === 0);
+  if(freshRoot.length > 0){
+    // best가 반복 수일 때만 적용
+    const bestEntry = rootCands.find(x => x.a === bestMove);
+    if(bestEntry && bestEntry.repCount > 0){
+      // best가 반복 수면 신규 수 중 가장 좋은 것 선택 (페널티 없는 점수 기준)
+      bestMove = freshRoot[0].a;
+    }
+  }
 
-  // 6. 최종 결정: 신규 상태 풀에서 우선 선택
-  //    신규(repCount=0) 수가 하나라도 있으면 그 중에서만 결정
-  //    (반복 회피 강제 — 페널티만으론 부족하므로 풀 자체를 제한)
-  const fresh = scored.filter(x => x.repCount === 0);
-  const pool = fresh.length > 0 ? fresh : scored;
+  console.log(`[AI Hard] depth=${bestDepth} score=${bestScore} time=${Date.now()-startTime}ms nodes=${_searchNodes||0}`);
+  _searchNodes = 0;
+  return bestMove;
+}
 
-  // 7. 상위 점수 동률 랜덤 (5% 이내 또는 ±8 이내)
-  const bestS = pool[0].s;
-  const tol = Math.max(Math.abs(bestS) * 0.05, 8);
-  const topTied = pool.filter(x => bestS - x.s <= tol);
-  return topTied[Math.floor(Math.random() * topTied.length)].a;
+let _searchNodes = 0;
+function alphaBetaSearch(depth, alpha, beta, color, startTime, timeLimit, tt){
+  _searchNodes++;
+  if(Date.now() - startTime > timeLimit) return 0;
+
+  if(depth === 0){
+    return evaluatePosition(color);
+  }
+
+  // 트랜스포지션 테이블 조회 (정확값만)
+  const ttKey = serializeBoard() + '@' + depth;
+  const ttHit = tt.get(ttKey);
+  if(ttHit !== undefined) return ttHit;
+
+  const list = allLegalActions(color);
+  if(!list.length){
+    if(isInCheck(color)) return -50000 + depth; // 메이트 (빠른 메이트 선호)
+    return 0; // 스테일메이트
+  }
+
+  // 이동 정렬 (가지치기 효과 ↑)
+  const branchLimit = depth >= 4 ? 8 : (depth >= 3 ? 10 : 14);
+  const scored = list.map(a => {
+    let s = 0;
+    if(a.type === 'move'){
+      const tgt = board[a.tr][a.tc];
+      if(tgt) s += (PIECE_VALUES[tgt.kind] || 0) * 10;
+    } else if(a.type === 'place'){
+      s += (PIECE_VALUES[a.kind] || 0);
+      const dr = Math.min(a.r, 7-a.r);
+      const dc = Math.min(a.c, 7-a.c);
+      s += (dr + dc); // 중앙성
+    }
+    return {a, s};
+  });
+  scored.sort((x,y) => y.s - x.s);
+  const cands = scored.slice(0, branchLimit);
+
+  let best = -Infinity;
+  for(const {a} of cands){
+    if(Date.now() - startTime > timeLimit) break;
+
+    const snap = snapshotState();
+    const r = applyAction(a, {silent:true});
+    if(!r.ok){ restoreState(snap); continue; }
+
+    let val;
+    if(r.fiveWin === color || r.checkmate === color){
+      val = 50000 - depth;
+    } else if(r.fiveWin === opp(color) || r.checkmate === opp(color)){
+      val = -50000 + depth;
+    } else if(r.suicide){
+      val = -50000;
+    } else {
+      val = -alphaBetaSearch(depth - 1, -beta, -alpha, opp(color), startTime, timeLimit, tt);
+    }
+
+    restoreState(snap);
+
+    if(val > best) best = val;
+    if(val > alpha) alpha = val;
+    if(alpha >= beta) break; // 베타 컷오프
+  }
+
+  const result = best === -Infinity ? evaluatePosition(color) : best;
+  // TT 저장 (크기 제한)
+  if(tt.size < AI_HARD_TT_MAX) tt.set(ttKey, result);
+  return result;
 }
 
 // 4연속 위협 차단할 수 찾기
@@ -2515,6 +2711,10 @@ function initHost(){
   }
   // PeerID = ROOM_CODE
   _peer = new Peer(ROOM_CODE, {
+    host: 'frontier-peerjs.onrender.com',
+    port: 443,
+    path: '/peerjs',
+    secure: true,
     config:{ 'iceServers':[ {urls:'stun:stun.l.google.com:19302'}, {urls:'stun:stun1.l.google.com:19302'} ]}
   });
   _peer.on('open', id => {
@@ -2534,6 +2734,10 @@ function initGuest(){
   document.getElementById('connectModal').classList.add('show');
   document.getElementById('connectMsg').textContent = '호스트와 연결을 시도합니다...';
   _peer = new Peer({
+    host: 'frontier-peerjs.onrender.com',
+    port: 443,
+    path: '/peerjs',
+    secure: true,
     config:{ 'iceServers':[ {urls:'stun:stun.l.google.com:19302'}, {urls:'stun:stun1.l.google.com:19302'} ]}
   });
   _peer.on('open', id => {
@@ -2562,7 +2766,18 @@ function tryConnect(attempt){
 function setupConn(conn){
   conn.on('data', data => onPeerMessage(data));
   conn.on('close', () => {
-    if(!gameOver) showFlash('상대 연결이 끊겼습니다');
+    // 연결 끊김: 게임 진행 중이면 자동 기권 처리 (남은 쪽이 승리)
+    if(!gameOver && !IS_SPEC){
+      showFlash('상대 연결이 끊겼습니다 — 자동 승리 처리');
+      // 약간 지연 후 endGame (showFlash 보이게)
+      setTimeout(() => {
+        if(!gameOver){
+          endGame('🔌','상대 연결 끊김', '상대 연결이 끊겨 자동 승리합니다.', MY_COLOR);
+        }
+      }, 400);
+    } else if(!gameOver && IS_SPEC){
+      showFlash('호스트 연결이 끊겼습니다');
+    }
   });
   conn.on('error', e => console.error('Conn error',e));
 
@@ -2788,6 +3003,7 @@ function startTimerIfNeeded(){
   if(TIME_LIMIT <= 0) return;
   document.getElementById('myTimer').style.display = '';
   document.getElementById('oppTimer').style.display = '';
+  document.getElementById('topbarTimer').style.display = '';
   _wTimeLeft = TIME_LIMIT;
   _bTimeLeft = TIME_LIMIT;
   _timerStart = Date.now();
@@ -2798,17 +3014,32 @@ function startTimerIfNeeded(){
 function updateTimer(){
   if(gameOver){ clearInterval(_timerInterval); return; }
   const elapsed = (Date.now() - _timerStart) / 1000;
-  const myLeft = TIME_LIMIT - elapsed;
-  // 1턴당 시간 제한이라 해석 → 매 턴 시작 시 리셋
-  // (단순화: 본인 차례에서 elapsed로 카운트다운)
-  // 더 정확한 구현을 위해 turn 변경 시 _timerStart 리셋
   const turnLeft = Math.max(0, TIME_LIMIT - elapsed);
   const fmt = s => {
     s = Math.max(0, Math.ceil(s));
     const m = Math.floor(s/60), x = s%60;
     return (m<10?'0':'')+m+':'+(x<10?'0':'')+x;
   };
-  // 본인 카드 시간만 카운트
+
+  // 양쪽 시간: 현재 차례면 turnLeft, 대기 중이면 TIME_LIMIT 표시
+  const wTime = turn === 'w' ? turnLeft : TIME_LIMIT;
+  const bTime = turn === 'b' ? turnLeft : TIME_LIMIT;
+
+  // 토픽바 듀얼 타이머 (모든 화면에서 보임)
+  const ttw = document.getElementById('ttwTime'), ttb = document.getElementById('ttbTime');
+  const ttWBox = document.getElementById('ttWhite'), ttBBox = document.getElementById('ttBlack');
+  if(ttw) ttw.textContent = fmt(wTime);
+  if(ttb) ttb.textContent = fmt(bTime);
+  if(ttWBox){
+    ttWBox.classList.toggle('active', turn === 'w');
+    ttWBox.classList.toggle('warn', turn === 'w' && turnLeft < 10);
+  }
+  if(ttBBox){
+    ttBBox.classList.toggle('active', turn === 'b');
+    ttBBox.classList.toggle('warn', turn === 'b' && turnLeft < 10);
+  }
+
+  // 사이드 패널 타이머 (데스크탑 기존 유지)
   if(turn === MY_COLOR || IS_LOCAL){
     const t = document.getElementById( (IS_LOCAL ? (turn===MY_COLOR?'myTimer':'oppTimer') : 'myTimer') );
     if(t){ t.textContent = fmt(turnLeft); t.classList.toggle('warn', turnLeft < 10); }
@@ -2824,6 +3055,36 @@ function updateTimer(){
     const loser = turn;
     endGame('⏱','시간 초과', `${loser==='w'?'백':'흑'}의 시간이 초과되었습니다.`, opp(loser));
   }
+}
+
+// 기물 점수 (재질) 계산 + 표시
+function updateMaterial(){
+  // 보드 위 기물의 합 점수
+  let wSum = 0, bSum = 0;
+  for(let r=0; r<8; r++) for(let c=0; c<8; c++){
+    const p = board[r][c];
+    if(!p) continue;
+    const v = PIECE_VALUES[p.kind] || 0;
+    if(p.color === 'w') wSum += v;
+    else bSum += v;
+  }
+  // 손패도 포함 (배치 가능한 자원)
+  for(const k of Object.keys(hands.w || {})){
+    wSum += (PIECE_VALUES[k] || 0) * (hands.w[k] || 0);
+  }
+  for(const k of Object.keys(hands.b || {})){
+    bSum += (PIECE_VALUES[k] || 0) * (hands.b[k] || 0);
+  }
+  const tm = document.getElementById('topbarMaterial');
+  if(!tm) return;
+  tm.style.display = '';
+  document.getElementById('tmwScore').textContent = wSum;
+  document.getElementById('tmbScore').textContent = bSum;
+  const diff = wSum - bSum;
+  const diffEl = document.getElementById('tmDiff');
+  if(diff > 0){ diffEl.textContent = `+${diff}`; diffEl.className = 'tm-diff adv-w'; }
+  else if(diff < 0){ diffEl.textContent = diff; diffEl.className = 'tm-diff adv-b'; }
+  else { diffEl.textContent = '='; diffEl.className = 'tm-diff'; }
 }
 
 // 차례 변경 시 타이머 리셋
@@ -3110,30 +3371,44 @@ function buildReplayCaptureMarks(){
   const total = _replayData.actions.length;
   if(total === 0){ marksEl.innerHTML = ''; return; }
 
-  // 슬라이더 트랙 길이 기준 위치 계산
-  // %로 left 지정: turn i가 발생한 위치는 i/total
   const myColor = MY_COLOR;
   const FILES = 'abcdefgh';
   const RANKS = '87654321';
 
   const marks = [];
   _replayData.actions.forEach((meta, i) => {
-    if(!meta.captured) return;
     const turnIdx = i + 1;
-    // 캡쳐자 = action.color, 없으면 턴 인덱스 패리티로 추정 (0=백, 1=흑, 2=백...)
-    // 구버전 리플레이는 move 액션에 color가 없을 수 있음
-    const captorColor = meta.action.color || (i % 2 === 0 ? 'w' : 'b');
-    // 시점 기준: 내가 잡으면 초록, 내가 잡히면 빨강
-    const isMyCapture = captorColor === myColor;
-    const cls = isMyCapture ? 'capture' : 'captured';
-    const capturedSym = SYMBOLS[meta.captured.color]?.[meta.captured.kind] || '?';
     const action = meta.action;
-    const posStr = action.type === 'move' ? `${FILES[action.tc]}${RANKS[action.tr]}` : `${FILES[action.c]}${RANKS[action.r]}`;
-    const label = (isMyCapture ? '획득' : '손실') + ` ${capturedSym} ${posStr}`;
     const leftPct = (turnIdx / total) * 100;
-    marks.push(`<div class="replay-mark ${cls}" style="left:${leftPct}%" data-turn="${turnIdx}" onclick="replayGoTo(${turnIdx})">
-      <span class="replay-mark-tooltip">${turnIdx}수 · ${label}</span>
-    </div>`);
+    const captorColor = action.color || (i % 2 === 0 ? 'w' : 'b');
+    const posStr = action.type === 'move'
+      ? `${FILES[action.tc]}${RANKS[action.tr]}`
+      : `${FILES[action.c]}${RANKS[action.r]}`;
+
+    // 캡쳐 마커 (초록/빨강)
+    if(meta.captured){
+      const isMyCapture = captorColor === myColor;
+      const cls = isMyCapture ? 'capture' : 'captured';
+      const capturedSym = SYMBOLS[meta.captured.color]?.[meta.captured.kind] || '?';
+      const label = (isMyCapture ? '획득' : '손실') + ` ${capturedSym} ${posStr}`;
+      marks.push(`<div class="replay-mark ${cls}" style="left:${leftPct}%" data-turn="${turnIdx}" onclick="replayGoTo(${turnIdx})">
+        <span class="replay-mark-tooltip">${turnIdx}수 · ${label}</span>
+      </div>`);
+    }
+    // 프로모션 마커 (파랑)
+    if(action.type === 'move' && action.promote){
+      const promoSym = SYMBOLS[captorColor]?.[action.promote] || '?';
+      marks.push(`<div class="replay-mark promote" style="left:${leftPct}%" data-turn="${turnIdx}" onclick="replayGoTo(${turnIdx})">
+        <span class="replay-mark-tooltip">${turnIdx}수 · 프로모션 → ${promoSym} ${posStr}</span>
+      </div>`);
+    }
+    // 배치 마커 (주황)
+    if(action.type === 'place'){
+      const placeSym = SYMBOLS[captorColor]?.[action.kind] || '?';
+      marks.push(`<div class="replay-mark place" style="left:${leftPct}%" data-turn="${turnIdx}" onclick="replayGoTo(${turnIdx})">
+        <span class="replay-mark-tooltip">${turnIdx}수 · 배치 ${placeSym} ${posStr}</span>
+      </div>`);
+    }
   });
   marksEl.innerHTML = marks.join('');
 }
