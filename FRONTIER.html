@@ -113,7 +113,7 @@ input{font-family:inherit;outline:none}
   background:rgba(255,69,58,.06)}
 .cell.sel{background:rgba(245,200,66,.5)!important}
 .cell.last{background:rgba(245,200,66,.3)!important}
-.cell.last-place{background:rgba(255,69,58,.32)!important;box-shadow:inset 0 0 0 2px rgba(255,69,58,.55)}
+.cell.last-place{background:rgba(10,132,255,.32)!important;box-shadow:inset 0 0 0 2px rgba(10,132,255,.55)}
 
 /* 토픽바 타이머 (모든 화면 크기에서 보임) */
 .topbar-timer{display:flex;gap:4px;align-items:center;font-family:'Cinzel',monospace}
@@ -913,13 +913,13 @@ function pieceMoves(r, c, piece){
       }
     }
   } else if(k === 'SN'){
-    // 스나이퍼: 이동 불가. 8방향(십자+대각) 1~4칸 시야의 적을 저격. 시야가 막히면(첫 기물에서) 정지.
+    // 스나이퍼: 이동 불가. 십자 4칸 / 대각 3칸 시야의 적을 저격. 시야가 막히면 정지.
     const dirs = [
-      [-1, 0],[ 1, 0],[ 0,-1],[ 0, 1],   // 십자 4방향
-      [-1,-1],[-1, 1],[ 1,-1],[ 1, 1]    // 대각 4방향
+      [-1, 0, 4],[ 1, 0, 4],[ 0,-1, 4],[ 0, 1, 4],   // 십자 4방향: 4칸
+      [-1,-1, 3],[-1, 1, 3],[ 1,-1, 3],[ 1, 1, 3]    // 대각 4방향: 3칸
     ];
-    for(const [dr,dc] of dirs){
-      for(let dist=1; dist<=4; dist++){
+    for(const [dr,dc,maxDist] of dirs){
+      for(let dist=1; dist<=maxDist; dist++){
         const nr = r + dr*dist, nc = c + dc*dist;
         if(!inBounds(nr,nc)) break;
         const t = board[nr][nc];
@@ -1159,17 +1159,17 @@ function finalizeAfterMove(opponentInCheck, snap, silent=false){
   // 차례 넘김
   turn = opp(turn);
 
-  // silent (allLegalActions 합법성 검증 등) 호출에선 종말 검사 건너뜀.
-  // 이게 없으면 hasAnyLegalAction → allLegalActions → applyAction → finalizeAfterMove → ...
-  // 무한재귀로 폭주함.
-  if(silent) return { ok:true };
-
-  // 5연속 검사
+  // 5연속 검사 — 단순 보드 스캔, 재귀 없음 → silent에서도 안전하게 검사
   const fiveWin = checkFiveInRow();
   if(fiveWin){
-    moveHistory.push(serializeBoard());
+    if(!silent) moveHistory.push(serializeBoard());
     return { ok:true, fiveWin };
   }
+
+  // silent (allLegalActions 합법성 검증 등) 호출에선 여기까지.
+  // 체크메이트 검사는 hasAnyLegalAction → applyAction(silent) 재귀이므로 silent에선 건너뜀.
+  // AI는 외부에서 isCheckmate(...)를 별도 호출해 메이트 판정.
+  if(silent) return { ok:true };
 
   // 체크메이트 검사
   if(opponentInCheck && isCheckmate(turn)){
@@ -1790,14 +1790,14 @@ function computeHighlights(r, c, p){
     //  · 적 기물 → 'attack' or 'sniper-blocked' (실제 공격 가능 여부에 따라)
     //  · 우군 기물 → 표시 없음 (orange 안 그림)
     const dirs = [
-      [-1, 0],[ 1, 0],[ 0,-1],[ 0, 1],
-      [-1,-1],[-1, 1],[ 1,-1],[ 1, 1]
+      [-1, 0, 4],[ 1, 0, 4],[ 0,-1, 4],[ 0, 1, 4],   // 십자 4칸
+      [-1,-1, 3],[-1, 1, 3],[ 1,-1, 3],[ 1, 1, 3]    // 대각 3칸
     ];
     // 실제 공격 가능 셀 집합 (시야 차단 적용된 결과)
     const { attacks } = pieceMoves(r, c, p);
     const attackSet = new Set(attacks.map(([ar,ac]) => ar + ',' + ac));
-    for(const [dr, dc] of dirs){
-      for(let dist = 1; dist <= 4; dist++){
+    for(const [dr, dc, maxDist] of dirs){
+      for(let dist = 1; dist <= maxDist; dist++){
         const nr = r + dr*dist, nc = c + dc*dist;
         if(!inBounds(nr, nc)) break;          // 보드 밖이면 멈춤
         const t = board[nr][nc];
@@ -2300,11 +2300,15 @@ const AI_HARD_MAX_DEPTH = 5;       // 최대 탐색 깊이 (반복 = 5수 lookah
 const AI_HARD_TT_MAX = 100000;     // 트랜스포지션 테이블 최대 엔트리
 
 function aiHard(list){
-  // 1. 즉시 승리 검사 (싸고 명확)
+  // 1. 즉시 승리 검사 (5목 또는 체크메이트)
   for(const a of list){
     const snap = snapshotState();
     const r = applyAction(a, {silent:true});
-    if(r.ok && (r.fiveWin === 'b' || r.checkmate === 'b')){ restoreState(snap); return a; }
+    if(r.ok){
+      // silent에선 r.fiveWin은 반환됨, checkmate는 외부 검사 (turn은 이미 'w'로 바뀜)
+      if(r.fiveWin === 'b'){ restoreState(snap); return a; }
+      if(isInCheck('w') && isCheckmate('w')){ restoreState(snap); return a; }
+    }
     restoreState(snap);
   }
   // 2. 상대 4연속 위협 차단
@@ -2321,8 +2325,10 @@ function aiHard(list){
     const r = applyAction(a, {silent:true});
     if(!r.ok){ restoreState(snap); continue; }
     let baseScore = evaluatePosition('b');
-    if(r.fiveWin === 'b' || r.checkmate === 'b') baseScore = 99000;
-    else if(r.fiveWin === 'w' || r.checkmate === 'w') baseScore = -99000;
+    if(r.fiveWin === 'b') baseScore = 99000;
+    else if(r.fiveWin === 'w') baseScore = -99000;
+    else if(isInCheck('w') && isCheckmate('w')) baseScore = 99000; // 우리가 메이트
+    else if(isInCheck('b') && isCheckmate('b')) baseScore = -99000; // 우리가 메이트당함
     else if(r.suicide) baseScore = -99000;
     const ser = serializeBoard();
     const repCount = moveHistory.filter(s => s === ser).length;
@@ -2363,10 +2369,14 @@ function aiHard(list){
       if(!r.ok){ restoreState(snap); continue; }
 
       let score;
-      if(r.fiveWin === 'b' || r.checkmate === 'b'){
+      if(r.fiveWin === 'b'){
         score = 50000 - (AI_HARD_MAX_DEPTH - depth);
-      } else if(r.fiveWin === 'w' || r.checkmate === 'w'){
+      } else if(r.fiveWin === 'w'){
         score = -50000 + (AI_HARD_MAX_DEPTH - depth);
+      } else if(isInCheck('w') && isCheckmate('w')){
+        score = 50000 - (AI_HARD_MAX_DEPTH - depth); // 우리가 상대 메이트
+      } else if(isInCheck('b') && isCheckmate('b')){
+        score = -50000 + (AI_HARD_MAX_DEPTH - depth); // 우리가 메이트당함
       } else if(r.suicide){
         score = -50000;
       } else {
@@ -2462,14 +2472,19 @@ function alphaBetaSearch(depth, alpha, beta, color, startTime, timeLimit, tt){
     if(!r.ok){ restoreState(snap); continue; }
 
     let val;
-    if(r.fiveWin === color || r.checkmate === color){
+    const oppC = opp(color);
+    if(r.fiveWin === color){
       val = 50000 - depth;
-    } else if(r.fiveWin === opp(color) || r.checkmate === opp(color)){
+    } else if(r.fiveWin === oppC){
       val = -50000 + depth;
+    } else if(isInCheck(oppC) && isCheckmate(oppC)){
+      val = 50000 - depth; // 상대 메이트
+    } else if(isInCheck(color) && isCheckmate(color)){
+      val = -50000 + depth; // 내 메이트
     } else if(r.suicide){
       val = -50000;
     } else {
-      val = -alphaBetaSearch(depth - 1, -beta, -alpha, opp(color), startTime, timeLimit, tt);
+      val = -alphaBetaSearch(depth - 1, -beta, -alpha, oppC, startTime, timeLimit, tt);
     }
 
     restoreState(snap);
