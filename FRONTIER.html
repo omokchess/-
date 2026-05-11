@@ -2217,7 +2217,28 @@ async function applyEloChange(winner){
 // ===================================================================
 // 13. AI
 // ===================================================================
+// 기물 가치 — 평가 함수의 기본 (호환성 유지용 상수)
 const PIECE_VALUES = { K:0, Q:90, R:50, B:35, N:30, P:10, SH:25, SN:60, JP:35 };
+
+// === 진화 가능한 평가 가중치 (Genome) ===
+// 진화 알고리즘의 대상. 모든 평가 가중치를 한 객체에 모아놓음.
+// 개체별로 약간씩 다른 유전자 → 다른 플레이 스타일
+const DEFAULT_GENOME = Object.freeze({
+  // 기물 가치 (8)
+  Q: 90, R: 50, B: 35, N: 30, P: 10, SH: 25, SN: 60, JP: 35,
+  // 라인 위협 (4) — 5목 추구
+  threat2: 20,
+  threat3: 200,
+  threat4: 2000,
+  threat5: 100000,
+  // 손패 자원 (1)
+  handRatio: 0.5,
+  // 체크 관련 (2)
+  checkGive: 50,
+  checkRecv: 80
+});
+// 유전자 키 목록 (진화 시 변이/교차 대상)
+const GENOME_KEYS = Object.keys(DEFAULT_GENOME);
 
 function aiTurn(){
   if(gameOver) return;
@@ -2300,7 +2321,8 @@ function aiEasy(list, myColor){
   return list[Math.floor(Math.random()*list.length)];
 }
 
-function aiNormal(list, myColor){
+function aiNormal(list, myColor, genome){
+  const g = genome || DEFAULT_GENOME;
   const oppC = opp(myColor);
   // 1. 즉시 승
   for(const a of list){
@@ -2316,7 +2338,7 @@ function aiNormal(list, myColor){
   const block = findBlock4(list, oppC);
   if(block) return block;
   // 3. 평가 점수 상위 35% 중 랜덤
-  const scored = list.map(a => ({a, s: evaluateAction(a, myColor)}));
+  const scored = list.map(a => ({a, s: evaluateAction(a, myColor, g)}));
   scored.sort((x,y)=> y.s - x.s);
   const top = scored.slice(0, Math.max(1, Math.ceil(scored.length * 0.35)));
   return top[Math.floor(Math.random()*top.length)].a;
@@ -2327,7 +2349,8 @@ const AI_HARD_TIME_MS = 2500;     // 최대 사고 시간
 const AI_HARD_MAX_DEPTH = 5;       // 최대 탐색 깊이 (반복 = 5수 lookahead)
 const AI_HARD_TT_MAX = 100000;     // 트랜스포지션 테이블 최대 엔트리
 
-function aiHard(list, myColor){
+function aiHard(list, myColor, genome){
+  const g = genome || DEFAULT_GENOME;
   const oppC = opp(myColor);
   // 1. 즉시 승리 검사 (5목 또는 체크메이트)
   for(const a of list){
@@ -2352,7 +2375,7 @@ function aiHard(list, myColor){
     const snap = snapshotState();
     const r = applyAction(a, {silent:true});
     if(!r.ok){ restoreState(snap); continue; }
-    let baseScore = evaluatePosition(myColor);
+    let baseScore = evaluatePosition(myColor, g);
     if(r.fiveWin === myColor) baseScore = 99000;
     else if(r.fiveWin === oppC) baseScore = -99000;
     else if(isInCheck(oppC) && isCheckmate(oppC)) baseScore = 99000;
@@ -2405,7 +2428,7 @@ function aiHard(list, myColor){
       } else if(r.suicide){
         score = -50000;
       } else {
-        score = -alphaBetaSearch(depth - 1, -beta, -alpha, oppC, startTime, AI_HARD_TIME_MS, tt);
+        score = -alphaBetaSearch(depth - 1, -beta, -alpha, oppC, startTime, AI_HARD_TIME_MS, tt, g);
       }
 
       if(repCount === 1) score -= 1500;
@@ -2443,12 +2466,13 @@ function aiHard(list, myColor){
 }
 
 let _searchNodes = 0;
-function alphaBetaSearch(depth, alpha, beta, color, startTime, timeLimit, tt){
+function alphaBetaSearch(depth, alpha, beta, color, startTime, timeLimit, tt, genome){
+  const g = genome || DEFAULT_GENOME;
   _searchNodes++;
   if(Date.now() - startTime > timeLimit) return 0;
 
   if(depth === 0){
-    return evaluatePosition(color);
+    return evaluatePosition(color, g);
   }
 
   // 트랜스포지션 테이블 조회 (정확값만)
@@ -2462,15 +2486,15 @@ function alphaBetaSearch(depth, alpha, beta, color, startTime, timeLimit, tt){
     return 0; // 스테일메이트
   }
 
-  // 이동 정렬 (가지치기 효과 ↑)
+  // 이동 정렬 (가지치기 효과 ↑) — 유전자 기반 가치
   const branchLimit = depth >= 4 ? 8 : (depth >= 3 ? 10 : 14);
   const scored = list.map(a => {
     let s = 0;
     if(a.type === 'move'){
       const tgt = board[a.tr][a.tc];
-      if(tgt) s += (PIECE_VALUES[tgt.kind] || 0) * 10;
+      if(tgt) s += (g[tgt.kind] || 0) * 10;
     } else if(a.type === 'place'){
-      s += (PIECE_VALUES[a.kind] || 0);
+      s += (g[a.kind] || 0);
       const dr = Math.min(a.r, 7-a.r);
       const dc = Math.min(a.c, 7-a.c);
       s += (dr + dc); // 중앙성
@@ -2501,7 +2525,7 @@ function alphaBetaSearch(depth, alpha, beta, color, startTime, timeLimit, tt){
     } else if(r.suicide){
       val = -50000;
     } else {
-      val = -alphaBetaSearch(depth - 1, -beta, -alpha, oppC, startTime, timeLimit, tt);
+      val = -alphaBetaSearch(depth - 1, -beta, -alpha, oppC, startTime, timeLimit, tt, g);
     }
 
     restoreState(snap);
@@ -2511,7 +2535,7 @@ function alphaBetaSearch(depth, alpha, beta, color, startTime, timeLimit, tt){
     if(alpha >= beta) break; // 베타 컷오프
   }
 
-  const result = best === -Infinity ? evaluatePosition(color) : best;
+  const result = best === -Infinity ? evaluatePosition(color, g) : best;
   // TT 저장 (크기 제한)
   if(tt.size < AI_HARD_TT_MAX) tt.set(ttKey, result);
   return result;
@@ -2556,44 +2580,46 @@ function findBlock4(list, threatColor){
   return null;
 }
 
-function evaluateAction(a, color){
+function evaluateAction(a, color, genome){
+  const g = genome || DEFAULT_GENOME;
   const snap = snapshotState();
   const r = applyAction(a, {silent:true});
   let score = 0;
   if(!r.ok){ restoreState(snap); return -99999; }
-  score = evaluatePosition(color);
+  score = evaluatePosition(color, g);
   // 즉시 승
   if(r.fiveWin === color) score += 100000;
   if(r.fiveWin === opp(color)) score -= 100000;
   if(r.checkmate === color) score += 100000;
-  // 체크 보너스
-  if(isInCheck(opp(color))) score += 50;
-  // 자기 노출
-  if(isInCheck(color)) score -= 80;
+  // 체크 보너스/페널티 (유전자)
+  if(isInCheck(opp(color))) score += g.checkGive;
+  if(isInCheck(color)) score -= g.checkRecv;
   restoreState(snap);
   return score;
 }
 
-function evaluatePosition(color){
+function evaluatePosition(color, genome){
+  const g = genome || DEFAULT_GENOME;
   let score = 0;
   // 보드 기물
   for(let r=0;r<8;r++) for(let c=0;c<8;c++){
     const p = board[r][c];
     if(!p) continue;
-    const v = PIECE_VALUES[p.kind] || 0;
+    const v = g[p.kind] || 0;
     score += (p.color === color) ? v : -v;
   }
   // 손패
   for(const k of Object.keys(hands.w)){
-    const v = (PIECE_VALUES[k] || 0) * 0.5;
+    const v = (g[k] || 0) * g.handRatio;
     score += hands[color][k] * v - hands[opp(color)][k] * v;
   }
   // 오목 위협
-  score += countLineThreats(color) - countLineThreats(opp(color));
+  score += countLineThreats(color, g) - countLineThreats(opp(color), g);
   return score;
 }
 
-function countLineThreats(col){
+function countLineThreats(col, genome){
+  const g = genome || DEFAULT_GENOME;
   const dirs = [[0,1],[1,0],[1,1],[1,-1]];
   let total = 0;
   for(let r=0;r<8;r++){
@@ -2609,10 +2635,10 @@ function countLineThreats(col){
           else { count=-99; break; }
         }
         if(count<0) continue;
-        if(count>=5) total += 100000;
-        else if(count===4) total += 2000;
-        else if(count===3) total += 200;
-        else if(count===2) total += 20;
+        if(count>=5) total += g.threat5;
+        else if(count===4) total += g.threat4;
+        else if(count===3) total += g.threat3;
+        else if(count===2) total += g.threat2;
       }
     }
   }
