@@ -112,6 +112,57 @@ input{font-family:inherit;outline:none}
   border:3px dashed rgba(255,69,58,.45);border-radius:50%;pointer-events:none;
   background:rgba(255,69,58,.06)}
 .cell.sel{background:rgba(245,200,66,.5)!important}
+/* 진화 학습 모드 — 보드 등 다 숨김 */
+body.evolve-mode > *:not(#evolvePanel){display:none !important}
+body.evolve-mode{padding:0;margin:0;background:linear-gradient(135deg,#1c1c1e,#2c2c2e);min-height:100vh;
+  display:flex;align-items:center;justify-content:center}
+#evolvePanel{width:100%;max-width:680px;padding:20px;font-family:'Inter',sans-serif}
+.ev-card{background:var(--panel);border:1px solid var(--border);border-radius:14px;padding:24px;
+  box-shadow:0 10px 40px rgba(0,0,0,.5)}
+.ev-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:18px;
+  border-bottom:1px solid var(--border);padding-bottom:12px}
+.ev-head h2{margin:0;color:var(--gold);font-family:'Cinzel',serif;font-size:22px}
+.ev-back{padding:6px 12px;background:transparent;border:1px solid var(--border);color:var(--text);
+  border-radius:6px;cursor:pointer;font-size:13px}
+.ev-back:hover{background:var(--panel2)}
+.ev-row{display:flex;justify-content:space-between;align-items:center;margin:12px 0;gap:12px;
+  padding:10px 12px;background:var(--panel2);border-radius:8px}
+.ev-row label{flex:1;font-size:13px;color:var(--text)}
+.ev-row select{flex:0 0 auto;padding:6px 10px;background:var(--panel);border:1px solid var(--border);
+  color:var(--text);border-radius:6px;font-size:13px;min-width:160px}
+.ev-summary{background:var(--panel2);border:1px solid var(--border);border-radius:8px;
+  padding:12px;margin:16px 0;font-size:12px;color:var(--muted);line-height:1.8}
+.ev-summary b{color:var(--gold)}
+.ev-btn{padding:10px 18px;background:transparent;color:var(--text);border:1px solid var(--border);
+  border-radius:8px;cursor:pointer;font-size:14px;font-weight:700;margin:4px}
+.ev-btn:hover{background:var(--panel2)}
+.ev-btn-primary{background:var(--gold);color:#1c1c1e;border-color:var(--gold);width:100%;margin-top:12px}
+.ev-btn-primary:hover{filter:brightness(1.1)}
+.ev-status{font-size:14px;color:var(--gold);font-weight:700;margin-bottom:10px;text-align:center}
+.ev-progress-wrap{width:100%;height:10px;background:var(--panel2);border-radius:5px;overflow:hidden;margin-bottom:12px}
+.ev-progress{height:100%;background:linear-gradient(90deg,var(--gold),#30d158);width:0%;transition:width .3s}
+.ev-gen-info{text-align:center;font-size:13px;color:var(--text);margin-bottom:14px;
+  background:var(--panel2);padding:8px;border-radius:6px}
+.ev-log{background:#0a0a0a;border:1px solid var(--border);border-radius:6px;padding:10px;
+  max-height:280px;overflow-y:auto;font-family:'Menlo',monospace;font-size:11px;line-height:1.5;
+  color:#999;white-space:pre-wrap}
+.ev-log-line{padding:1px 0}
+.ev-best{padding:14px;background:var(--panel2);border-radius:8px;margin:12px 0;text-align:center}
+.ev-best b{color:var(--gold);font-size:16px}
+.ev-genome{background:#0a0a0a;border:1px solid var(--border);border-radius:6px;padding:12px;
+  font-family:'Menlo',monospace;font-size:11px;color:#aaa}
+.ev-genome-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:6px}
+.ev-genome-grid .gk{color:var(--gold);font-weight:700}
+.ev-actions{display:flex;gap:10px;margin-top:14px}
+.ev-actions button{flex:1}
+.ev-card h3{color:var(--gold);font-family:'Cinzel',serif;margin:0 0 14px 0;text-align:center}
+@media (max-width:600px){
+  #evolvePanel{padding:10px}
+  .ev-card{padding:16px}
+  .ev-row{flex-direction:column;align-items:stretch;gap:6px}
+  .ev-row select{min-width:0;width:100%}
+}
+
 .cell.last{background:rgba(245,200,66,.3)!important}
 .cell.last-place{background:rgba(10,132,255,.32)!important;box-shadow:inset 0 0 0 2px rgba(10,132,255,.55)}
 
@@ -778,6 +829,7 @@ if(NET_ROLE === 'guest') MY_COLOR = 'b';
 const IS_LOCAL = (MODE === 'local');
 const IS_AI    = (MODE === 'ai');
 const IS_AIVAI = (MODE === 'aivai');
+const IS_EVOLVE = (MODE === 'evolve');
 const IS_NET   = (NET_ROLE === 'host' || NET_ROLE === 'guest');
 const IS_SPEC  = (NET_ROLE === 'spectator');
 const IS_REPLAY = (MODE === 'replay');
@@ -2240,6 +2292,208 @@ const DEFAULT_GENOME = Object.freeze({
 // 유전자 키 목록 (진화 시 변이/교차 대상)
 const GENOME_KEYS = Object.keys(DEFAULT_GENOME);
 
+// ===== 진화 학습 시스템 =====
+// 1. Gene 헬퍼
+function randomGenome(){
+  // 기본값에서 ±25% 노이즈 (정수형 키는 정수 유지)
+  const g = {};
+  for(const k of GENOME_KEYS){
+    const base = DEFAULT_GENOME[k];
+    const noise = 1 + (Math.random() * 0.5 - 0.25); // 0.75 ~ 1.25
+    g[k] = base * noise;
+  }
+  return g;
+}
+function mutateGenome(g, rate = 0.2, strength = 0.15){
+  // 각 키마다 rate 확률로 ±strength 변이
+  const out = {};
+  for(const k of GENOME_KEYS){
+    if(Math.random() < rate){
+      const noise = 1 + (Math.random() * 2 * strength - strength);
+      out[k] = (g[k] !== undefined ? g[k] : DEFAULT_GENOME[k]) * noise;
+    } else {
+      out[k] = g[k] !== undefined ? g[k] : DEFAULT_GENOME[k];
+    }
+  }
+  return out;
+}
+function crossoverGenomes(a, b){
+  // 각 키별로 a/b 중 랜덤 선택 (균일 교차)
+  const out = {};
+  for(const k of GENOME_KEYS){
+    out[k] = Math.random() < 0.5 ? (a[k] !== undefined ? a[k] : DEFAULT_GENOME[k]) 
+                                  : (b[k] !== undefined ? b[k] : DEFAULT_GENOME[k]);
+  }
+  return out;
+}
+
+// 2. 진화 학습용 경량 AI (깊이 2, 시간 제한 짧음)
+function aiEvolveQuick(list, myColor, genome){
+  const oppC = opp(myColor);
+  // 즉시 승
+  for(const a of list){
+    const snap = snapshotState();
+    const r = applyAction(a, {silent:true});
+    if(r.ok){
+      if(r.fiveWin === myColor){ restoreState(snap); return a; }
+      if(isInCheck(oppC) && isCheckmate(oppC)){ restoreState(snap); return a; }
+    }
+    restoreState(snap);
+  }
+  // 4연속 차단
+  const block = findBlock4(list, oppC);
+  if(block) return block;
+  // 1-ply 평가 후 상위 30% 중 랜덤 (속도 + 다양성)
+  const scored = [];
+  for(const a of list){
+    const snap = snapshotState();
+    const r = applyAction(a, {silent:true});
+    if(!r.ok){ restoreState(snap); continue; }
+    let s = evaluatePosition(myColor, genome);
+    if(r.fiveWin === myColor) s = 99000;
+    else if(r.fiveWin === oppC) s = -99000;
+    else if(isInCheck(oppC) && isCheckmate(oppC)) s = 99000;
+    else if(isInCheck(myColor) && isCheckmate(myColor)) s = -99000;
+    restoreState(snap);
+    scored.push({a, s});
+  }
+  if(!scored.length) return list[0];
+  scored.sort((x,y) => y.s - x.s);
+  const top = scored.slice(0, Math.max(1, Math.ceil(scored.length * 0.3)));
+  return top[Math.floor(Math.random() * top.length)].a;
+}
+
+// 3. 매치 시뮬레이터 — 두 유전자가 한 판 (백/흑 지정)
+async function simulateMatch(geneW, geneB, maxMoves = 100, yieldEveryN = 5){
+  // 보드 초기화
+  board = makeEmptyBoard();
+  hands = { 
+    w: {...INIT_HAND}, 
+    b: {...INIT_HAND} 
+  };
+  turn = 'w';
+  kingPlaced = { w:false, b:false };
+  lastMove = null;
+  moveHistory = [];
+  checkStreak = { w:0, b:0 };
+  totalChecks = { w:0, b:0 };
+  
+  let result = null;
+  let moveCount = 0;
+  
+  while(moveCount < maxMoves && !result){
+    const myColor = turn;
+    const myGene = myColor === 'w' ? geneW : geneB;
+    const list = allLegalActions(myColor);
+    if(!list.length){
+      if(isInCheck(myColor)) result = opp(myColor); // 메이트
+      else result = 'draw'; // 스테일메이트
+      break;
+    }
+    const action = aiEvolveQuick(list, myColor, myGene);
+    // 폰 프로모션
+    if(action.type === 'move'){
+      const p = board[action.fr][action.fc];
+      if(p && p.kind === 'P'){
+        if(myColor === 'w' && action.tr === 0) action.promote = 'Q';
+        else if(myColor === 'b' && action.tr === 7) action.promote = 'Q';
+      }
+    }
+    const r = applyAction(action);
+    if(!r.ok){ result = opp(myColor); break; } // 비정상 — 진 걸로
+    if(r.fiveWin){ result = r.fiveWin; break; }
+    if(r.checkmate){ result = r.checkmate; break; }
+    if(r.suicide){ result = opp(myColor); break; }
+    if(r.stalemate || r.repetition){ result = 'draw'; break; }
+    moveCount++;
+    if(moveCount % yieldEveryN === 0){
+      await new Promise(r => setTimeout(r, 0));
+    }
+  }
+  
+  if(!result) result = 'draw';
+  return { winner: result, moves: moveCount };
+}
+
+// 4. 토너먼트 — round-robin
+async function runTournament(genomes, gamesPerPair, onProgress){
+  const n = genomes.length;
+  const scores = new Array(n).fill(0);
+  const wins = new Array(n).fill(0);
+  const losses = new Array(n).fill(0);
+  const draws = new Array(n).fill(0);
+  const totalGames = (n * (n-1) / 2) * gamesPerPair;
+  let played = 0;
+  
+  for(let i = 0; i < n; i++){
+    for(let j = i+1; j < n; j++){
+      for(let g = 0; g < gamesPerPair; g++){
+        // 색깔 교대 (공정성)
+        const whiteIdx = g % 2 === 0 ? i : j;
+        const blackIdx = g % 2 === 0 ? j : i;
+        const { winner, moves } = await simulateMatch(genomes[whiteIdx], genomes[blackIdx]);
+        if(winner === 'w'){
+          scores[whiteIdx] += 1; wins[whiteIdx]++; losses[blackIdx]++;
+        } else if(winner === 'b'){
+          scores[blackIdx] += 1; wins[blackIdx]++; losses[whiteIdx]++;
+        } else {
+          scores[whiteIdx] += 0.5; scores[blackIdx] += 0.5;
+          draws[whiteIdx]++; draws[blackIdx]++;
+        }
+        played++;
+        if(onProgress) onProgress({ played, totalGames, whiteIdx, blackIdx, winner, moves });
+      }
+    }
+  }
+  return { scores, wins, losses, draws };
+}
+
+// 5. 진화 — 다음 세대 생성
+function evolveNextGen(genomes, scores, mutationRate = 0.2){
+  const n = genomes.length;
+  const indexed = genomes.map((g, i) => ({g, s: scores[i], idx: i}));
+  indexed.sort((a, b) => b.s - a.s);
+  const eliteCount = Math.max(1, Math.ceil(n * 0.25));
+  const parentPool = indexed.slice(0, Math.max(2, Math.ceil(n * 0.5))).map(x => x.g);
+  
+  const newGen = [];
+  // Elite: 상위 25% 그대로 (학습 진보 보존)
+  for(let i = 0; i < eliteCount; i++){
+    newGen.push(indexed[i].g);
+  }
+  // 나머지: 교차 + 변이
+  while(newGen.length < n){
+    const p1 = parentPool[Math.floor(Math.random() * parentPool.length)];
+    const p2 = parentPool[Math.floor(Math.random() * parentPool.length)];
+    const child = mutateGenome(crossoverGenomes(p1, p2), mutationRate);
+    newGen.push(child);
+  }
+  
+  return {
+    newGen,
+    bestGenome: indexed[0].g,
+    bestScore: indexed[0].s,
+    ranking: indexed.map(x => ({idx: x.idx, score: x.s}))
+  };
+}
+
+// 6. 저장된 유전자 관리 (localStorage)
+function saveTrainedGenome(genome, meta){
+  try {
+    const data = { genome, meta, savedAt: Date.now() };
+    localStorage.setItem('frontier_trained_genome', JSON.stringify(data));
+    return true;
+  } catch(e){ console.error('Save failed:', e); return false; }
+}
+function loadTrainedGenome(){
+  try {
+    const raw = localStorage.getItem('frontier_trained_genome');
+    if(!raw) return null;
+    return JSON.parse(raw);
+  } catch(e){ return null; }
+}
+
+
 function aiTurn(){
   if(gameOver) return;
   // AI vs AI: 양쪽 turn 다 처리. AI vs Player: 흑 차례에만.
@@ -3658,6 +3912,10 @@ function init(){
     initReplay();
     return;
   }
+  // 진화 학습 모드: UI는 init() 뒤에 별도 처리, 게임 init 건너뜀
+  if(IS_EVOLVE){
+    return;
+  }
 
   // UI 초기 정보
   document.getElementById('myName').textContent = MY_NICK_P + (IS_NET ? ` (${MY_ELO_P})` : '');
@@ -3711,6 +3969,211 @@ function init(){
   }
 }
 init();
+
+// ============== 진화 학습 모드 ==============
+if(IS_EVOLVE){
+  document.body.classList.add('evolve-mode');
+  initEvolveUI();
+}
+
+function initEvolveUI(){
+  // 진화 UI 패널 생성
+  const panel = document.createElement('div');
+  panel.id = 'evolvePanel';
+  panel.innerHTML = `
+    <div class="ev-card">
+      <div class="ev-head">
+        <h2>🧬 AI 진화 학습</h2>
+        <button class="ev-back" onclick="location.href='index.html'">← 로비</button>
+      </div>
+      <div id="evSetup">
+        <div class="ev-row">
+          <label>개체 수 (세대당 유전자)</label>
+          <select id="evPopSize">
+            <option value="4">4 (빠름, ~3분/세대)</option>
+            <option value="6" selected>6 (균형, ~7분/세대)</option>
+            <option value="8">8 (정확, ~15분/세대)</option>
+          </select>
+        </div>
+        <div class="ev-row">
+          <label>세대 수</label>
+          <select id="evGens">
+            <option value="2">2 (빠른 검증)</option>
+            <option value="3" selected>3</option>
+            <option value="5">5</option>
+            <option value="10">10 (장시간)</option>
+          </select>
+        </div>
+        <div class="ev-row">
+          <label>쌍당 게임 수</label>
+          <select id="evGamesPerPair">
+            <option value="1">1 (빠름)</option>
+            <option value="2" selected>2 (균형)</option>
+            <option value="4">4 (정확)</option>
+          </select>
+        </div>
+        <div class="ev-row">
+          <label>초기 유전자 다양성</label>
+          <select id="evInitDiversity">
+            <option value="random" selected>모두 랜덤</option>
+            <option value="seed1">기본값 1개 + 랜덤</option>
+          </select>
+        </div>
+        <div class="ev-summary" id="evSummary"></div>
+        <button class="ev-btn ev-btn-primary" onclick="startEvolution()">⚔️ 학습 시작</button>
+      </div>
+      <div id="evRunning" style="display:none">
+        <div class="ev-status" id="evStatus">준비 중...</div>
+        <div class="ev-progress-wrap">
+          <div class="ev-progress" id="evProgress"></div>
+        </div>
+        <div class="ev-gen-info" id="evGenInfo"></div>
+        <div class="ev-log" id="evLog"></div>
+      </div>
+      <div id="evResult" style="display:none">
+        <h3>✅ 학습 완료!</h3>
+        <div class="ev-best" id="evBestInfo"></div>
+        <div class="ev-genome" id="evGenomeDisplay"></div>
+        <div class="ev-actions">
+          <button class="ev-btn ev-btn-primary" onclick="saveBestAndReturn()">💾 저장 후 로비로</button>
+          <button class="ev-btn" onclick="location.reload()">🔄 다시 학습</button>
+        </div>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(panel);
+  updateEvSummary();
+  document.getElementById('evPopSize').addEventListener('change', updateEvSummary);
+  document.getElementById('evGens').addEventListener('change', updateEvSummary);
+  document.getElementById('evGamesPerPair').addEventListener('change', updateEvSummary);
+}
+
+function updateEvSummary(){
+  const pop = parseInt(document.getElementById('evPopSize').value);
+  const gens = parseInt(document.getElementById('evGens').value);
+  const gpp = parseInt(document.getElementById('evGamesPerPair').value);
+  const gamesPerGen = (pop * (pop-1) / 2) * gpp;
+  const totalGames = gamesPerGen * gens;
+  // 한 판 5-15초 가정 → 10초 평균
+  const estSec = totalGames * 10;
+  const m = Math.floor(estSec/60), s = estSec%60;
+  document.getElementById('evSummary').innerHTML = `
+    <div>세대당 게임: <b>${gamesPerGen}판</b></div>
+    <div>전체 게임: <b>${totalGames}판</b></div>
+    <div>예상 시간: <b>약 ${m}분 ${s}초</b> (대략)</div>`;
+}
+
+let _evolveRunning = false;
+let _evolveBestGenome = null;
+let _evolveBestMeta = null;
+
+window.startEvolution = async function(){
+  if(_evolveRunning) return;
+  _evolveRunning = true;
+  document.getElementById('evSetup').style.display = 'none';
+  document.getElementById('evRunning').style.display = '';
+  
+  const popSize = parseInt(document.getElementById('evPopSize').value);
+  const numGens = parseInt(document.getElementById('evGens').value);
+  const gamesPerPair = parseInt(document.getElementById('evGamesPerPair').value);
+  const diversity = document.getElementById('evInitDiversity').value;
+  
+  // 초기 유전자 풀
+  let pop = [];
+  if(diversity === 'seed1'){
+    pop.push({...DEFAULT_GENOME});
+    for(let i = 1; i < popSize; i++) pop.push(randomGenome());
+  } else {
+    for(let i = 0; i < popSize; i++) pop.push(randomGenome());
+  }
+  
+  let bestEver = null;
+  let bestScore = -Infinity;
+  const log = [];
+  
+  for(let gen = 1; gen <= numGens; gen++){
+    document.getElementById('evStatus').textContent = `세대 ${gen}/${numGens} — 토너먼트 진행 중...`;
+    document.getElementById('evGenInfo').innerHTML = `<b>세대 ${gen}</b> · 개체 ${popSize}명`;
+    addEvLog(`━━━ 세대 ${gen} 시작 ━━━`);
+    
+    const tourney = await runTournament(pop, gamesPerPair, ({played, totalGames, whiteIdx, blackIdx, winner, moves}) => {
+      const pct = (played / totalGames * 100).toFixed(0);
+      document.getElementById('evProgress').style.width = pct + '%';
+      document.getElementById('evStatus').textContent = 
+        `세대 ${gen}/${numGens} · ${played}/${totalGames} 게임 (${pct}%)`;
+      const wStr = winner === 'w' ? `백(#${whiteIdx})` : winner === 'b' ? `흑(#${blackIdx})` : '무승부';
+      addEvLog(`#${whiteIdx} vs #${blackIdx} — ${wStr} (${moves}수)`);
+    });
+    
+    const { newGen, bestGenome, bestScore: genBest, ranking } = evolveNextGen(pop, tourney.scores);
+    
+    // 세대 결과 표시
+    addEvLog(`\n세대 ${gen} 결과:`);
+    for(let i = 0; i < Math.min(3, ranking.length); i++){
+      const r = ranking[i];
+      addEvLog(`  ${i+1}위 #${r.idx}: ${r.score.toFixed(1)}점 (${tourney.wins[r.idx]}승 ${tourney.draws[r.idx]}무 ${tourney.losses[r.idx]}패)`);
+    }
+    
+    if(genBest > bestScore){
+      bestScore = genBest;
+      bestEver = bestGenome;
+    }
+    
+    pop = newGen;
+  }
+  
+  // 학습 완료
+  _evolveBestGenome = bestEver;
+  _evolveBestMeta = {
+    generations: numGens,
+    popSize: popSize,
+    gamesPerPair: gamesPerPair,
+    finalScore: bestScore,
+    learnedAt: Date.now()
+  };
+  
+  document.getElementById('evRunning').style.display = 'none';
+  document.getElementById('evResult').style.display = '';
+  
+  // 베스트 유전자 표시
+  const cmp = (k) => {
+    const v = bestEver[k];
+    const def = DEFAULT_GENOME[k];
+    const diff = ((v - def) / def * 100).toFixed(1);
+    const sign = diff >= 0 ? '+' : '';
+    const color = Math.abs(diff) < 5 ? '#888' : (diff > 0 ? '#30d158' : '#ff453a');
+    return `<div><span class="gk">${k}</span>: <b>${v.toFixed(1)}</b> <span style="color:${color}">(${sign}${diff}%)</span></div>`;
+  };
+  
+  document.getElementById('evBestInfo').innerHTML = `
+    <div><b>${numGens}세대 학습 완료</b></div>
+    <div>최종 토너먼트 점수: <b style="color:var(--gold)">${bestScore.toFixed(1)}</b></div>`;
+  document.getElementById('evGenomeDisplay').innerHTML = 
+    '<div class="ev-genome-grid">' +
+    GENOME_KEYS.map(cmp).join('') +
+    '</div>';
+  
+  _evolveRunning = false;
+};
+
+function addEvLog(text){
+  const log = document.getElementById('evLog');
+  const line = document.createElement('div');
+  line.className = 'ev-log-line';
+  line.textContent = text;
+  log.appendChild(line);
+  log.scrollTop = log.scrollHeight;
+  // 라인 수 제한 (오래된 거 삭제)
+  while(log.children.length > 200) log.removeChild(log.firstChild);
+}
+
+window.saveBestAndReturn = function(){
+  if(_evolveBestGenome){
+    saveTrainedGenome(_evolveBestGenome, _evolveBestMeta);
+    alert('학습된 유전자 저장 완료! AI 대전에서 "🧬 학습된 AI" 선택 가능.');
+  }
+  location.href = 'index.html';
+};
 </script>
 </body>
 </html>
