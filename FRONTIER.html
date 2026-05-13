@@ -210,11 +210,35 @@ body.evolve-mode{padding:0;margin:0;background:linear-gradient(135deg,#1c1c1e,#2
 .tm-diff.adv-w{color:#fff}
 .tm-diff.adv-b{color:#888}
 
+/* 머티리얼 비주얼 바 — 토픽바 컴팩트 버전 */
+.mat-bar-compact{display:flex;align-items:center;gap:5px;font-family:'Cinzel',monospace;font-size:11px;font-weight:700}
+.mat-bar-compact .mbc-num{min-width:26px;text-align:center}
+.mat-bar-compact .mbc-num.w{color:#fff}
+.mat-bar-compact .mbc-num.b{color:#888}
+.mat-bar-compact .mbc-bar{width:90px;height:6px;background:#1a1a1a;border:1px solid #444;
+  border-radius:3px;overflow:hidden;display:flex;position:relative}
+.mat-bar-compact .mbc-w-fill{background:linear-gradient(90deg,#f5f5f0,#c8c8b5);transition:width .3s}
+.mat-bar-compact .mbc-b-fill{background:linear-gradient(90deg,#444,#1a1a1a);transition:width .3s}
+
+/* 머티리얼 비주얼 바 — 풀 버전 (opp-sheet용) */
+.mat-bar-full{margin:14px 0;background:var(--panel2);padding:12px;border-radius:8px}
+.mat-bar-full h4{margin:0 0 8px 0;color:var(--muted);font-size:11px;letter-spacing:1px;font-weight:700}
+.mat-bar-full .mbf-row{display:flex;align-items:center;gap:8px;font-family:'Cinzel',monospace;font-size:13px;font-weight:700}
+.mat-bar-full .mbf-num.w{color:#fff;min-width:38px;text-align:right}
+.mat-bar-full .mbf-num.b{color:#888;min-width:38px;text-align:left}
+.mat-bar-full .mbf-bar{flex:1;height:10px;background:#1a1a1a;border:1px solid #555;
+  border-radius:5px;overflow:hidden;display:flex;position:relative}
+.mat-bar-full .mbf-w-fill{background:linear-gradient(90deg,#f5f5f0,#c8c8b5);transition:width .3s}
+.mat-bar-full .mbf-b-fill{background:linear-gradient(90deg,#555,#1a1a1a);transition:width .3s}
+.mat-bar-full .mbf-diff{text-align:center;margin-top:6px;font-size:11px;color:var(--muted)}
+.mat-bar-full .mbf-diff.adv-w{color:#fff}
+.mat-bar-full .mbf-diff.adv-b{color:#888}
+
 @media (max-width:600px){
   .topbar-timer{gap:2px}
   .tt-side{padding:2px 5px;font-size:11px}
   .tt-side .ti{font-size:11px}
-  .topbar-material{font-size:10px}
+  .topbar-material{display:none !important}  /* 모바일: 토픽바엔 숨김, 시트에서만 보임 */
   .tm-side{padding:2px 4px}
   .tm-side .ti{font-size:10px}
 }
@@ -338,7 +362,7 @@ body.evolve-mode{padding:0;margin:0;background:linear-gradient(135deg,#1c1c1e,#2
 
 /* 모바일 */
 .mobile-only{display:none}
-.opp-eye-fab{display:none;position:fixed;top:14px;right:12px;z-index:90;
+.opp-eye-fab{display:none;position:fixed;top:60px;right:12px;z-index:90;
   width:44px;height:44px;border-radius:50%;
   background:var(--panel);border:2px solid var(--gold);color:var(--gold);
   font-size:20px;align-items:center;justify-content:center;
@@ -511,14 +535,17 @@ body.evolve-mode{padding:0;margin:0;background:linear-gradient(135deg,#1c1c1e,#2
 .replay-list-item .turn-cap{color:var(--red);font-weight:700;font-size:11px}
 
 /* 리플레이 모드: 화면 아래에 여유 공간 추가 */
-body.replay-mode{padding-bottom:240px}
+body.replay-mode{padding-bottom:300px}
 body.replay-mode .timer{display:none !important}
 body.replay-mode .hand-card .hand-list{pointer-events:none}
 body.replay-mode .cell{cursor:default !important}
 body.replay-mode #chatBtn,body.replay-mode #chatPanel,body.replay-mode #forfeitBtn{display:none !important}
 
+@media (max-width:1024px){
+  body.replay-mode{padding-bottom:320px}
+}
 @media (max-width:600px){
-  body.replay-mode{padding-bottom:280px}
+  body.replay-mode{padding-bottom:340px}
   .replay-bar{padding:8px}
   .replay-meta{font-size:11px}
   .rb-btn{padding:6px 10px;font-size:13px}
@@ -540,9 +567,14 @@ body.replay-mode #chatBtn,body.replay-mode #chatPanel,body.replay-mode #forfeitB
         <span class="tt-side b" id="ttBlack"><span class="ti">♚</span><span class="tv" id="ttbTime">--:--</span></span>
       </div>
       <div class="topbar-material" id="topbarMaterial" style="display:none">
-        <span class="tm-side w"><span class="ti">♔</span><span class="tv" id="tmwScore">0</span></span>
-        <span class="tm-diff" id="tmDiff">=</span>
-        <span class="tm-side b"><span class="ti">♚</span><span class="tv" id="tmbScore">0</span></span>
+        <div class="mat-bar-compact">
+          <span class="mbc-num w" id="mbcWNum">0</span>
+          <div class="mbc-bar">
+            <div class="mbc-w-fill" id="mbcWFill" style="width:50%"></div>
+            <div class="mbc-b-fill" id="mbcBFill" style="width:50%"></div>
+          </div>
+          <span class="mbc-num b" id="mbcBNum">0</span>
+        </div>
       </div>
       <span id="modeLbl" style="font-size:12px;color:var(--gold);font-weight:700;background:rgba(245,200,66,.1);padding:3px 8px;border-radius:6px;border:1px solid rgba(245,200,66,.3)"></span>
       <button class="tb-btn" onclick="openRules()" title="게임 규칙 보기">📖</button>
@@ -610,6 +642,19 @@ body.replay-mode #chatBtn,body.replay-mode #chatPanel,body.replay-mode #forfeitB
       <button class="opp-sheet-close" onclick="toggleOppSheet()">✕</button>
     </div>
     <div class="check-stats" id="oppSheetStats"></div>
+    <!-- 머티리얼 바 (모바일에서 토픽바 대신 여기서 봄) -->
+    <div class="mat-bar-full">
+      <h4>기물 점수</h4>
+      <div class="mbf-row">
+        <span class="mbf-num w" id="mbfWNum">0</span>
+        <div class="mbf-bar">
+          <div class="mbf-w-fill" id="mbfWFill" style="width:50%"></div>
+          <div class="mbf-b-fill" id="mbfBFill" style="width:50%"></div>
+        </div>
+        <span class="mbf-num b" id="mbfBNum">0</span>
+      </div>
+      <div class="mbf-diff" id="mbfDiff">=</div>
+    </div>
     <h4 style="margin:14px 0 8px;color:var(--muted);font-size:12px;letter-spacing:1px">상대 손패</h4>
     <div id="oppHandSheet"></div>
   </div>
@@ -2192,7 +2237,13 @@ function endGame(emoji, title, desc, winner /* 'w'|'b'|'draw' */){
   eloEl.style.display = 'none';
 
   const rematchBtn = document.getElementById('rematchBtn');
-  rematchBtn.style.display = (IS_NET && !IS_SPEC) ? '' : 'none';
+  // 관전자/리플레이 외엔 모든 모드에서 표시 (라벨은 모드별로 다름)
+  if(IS_SPEC || IS_REPLAY){
+    rematchBtn.style.display = 'none';
+  } else {
+    rematchBtn.style.display = '';
+    rematchBtn.textContent = IS_NET ? '🔄 리매치' : '🔄 다시 시작';
+  }
 
   // ELO 적용 (온라인만)
   if(IS_NET && !IS_SPEC && _gameRatingInfo && winner){
@@ -3513,23 +3564,44 @@ function updateMaterial(){
     if(p.color === 'w') wSum += v;
     else bSum += v;
   }
-  // 손패도 포함 (배치 가능한 자원)
   for(const k of Object.keys(hands.w || {})){
     wSum += (PIECE_VALUES[k] || 0) * (hands.w[k] || 0);
   }
   for(const k of Object.keys(hands.b || {})){
     bSum += (PIECE_VALUES[k] || 0) * (hands.b[k] || 0);
   }
-  const tm = document.getElementById('topbarMaterial');
-  if(!tm) return;
-  tm.style.display = '';
-  document.getElementById('tmwScore').textContent = wSum;
-  document.getElementById('tmbScore').textContent = bSum;
+  const total = wSum + bSum;
+  const wPct = total > 0 ? (wSum / total * 100) : 50;
+  const bPct = total > 0 ? (bSum / total * 100) : 50;
   const diff = wSum - bSum;
-  const diffEl = document.getElementById('tmDiff');
-  if(diff > 0){ diffEl.textContent = `+${diff}`; diffEl.className = 'tm-diff adv-w'; }
-  else if(diff < 0){ diffEl.textContent = diff; diffEl.className = 'tm-diff adv-b'; }
-  else { diffEl.textContent = '='; diffEl.className = 'tm-diff'; }
+  const diffStr = diff > 0 ? `+${diff} 백 우세` : diff < 0 ? `${diff} 흑 우세` : '동등';
+  const diffClass = diff > 0 ? 'mbf-diff adv-w' : diff < 0 ? 'mbf-diff adv-b' : 'mbf-diff';
+
+  // 토픽바 컴팩트 바
+  const tm = document.getElementById('topbarMaterial');
+  if(tm){
+    tm.style.display = '';
+    const wNum = document.getElementById('mbcWNum');
+    const bNum = document.getElementById('mbcBNum');
+    const wFill = document.getElementById('mbcWFill');
+    const bFill = document.getElementById('mbcBFill');
+    if(wNum) wNum.textContent = wSum;
+    if(bNum) bNum.textContent = bSum;
+    if(wFill) wFill.style.width = wPct + '%';
+    if(bFill) bFill.style.width = bPct + '%';
+  }
+
+  // 시트 풀 바 (모바일 눈 버튼 시트)
+  const mbfWNum = document.getElementById('mbfWNum');
+  const mbfBNum = document.getElementById('mbfBNum');
+  const mbfWFill = document.getElementById('mbfWFill');
+  const mbfBFill = document.getElementById('mbfBFill');
+  const mbfDiff = document.getElementById('mbfDiff');
+  if(mbfWNum) mbfWNum.textContent = wSum;
+  if(mbfBNum) mbfBNum.textContent = bSum;
+  if(mbfWFill) mbfWFill.style.width = wPct + '%';
+  if(mbfBFill) mbfBFill.style.width = bPct + '%';
+  if(mbfDiff){ mbfDiff.textContent = diffStr; mbfDiff.className = diffClass; }
 }
 
 // 차례 변경 시 타이머 리셋
@@ -3547,12 +3619,6 @@ setInterval(watchTurnForTimer, 100);
 // ===================================================================
 // 18. 리매치 / 기권 / 로비 이동
 // ===================================================================
-function requestRematch(){
-  if(IS_SPEC) return;
-  sendToPeer({ t:'REMATCH_REQ', from: MY_NICK_P });
-  document.getElementById('rematchBtn').textContent = '요청 보냄...';
-  document.getElementById('rematchBtn').disabled = true;
-}
 function rematchReply(accept){
   document.getElementById('rematchAskModal').classList.remove('show');
   sendToPeer({ t:'REMATCH_REPLY', accept });
@@ -3566,19 +3632,70 @@ function doRematch(){
   kingPlaced = { w:false, b:false };
   lastMove = null;
   moveHistory = [];
+  actionHistory = [];
   checkStreak = { w:0, b:0 };
   totalChecks = { w:0, b:0 };
   gameOver = false;
-  SEL = null; HIGHLIGHTS = [];
-  document.getElementById('endModal').classList.remove('show');
-  document.getElementById('rematchBtn').disabled = false;
-  document.getElementById('rematchBtn').textContent = '🔄 리매치';
-  if(TIME_LIMIT > 0){ _wTimeLeft = _bTimeLeft = TIME_LIMIT; _timerStart = Date.now(); }
+  SEL = null;
+  HIGHLIGHTS = [];
+  _eloPending = false;
+  _lastTurn = 'w';
+
+  // 모든 모달 닫기 (혹시 열려있을 경우)
+  ['endModal','rematchAskModal','rulesModal','confirmModal','tutorialAskModal','custModal'].forEach(id => {
+    const el = document.getElementById(id);
+    if(el) el.classList.remove('show');
+  });
+
+  // 종료 모달 버튼 상태 복원
+  setEndNavDisabled(false);
+  const rmBtn = document.getElementById('rematchBtn');
+  if(rmBtn){
+    rmBtn.disabled = false;
+    rmBtn.textContent = IS_NET ? '🔄 리매치' : '🔄 다시 시작';
+  }
+
+  // 타이머 리셋
+  if(_timerInterval){ clearInterval(_timerInterval); _timerInterval = null; }
+  if(TIME_LIMIT > 0){
+    _wTimeLeft = TIME_LIMIT;
+    _bTimeLeft = TIME_LIMIT;
+    _turnStartTime = Date.now();
+    startTimerIfNeeded();
+  }
+
+  // AI 사고 인디케이터 숨김
+  showAIThinking(false);
+
+  // 호스트만 방 상태 갱신
   if(NET_ROLE === 'host'){
     _fbDb && _fbDb.ref('rooms/'+ROOM_CODE).update({ gameActive:true }).catch(()=>{});
     publishGameState();
   }
+
   renderAll();
+
+  // AI 모드: 흑 차례 시작 (없겠지만 안전)
+  if(IS_AI && turn === 'b'){
+    setTimeout(()=> aiTurn(), 500);
+  } else if(IS_AIVAI){
+    // AI vs AI: 백부터 자동 시작
+    setTimeout(()=> aiTurn(), 800);
+  }
+}
+
+// 리매치 / 재시작 요청 — 모드별 분기
+function requestRematch(){
+  if(!IS_NET){
+    // 로컬 / AI / AIVAI → 즉시 재시작
+    doRematch();
+    return;
+  }
+  // 온라인 — 상대에게 요청
+  sendToPeer({ t:'REMATCH_REQ', from: MY_NICK_P });
+  const rmBtn = document.getElementById('rematchBtn');
+  rmBtn.textContent = '요청 보냄...';
+  rmBtn.disabled = true;
 }
 
 function confirmForfeit(){
