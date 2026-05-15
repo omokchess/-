@@ -227,11 +227,39 @@ input{font-family:inherit;outline:none}
   .social-btn{width:38px;height:38px;border-radius:8px}
 }
 
-/* ========== 모바일 탭 시스템 ========== */
-/* 데스크탑: 탭 패널을 그냥 섹션으로 표시 (모두 보임) */
+/* ========== 3컬럼 / 3탭 시스템 ========== */
+.lobby-grid{margin-top:18px}
 .tab-panel{margin-top:18px}
 .tab-title{font-family:'Cinzel',serif;color:var(--gold);font-size:18px;margin:0 0 12px 0;
-  padding-bottom:6px;border-bottom:1px solid var(--border);letter-spacing:1px}
+  padding-bottom:6px;border-bottom:1px solid var(--border);letter-spacing:1px;text-align:center}
+
+/* 데스크탑: 3 컬럼 가로 배치 */
+@media (min-width:769px){
+  .lobby-grid{
+    display:grid;
+    grid-template-columns:1fr 1fr 1fr;
+    gap:20px;
+    max-width:1280px;
+    margin:24px auto 0;
+    align-items:start
+  }
+  .tab-panel{
+    background:var(--panel);
+    border:1px solid var(--border);
+    border-radius:14px;
+    padding:18px 16px;
+    margin-top:0
+  }
+  /* 데스크탑: 한 컬럼 안에선 버튼 세로 스택 */
+  .tab-panel .modes{
+    grid-template-columns:1fr;
+    gap:10px
+  }
+  /* 헤더: 작은 프로필 숨김 (큰 프로필이 내 페이지에) */
+  .head .profile{display:none}
+  .head{justify-content:center;text-align:center;margin-bottom:6px}
+  .head .brand{text-align:center}
+}
 
 /* 큰 프로필 카드 (내 페이지 탭) */
 .big-profile{background:linear-gradient(135deg,var(--panel),rgba(245,200,66,.05));
@@ -253,6 +281,19 @@ input{font-family:inherit;outline:none}
   font-size:13px;margin-bottom:3px}
 .bs-label{font-size:10px;color:var(--muted);letter-spacing:1px;text-transform:uppercase}
 .big-social{display:flex;justify-content:center;gap:10px;margin-top:8px}
+
+/* 방 목록 모달 */
+.room-list-modal{max-width:720px;width:92%;max-height:80vh;overflow-y:auto}
+.rlm-head{display:flex;justify-content:space-between;align-items:center;
+  margin-bottom:14px;padding-bottom:10px;border-bottom:1px solid var(--border)}
+.rlm-head h3{font-family:'Cinzel',serif;color:var(--gold)}
+.modal-close{background:transparent;border:1px solid var(--border);color:var(--muted);
+  padding:6px 12px;border-radius:6px;cursor:pointer;font-size:14px;font-weight:700}
+.modal-close:hover{color:var(--gold);border-color:var(--gold);background:var(--panel2)}
+
+/* 방 목록 펼침 버튼 안의 카운트 배지 */
+.mode .badge{display:inline-block;background:var(--gold);color:#1c1c1e;
+  padding:1px 7px;border-radius:10px;font-size:11px;font-weight:700;margin-left:4px;vertical-align:middle}
 
 /* 하단 탭바 — 데스크탑/태블릿에선 숨김 */
 .bottom-nav{display:none}
@@ -286,6 +327,9 @@ input{font-family:inherit;outline:none}
   .big-profile{padding:22px 14px}
   .big-avatar{width:72px;height:72px;font-size:28px}
   .big-name{font-size:20px}
+  
+  /* 모달 안의 방 목록은 모바일에서도 동작 */
+  .room-list-modal{max-width:96%;max-height:85vh}
 }
 </style>
 </head>
@@ -332,106 +376,119 @@ input{font-family:inherit;outline:none}
     </div>
   </div>
 
-  <!-- ========= AI 탭 ========= -->
-  <div class="tab-panel" data-tab="ai">
-    <h2 class="tab-title">🤖 AI 대전</h2>
-    <div class="modes">
-      <button class="mode" onclick="openAiModal()">
-        <div class="icon">🤖</div>
-        <div class="mt">AI 대전</div>
-        <div class="md">3가지 난이도의 컴퓨터와</div>
-      </button>
-      <button class="mode" onclick="openAiVaiModal()">
-        <div class="icon">⚔️</div>
-        <div class="mt">AI vs AI 관전</div>
-        <div class="md">두 AI가 싸우는 걸 구경</div>
-      </button>
-      <button class="mode" onclick="location.href='FRONTIER.html?mode=evolve'">
-        <div class="icon">🧬</div>
-        <div class="mt">AI 학습</div>
-        <div class="md">자가 대국으로 학습하는 AI</div>
-      </button>
+  <!-- ========= 3 컬럼 / 3 탭 ========= -->
+  <div class="lobby-grid">
+    <!-- AI 탭 -->
+    <div class="tab-panel" data-tab="ai">
+      <h2 class="tab-title">🤖 AI</h2>
+      <div class="modes">
+        <button class="mode" onclick="openAiModal()">
+          <div class="icon">🤖</div>
+          <div class="mt">AI 대전</div>
+          <div class="md">3가지 난이도의 컴퓨터와</div>
+        </button>
+        <button class="mode" onclick="openAiVaiModal()">
+          <div class="icon">⚔️</div>
+          <div class="mt">AI VS AI</div>
+          <div class="md">두 AI가 싸우는 걸 구경</div>
+        </button>
+        <button class="mode" onclick="location.href='FRONTIER.html?mode=evolve'">
+          <div class="icon">🧬</div>
+          <div class="mt">AI 학습</div>
+          <div class="md">자가 대국으로 학습하는 AI</div>
+        </button>
+      </div>
+    </div>
+
+    <!-- 메인 게임 탭 -->
+    <div class="tab-panel" data-tab="main">
+      <h2 class="tab-title">🎮 메인 게임</h2>
+      <div class="modes">
+        <button class="mode" onclick="goCreate()">
+          <div class="icon">➕</div>
+          <div class="mt">방 만들기</div>
+          <div class="md">새 방을 만들어 친구 초대</div>
+        </button>
+        <button class="mode" onclick="goLocal()">
+          <div class="icon">👥</div>
+          <div class="mt">로컬 2인</div>
+          <div class="md">한 기기에서 두 명이 번갈아</div>
+        </button>
+        <button class="mode" onclick="openRoomListModal()">
+          <div class="icon">📜</div>
+          <div class="mt">방 목록</div>
+          <div class="md">진행 중인 온라인 방 보기 <span class="badge" id="rcountBtn">0</span></div>
+        </button>
+      </div>
+    </div>
+
+    <!-- 내 페이지 탭 -->
+    <div class="tab-panel" data-tab="mypage">
+      <h2 class="tab-title">👤 내 페이지</h2>
+      <div class="big-profile" id="bigProfile">
+        <div class="big-avatar" id="bigAvatar">?</div>
+        <div class="big-name-row">
+          <span class="big-name" id="bigName">로딩…</span>
+          <button class="big-edit" onclick="changeNick()" title="닉네임 변경">✎</button>
+        </div>
+        <div class="big-stats">
+          <div class="bs-item">
+            <div class="bs-val" id="bigElo">—</div>
+            <div class="bs-label">ELO</div>
+          </div>
+          <div class="bs-item">
+            <span class="bs-tier" id="bigTier" style="background:#CD7F32">—</span>
+            <div class="bs-label">티어</div>
+          </div>
+          <div class="bs-item">
+            <div class="bs-val" id="bigRecord">0승 0패</div>
+            <div class="bs-label">전적</div>
+          </div>
+        </div>
+        <div class="big-social">
+          <a class="social-btn discord" href="https://discord.gg/DpnhvexpE" target="_blank" rel="noopener" title="Discord 서버 참가">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><path d="M20.317 4.37a19.79 19.79 0 0 0-4.885-1.515.074.074 0 0 0-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 0 0-5.487 0 12.64 12.64 0 0 0-.617-1.25.077.077 0 0 0-.079-.037A19.736 19.736 0 0 0 3.677 4.37a.07.07 0 0 0-.032.027C.533 9.046-.32 13.58.099 18.057a.082.082 0 0 0 .031.057 19.9 19.9 0 0 0 5.993 3.03.078.078 0 0 0 .084-.028 14.09 14.09 0 0 0 1.226-1.994.076.076 0 0 0-.041-.106 13.107 13.107 0 0 1-1.872-.892.077.077 0 0 1-.008-.128 10.2 10.2 0 0 0 .372-.292.074.074 0 0 1 .077-.01c3.928 1.793 8.18 1.793 12.062 0a.074.074 0 0 1 .078.01c.12.098.246.198.373.292a.077.077 0 0 1-.006.127 12.299 12.299 0 0 1-1.873.892.077.077 0 0 0-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 0 0 .084.028 19.839 19.839 0 0 0 6.002-3.03.077.077 0 0 0 .032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 0 0-.031-.03zM8.02 15.33c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.956-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.956 2.418-2.157 2.418zm7.975 0c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.955-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.946 2.418-2.157 2.418z"/></svg>
+          </a>
+          <a class="social-btn kakao" href="https://open.kakao.com/o/gxsDP6ti" target="_blank" rel="noopener" title="카카오톡 오픈채팅">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><path d="M12 3C6.48 3 2 6.48 2 10.8c0 2.78 1.84 5.22 4.6 6.6-.2.7-.74 2.6-.84 3-.13.5.18.5.38.36.16-.1 2.54-1.72 3.56-2.4.76.1 1.54.18 2.3.18 5.52 0 10-3.48 10-7.8C22 6.48 17.52 3 12 3z"/></svg>
+          </a>
+        </div>
+      </div>
+      <div class="modes">
+        <button class="mode" onclick="location.href='replays.html'">
+          <div class="icon">📺</div>
+          <div class="mt">리플레이</div>
+          <div class="md">이전 게임 다시 보기</div>
+        </button>
+        <button class="mode mode-tutorial" onclick="askTutorial()">
+          <div class="icon">📚</div>
+          <div class="mt">튜토리얼</div>
+          <div class="md">처음이라면 여기부터</div>
+        </button>
+        <button class="mode" onclick="location.href='ranking.html'">
+          <div class="icon">🏆</div>
+          <div class="mt">랭킹</div>
+          <div class="md">전 세계 ELO 순위</div>
+        </button>
+      </div>
     </div>
   </div>
 
-  <!-- ========= 온라인 탭 ========= -->
-  <div class="tab-panel" data-tab="online">
-    <h2 class="tab-title">🌐 온라인</h2>
-    <div class="modes">
-      <button class="mode" onclick="goCreate()">
-        <div class="icon">➕</div>
-        <div class="mt">방 만들기</div>
-        <div class="md">새 방을 만들어 친구 초대</div>
-      </button>
-      <button class="mode" onclick="location.href='ranking.html'">
-        <div class="icon">🏆</div>
-        <div class="mt">랭킹</div>
-        <div class="md">전 세계 ELO 순위</div>
-      </button>
-    </div>
-    <div class="section">
-      <div class="sec-head">
-        <div class="sec-title">온라인 방 목록 <span class="badge" id="rcount">0</span></div>
-        <div class="tabs">
-          <button class="tab on" data-tab="wait" onclick="setTab('wait')">대기 중</button>
-          <button class="tab" data-tab="play" onclick="setTab('play')">진행 중</button>
-          <button class="tab tab-action" onclick="openEnterByCode()" title="방 코드로 직접 입장">🔑 코드 입장</button>
-        </div>
+  <!-- ========= 방 목록 모달 ========= -->
+  <div class="modal" id="roomListModal" onclick="if(event.target.id==='roomListModal') closeRoomListModal()">
+    <div class="modal-card room-list-modal">
+      <div class="rlm-head">
+        <h3 style="margin:0">📜 온라인 방 목록 <span class="badge" id="rcount">0</span></h3>
+        <button class="modal-close" onclick="closeRoomListModal()">✕</button>
+      </div>
+      <div class="tabs" style="margin-bottom:12px">
+        <button class="tab on" data-tab="wait" onclick="setTab('wait')">대기 중</button>
+        <button class="tab" data-tab="play" onclick="setTab('play')">진행 중</button>
+        <button class="tab tab-action" onclick="openEnterByCode()" title="방 코드로 직접 입장">🔑 코드 입장</button>
       </div>
       <div class="room-list" id="rooms">
         <div class="empty">로딩 중...</div>
       </div>
-    </div>
-  </div>
-
-  <!-- ========= 내 페이지 탭 ========= -->
-  <div class="tab-panel" data-tab="mypage">
-    <div class="big-profile" id="bigProfile">
-      <div class="big-avatar" id="bigAvatar">?</div>
-      <div class="big-name-row">
-        <span class="big-name" id="bigName">로딩…</span>
-        <button class="big-edit" onclick="changeNick()" title="닉네임 변경">✎</button>
-      </div>
-      <div class="big-stats">
-        <div class="bs-item">
-          <div class="bs-val" id="bigElo">—</div>
-          <div class="bs-label">ELO</div>
-        </div>
-        <div class="bs-item">
-          <span class="bs-tier" id="bigTier" style="background:#CD7F32">—</span>
-          <div class="bs-label">티어</div>
-        </div>
-        <div class="bs-item">
-          <div class="bs-val" id="bigRecord">0승 0패</div>
-          <div class="bs-label">전적</div>
-        </div>
-      </div>
-      <div class="big-social">
-        <a class="social-btn discord" href="https://discord.gg/DpnhvexpE" target="_blank" rel="noopener" title="Discord 서버 참가">
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><path d="M20.317 4.37a19.79 19.79 0 0 0-4.885-1.515.074.074 0 0 0-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 0 0-5.487 0 12.64 12.64 0 0 0-.617-1.25.077.077 0 0 0-.079-.037A19.736 19.736 0 0 0 3.677 4.37a.07.07 0 0 0-.032.027C.533 9.046-.32 13.58.099 18.057a.082.082 0 0 0 .031.057 19.9 19.9 0 0 0 5.993 3.03.078.078 0 0 0 .084-.028 14.09 14.09 0 0 0 1.226-1.994.076.076 0 0 0-.041-.106 13.107 13.107 0 0 1-1.872-.892.077.077 0 0 1-.008-.128 10.2 10.2 0 0 0 .372-.292.074.074 0 0 1 .077-.01c3.928 1.793 8.18 1.793 12.062 0a.074.074 0 0 1 .078.01c.12.098.246.198.373.292a.077.077 0 0 1-.006.127 12.299 12.299 0 0 1-1.873.892.077.077 0 0 0-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 0 0 .084.028 19.839 19.839 0 0 0 6.002-3.03.077.077 0 0 0 .032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 0 0-.031-.03zM8.02 15.33c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.956-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.956 2.418-2.157 2.418zm7.975 0c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.955-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.946 2.418-2.157 2.418z"/></svg>
-        </a>
-        <a class="social-btn kakao" href="https://open.kakao.com/o/gxsDP6ti" target="_blank" rel="noopener" title="카카오톡 오픈채팅">
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><path d="M12 3C6.48 3 2 6.48 2 10.8c0 2.78 1.84 5.22 4.6 6.6-.2.7-.74 2.6-.84 3-.13.5.18.5.38.36.16-.1 2.54-1.72 3.56-2.4.76.1 1.54.18 2.3.18 5.52 0 10-3.48 10-7.8C22 6.48 17.52 3 12 3z"/></svg>
-        </a>
-      </div>
-    </div>
-    <h2 class="tab-title">📋 메뉴</h2>
-    <div class="modes">
-      <button class="mode mode-tutorial" onclick="askTutorial()">
-        <div class="icon">📚</div>
-        <div class="mt">튜토리얼</div>
-        <div class="md">처음이라면 여기부터</div>
-      </button>
-      <button class="mode" onclick="location.href='replays.html'">
-        <div class="icon">📺</div>
-        <div class="mt">내 리플레이</div>
-        <div class="md">이전 게임 다시 보기</div>
-      </button>
-      <button class="mode" onclick="goLocal()">
-        <div class="icon">👥</div>
-        <div class="mt">로컬 2인</div>
-        <div class="md">한 기기에서 두 명이 번갈아</div>
-      </button>
     </div>
   </div>
 
@@ -1109,6 +1166,10 @@ window.startTutorial = function(){
     const filtered = fresh.filter(r => TAB==='wait' ? !r.started : !!r.started);
     filtered.sort((a,b)=>(b.createdAt||0)-(a.createdAt||0));
     document.getElementById('rcount').textContent = filtered.length;
+    // 방 목록 버튼 배지: 대기 + 진행 합산 (전체 활동 중인 방 수)
+    const totalActive = fresh.filter(r => !r.gameActive === false || !r.started || r.started).length;
+    const btnBadge = document.getElementById('rcountBtn');
+    if(btnBadge) btnBadge.textContent = fresh.length;
     if(!filtered.length){
       list.innerHTML = `<div class="empty">${TAB==='wait'?'대기 중인 방이 없습니다. 방 만들기로 시작하세요!':'진행 중인 게임이 없습니다.'}</div>`;
       return;
@@ -1231,13 +1292,25 @@ window.startTutorial = function(){
       b.classList.toggle('active', b.dataset.tab === tab);
     });
     try { localStorage.setItem('lobby_active_tab', tab); } catch(e){}
-    // 스크롤 맨 위로
     window.scrollTo(0, 0);
   };
-  // 초기 탭 결정 (마지막 선택했던 거 또는 AI)
+
+  // ===== 방 목록 모달 =====
+  window.openRoomListModal = function(){
+    document.getElementById('roomListModal').classList.add('show');
+  };
+  window.closeRoomListModal = function(){
+    document.getElementById('roomListModal').classList.remove('show');
+  };
+
+  // 초기 탭 (마지막 선택 or AI)
   const savedTab = (function(){
-    try { return localStorage.getItem('lobby_active_tab') || 'ai'; }
-    catch(e){ return 'ai'; }
+    try {
+      let t = localStorage.getItem('lobby_active_tab') || 'ai';
+      // 옛 'online' 탭 이름을 새 'main'으로 마이그레이션
+      if(t === 'online') t = 'main';
+      return t;
+    } catch(e){ return 'ai'; }
   })();
   window.switchLobbyTab(savedTab);
 })();
@@ -1249,9 +1322,9 @@ window.startTutorial = function(){
     <div class="bn-icon">🤖</div>
     <div class="bn-label">AI</div>
   </button>
-  <button class="bn-btn" data-tab="online" onclick="switchLobbyTab('online')">
-    <div class="bn-icon">🌐</div>
-    <div class="bn-label">온라인</div>
+  <button class="bn-btn" data-tab="main" onclick="switchLobbyTab('main')">
+    <div class="bn-icon">🎮</div>
+    <div class="bn-label">메인 게임</div>
   </button>
   <button class="bn-btn" data-tab="mypage" onclick="switchLobbyTab('mypage')">
     <div class="bn-icon">👤</div>
