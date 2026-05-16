@@ -344,7 +344,8 @@ input{font-family:inherit;outline:none}
 .bn-btn{background:transparent;border:none;color:var(--muted);cursor:pointer;
   display:flex;flex-direction:column;align-items:center;justify-content:center;
   gap:3px;padding:8px 4px;font-family:inherit;transition:color .15s}
-.bn-btn .bn-icon{font-size:22px;line-height:1}
+.bn-btn .bn-icon{font-size:22px;line-height:1;display:flex;align-items:center;justify-content:center;height:24px}
+.bn-btn .bn-icon svg{width:24px;height:24px;color:currentColor}
 .bn-btn .bn-label{font-size:11px;font-weight:700;letter-spacing:.5px}
 .bn-btn.active{color:var(--gold)}
 .bn-btn:active{transform:scale(.95)}
@@ -1006,12 +1007,11 @@ window.startTutorial = function(){
   const authTimeout = setTimeout(()=>{
     if(!MY_UID){
       _authTimedOut = true;
-      setOfflineMode('익명 로그인 시간 초과 (8초 경과)');
+      setOfflineMode('익명 로그인 시간 초과 (12초 경과) — 시크릿 모드/쿠키 차단 가능성');
     }
-  }, 8000);
+  }, 12000);
 
   // ===== 사용자 태그 생성 =====
-  // 헷갈리는 문자 제외 (0/O, 1/I/L)
   const TAG_CHARS = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
   function generateTag(){
     let tag = '';
@@ -1020,22 +1020,28 @@ window.startTutorial = function(){
     }
     return tag;
   }
-  // 고유 태그 발급 (중복 안 나올 때까지 재시도)
+  // 고유 태그 발급 — 권한 거부/네트워크 실패 시 fallback (충돌 가능성 무시)
   async function assignUniqueTag(uid){
-    for(let attempt = 0; attempt < 10; attempt++){
+    for(let attempt = 0; attempt < 5; attempt++){
       const candidate = generateTag();
-      const snap = await _fbDb.ref('userTags/' + candidate).once('value');
-      if(!snap.exists()){
-        // 사용 가능 — 등록
-        await _fbDb.ref('userTags/' + candidate).set(uid);
+      try {
+        const snap = await _fbDb.ref('userTags/' + candidate).once('value');
+        if(!snap.exists()){
+          try {
+            await _fbDb.ref('userTags/' + candidate).set(uid);
+          } catch(writeErr){
+            // 인덱스 쓰기 실패해도 태그는 발급 (30^6 = 7.3억 충돌 거의 없음)
+            console.warn('[tag] 인덱스 쓰기 실패, 태그는 그대로 사용:', writeErr.message);
+          }
+          return candidate;
+        }
+      } catch(readErr){
+        // userTags 읽기 권한 없음 등 — 중복 검사 없이 발급
+        console.warn('[tag] 중복 검사 스킵 (권한 없음):', readErr.message);
         return candidate;
       }
     }
-    // 극히 드문 경우 — 8자리로 fallback
-    let tag = '';
-    for(let i = 0; i < 8; i++) tag += TAG_CHARS[Math.floor(Math.random() * TAG_CHARS.length)];
-    await _fbDb.ref('userTags/' + tag).set(uid);
-    return tag;
+    return generateTag();
   }
 
   _fbAuth.onAuthStateChanged(async user=>{
@@ -1066,8 +1072,12 @@ window.startTutorial = function(){
         // 기존 사용자 마이그레이션: 태그 없으면 발급
         if(!u.tag){
           MY_TAG = await assignUniqueTag(MY_UID);
-          await _fbDb.ref('users/'+MY_UID + '/tag').set(MY_TAG);
-          await _fbDb.ref('leaderboard/'+MY_UID + '/tag').set(MY_TAG);
+          try {
+            await _fbDb.ref('users/'+MY_UID + '/tag').set(MY_TAG);
+            await _fbDb.ref('leaderboard/'+MY_UID + '/tag').set(MY_TAG);
+          } catch(e){
+            console.warn('[tag] 마이그레이션 쓰기 실패 (세션 한정 태그):', e.message);
+          }
         } else {
           MY_TAG = u.tag;
         }
@@ -1437,15 +1447,15 @@ window.startTutorial = function(){
 <!-- 모바일 하단 탭바 -->
 <nav class="bottom-nav">
   <button class="bn-btn" data-tab="ai" onclick="switchLobbyTab('ai')">
-    <div class="bn-icon">🤖</div>
+    <div class="bn-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="16" height="16" rx="2"/><rect x="9" y="9" width="6" height="6"/><path d="M15 2v2M9 2v2M15 20v2M9 20v2M20 9h2M20 15h2M2 9h2M2 15h2"/></svg></div>
     <div class="bn-label">AI</div>
   </button>
   <button class="bn-btn" data-tab="main" onclick="switchLobbyTab('main')">
-    <div class="bn-icon">🎮</div>
+    <div class="bn-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="6" y1="11" x2="10" y2="11"/><line x1="8" y1="9" x2="8" y2="13"/><line x1="15" y1="12" x2="15.01" y2="12"/><line x1="18" y1="10" x2="18.01" y2="10"/><path d="M17.32 5H6.68a4 4 0 0 0-3.978 3.59c-.006.052-.01.101-.017.152C2.604 9.416 2 14.456 2 16a3 3 0 0 0 3 3c1 0 1.5-.5 2-1l1.414-1.414A2 2 0 0 1 9.828 16h4.344a2 2 0 0 1 1.414.586L17 18c.5.5 1 1 2 1a3 3 0 0 0 3-3c0-1.545-.604-6.584-.685-7.258-.007-.05-.011-.1-.017-.151A4 4 0 0 0 17.32 5z"/></svg></div>
     <div class="bn-label">메인 게임</div>
   </button>
   <button class="bn-btn" data-tab="mypage" onclick="switchLobbyTab('mypage')">
-    <div class="bn-icon">👤</div>
+    <div class="bn-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></div>
     <div class="bn-label">내 페이지</div>
   </button>
 </nav>
