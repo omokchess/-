@@ -292,6 +292,21 @@ input{font-family:inherit;outline:none}
     min-height:120px;
     height:120px
   }
+  /* 데스크탑: 탭 콘텐츠 접기/펼치기 토글 */
+  .tab-collapse-btn{
+    display:flex;align-items:center;gap:6px;
+    margin:-8px 0 10px 0;padding:6px 10px;
+    background:transparent;border:1px solid var(--border);
+    color:var(--muted);font-size:11px;font-weight:700;
+    border-radius:6px;cursor:pointer;width:100%;
+    transition:all .15s
+  }
+  .tab-collapse-btn:hover{color:var(--gold);border-color:var(--gold)}
+  .tab-collapse-btn .arrow{transition:transform .2s;display:inline-flex}
+  .tab-panel.collapsed .tab-collapse-btn .arrow{transform:rotate(-90deg)}
+  .tab-panel.collapsed .modes,
+  .tab-panel.collapsed .big-profile,
+  .tab-panel.collapsed .social-section{display:none}
   /* 헤더: 작은 프로필 숨김 (큰 프로필이 내 페이지에) */
   .head .profile{display:none}
   .head{justify-content:center;text-align:center;margin-bottom:6px}
@@ -384,6 +399,21 @@ input{font-family:inherit;outline:none}
 .friend-btn.unblock-btn:hover{background:rgba(48,209,88,.1)}
 .empty-small{text-align:center;padding:14px;font-size:12px;color:var(--muted);line-height:1.6}
 
+/* 업적 / 칭호 아이템 */
+.ach-item,.title-item{display:flex;align-items:center;gap:12px;padding:10px 12px;background:var(--panel2);border:1px solid var(--border);border-radius:8px;margin-bottom:6px}
+.ach-item.got,.title-item.earned{background:linear-gradient(135deg,var(--panel2),rgba(245,200,66,.06));border-color:rgba(245,200,66,.3)}
+.ach-item.locked{opacity:.55}
+.ach-icon{font-size:24px;width:40px;text-align:center;flex:0 0 auto}
+.ach-info{flex:1;min-width:0}
+.ach-name{font-weight:700;font-size:14px;color:var(--text);margin-bottom:2px}
+.ach-desc{font-size:11px;color:var(--muted)}
+.ach-badge{font-size:18px;color:var(--green);font-weight:800;flex:0 0 auto}
+.title-item{display:flex;align-items:center;gap:10px}
+.title-item.earned .title-name{font-weight:800;font-size:15px}
+.title-item.locked .title-name{color:var(--muted)}
+.title-name{flex:1}
+.title-desc{font-size:11px;color:var(--muted);flex:0 0 auto;max-width:50%;text-align:right}
+
 /* 방 목록 모달 */
 .room-list-modal{max-width:720px;width:92%;max-height:80vh;overflow-y:auto}
 .rlm-head{display:flex;justify-content:space-between;align-items:center;
@@ -444,6 +474,16 @@ input{font-family:inherit;outline:none}
   /* 콘텐츠 영역이 하단 탭바에 가려지지 않게 padding 확장 */
   .wrap{padding-bottom:calc(90px + env(safe-area-inset-bottom))}
   
+  /* 모달 열렸을 때 탭바 자동 숨김 — :has() 지원 시 */
+  body:has(.modal.show) .bottom-nav,
+  body:has(.ai-modal.show) .bottom-nav,
+  body:has(.room-list-modal.show) .bottom-nav,
+  body:has(.cust-modal.show) .bottom-nav,
+  body.modal-open .bottom-nav{display:none !important}
+  
+  /* 모바일에서는 데스크탑용 접기 버튼 숨김 */
+  .tab-collapse-btn{display:none !important}
+  
   .tab-title{font-size:20px;margin-top:8px}
   .big-profile{padding:22px 14px}
   .big-avatar{width:72px;height:72px;font-size:28px}
@@ -502,6 +542,7 @@ input{font-family:inherit;outline:none}
     <!-- 모드 탭 -->
     <div class="tab-panel" data-tab="ai">
       <h2 class="tab-title"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg> 모드</h2>
+      <button class="tab-collapse-btn" onclick="toggleTabCollapse(this)"><span class="arrow"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg></span> 목록 접기</button>
       <div class="modes">
         <button class="mode" onclick="openAiModal()">
           <div class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="16" height="16" rx="2"/><rect x="9" y="9" width="6" height="6"/><path d="M15 2v2M9 2v2M15 20v2M9 20v2M20 9h2M20 15h2M2 9h2M2 15h2"/></svg></div>
@@ -514,16 +555,12 @@ input{font-family:inherit;outline:none}
     <!-- 메인 게임 탭 -->
     <div class="tab-panel" data-tab="main">
       <h2 class="tab-title"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="6" y1="11" x2="10" y2="11"/><line x1="8" y1="9" x2="8" y2="13"/><line x1="15" y1="12" x2="15.01" y2="12"/><line x1="18" y1="10" x2="18.01" y2="10"/><path d="M17.32 5H6.68a4 4 0 0 0-3.978 3.59c-.006.052-.01.101-.017.152C2.604 9.416 2 14.456 2 16a3 3 0 0 0 3 3c1 0 1.5-.5 2-1l1.414-1.414A2 2 0 0 1 9.828 16h4.344a2 2 0 0 1 1.414.586L17 18c.5.5 1 1 2 1a3 3 0 0 0 3-3c0-1.545-.604-6.584-.685-7.258-.007-.05-.011-.1-.017-.151A4 4 0 0 0 17.32 5z"/></svg> 메인 게임</h2>
+      <button class="tab-collapse-btn" onclick="toggleTabCollapse(this)"><span class="arrow"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg></span> 목록 접기</button>
       <div class="modes">
         <button class="mode" onclick="goCreate()">
           <div class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><line x1="12" y1="11" x2="12" y2="17"/><line x1="9" y1="14" x2="15" y2="14"/></svg></div>
           <div class="mt">방 만들기</div>
           <div class="md">새 방을 만들어 친구 초대</div>
-        </button>
-        <button class="mode mode-friend" onclick="openFriendBattle()">
-          <div class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></div>
-          <div class="mt">친구 대전</div>
-          <div class="md">친구한테 비공개 방 초대</div>
         </button>
         <button class="mode" onclick="goLocal()">
           <div class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></div>
@@ -535,10 +572,10 @@ input{font-family:inherit;outline:none}
           <div class="mt">방 목록</div>
           <div class="md">진행 중인 온라인 방 보기 <span class="badge" id="rcountBtn">0</span></div>
         </button>
-        <button class="mode mode-add-friend" onclick="openAddFriendModal()">
-          <div class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="8.5" cy="7" r="4"/><line x1="20" y1="8" x2="20" y2="14"/><line x1="23" y1="11" x2="17" y2="11"/></svg></div>
-          <div class="mt">친구 추가</div>
-          <div class="md">친구 코드로 새 친구 등록</div>
+        <button class="mode mode-friend" onclick="openFriendBattle()">
+          <div class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></div>
+          <div class="mt">친구 대전</div>
+          <div class="md">친구한테 비공개 방 초대</div>
         </button>
       </div>
     </div>
@@ -546,6 +583,7 @@ input{font-family:inherit;outline:none}
     <!-- 내 페이지 탭 -->
     <div class="tab-panel" data-tab="mypage">
       <h2 class="tab-title"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg> 내 페이지</h2>
+      <button class="tab-collapse-btn" onclick="toggleTabCollapse(this)"><span class="arrow"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg></span> 목록 접기</button>
       <div class="big-profile" id="bigProfile">
         <div class="big-avatar" id="bigAvatar">?</div>
         <div class="big-name-row">
@@ -614,6 +652,7 @@ input{font-family:inherit;outline:none}
     <!-- 기타 탭 -->
     <div class="tab-panel" data-tab="misc">
       <h2 class="tab-title"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/></svg> 기타</h2>
+      <button class="tab-collapse-btn" onclick="toggleTabCollapse(this)"><span class="arrow"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg></span> 목록 접기</button>
       <div class="modes">
         <button class="mode" onclick="location.href='replays.html'">
           <div class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="20" height="20" rx="2.18" ry="2.18"/><line x1="7" y1="2" x2="7" y2="22"/><line x1="17" y1="2" x2="17" y2="22"/><line x1="2" y1="12" x2="22" y2="12"/><line x1="2" y1="7" x2="7" y2="7"/><line x1="2" y1="17" x2="7" y2="17"/><line x1="17" y1="17" x2="22" y2="17"/><line x1="17" y1="7" x2="22" y2="7"/></svg></div>
@@ -624,6 +663,16 @@ input{font-family:inherit;outline:none}
           <div class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"/></svg></div>
           <div class="mt">랭킹</div>
           <div class="md">전 세계 ELO 순위</div>
+        </button>
+        <button class="mode" onclick="openAchievementsModal()">
+          <div class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="7"/><polyline points="8.21 13.89 7 23 12 20 17 23 15.79 13.88"/></svg></div>
+          <div class="mt">업적 보기</div>
+          <div class="md" id="achCountDesc">달성한 업적 확인</div>
+        </button>
+        <button class="mode" onclick="openTitlesModal()">
+          <div class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg></div>
+          <div class="mt">칭호 보기</div>
+          <div class="md">획득한 칭호 보기</div>
         </button>
         <button class="mode mode-tutorial" onclick="askTutorial()">
           <div class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg></div>
@@ -702,6 +751,36 @@ input{font-family:inherit;outline:none}
       <div class="actions" style="justify-content:center;gap:10px">
         <button class="btn btn-ghost" onclick="declineFriendRequest()">거절</button>
         <button class="btn btn-gold" onclick="acceptFriendRequest()">수락</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 업적 모달 -->
+  <div class="modal" id="achievementsModal" onclick="if(event.target.id==='achievementsModal') closeAchievementsModal()">
+    <div class="modal-card" style="max-width:540px;width:94%;max-height:85vh;display:flex;flex-direction:column">
+      <h3 style="text-align:center;display:flex;align-items:center;justify-content:center;gap:8px;margin-bottom:8px">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--gold)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="7"/><polyline points="8.21 13.89 7 23 12 20 17 23 15.79 13.88"/></svg>
+        업적
+      </h3>
+      <div id="achProgress" style="text-align:center;color:var(--muted);font-size:13px;margin-bottom:12px">— / —</div>
+      <div id="achList" style="overflow-y:auto;flex:1;padding-right:6px"></div>
+      <div class="actions" style="justify-content:center;margin-top:12px">
+        <button class="btn btn-ghost" onclick="closeAchievementsModal()">닫기</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 칭호 모달 -->
+  <div class="modal" id="titlesModal" onclick="if(event.target.id==='titlesModal') closeTitlesModal()">
+    <div class="modal-card" style="max-width:480px;width:92%;max-height:80vh;display:flex;flex-direction:column">
+      <h3 style="text-align:center;display:flex;align-items:center;justify-content:center;gap:8px;margin-bottom:8px">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--gold)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+        칭호
+      </h3>
+      <p style="text-align:center;color:var(--muted);font-size:12px;margin-bottom:14px">획득한 칭호를 선택하여 활성화</p>
+      <div id="titlesList" style="overflow-y:auto;flex:1;padding-right:6px"></div>
+      <div class="actions" style="justify-content:center;margin-top:12px">
+        <button class="btn btn-ghost" onclick="closeTitlesModal()">닫기</button>
       </div>
     </div>
   </div>
@@ -1207,41 +1286,7 @@ window.startTutorial = function(){
     return /Android|iPhone|iPad|iPod/i.test(navigator.userAgent || '');
   }
 
-  // 페이지 로드 시 redirect 결과 확인 (모바일 로그인 후 돌아옴)
-  if(_fbAuth){
-    _fbAuth.getRedirectResult().then(result => {
-      if(result && result.user){
-        console.log('[Auth] Redirect 로그인 성공');
-        // onAuthStateChanged가 자동으로 트리거됨
-      }
-    }).catch(e => {
-      if(e.code === 'auth/credential-already-in-use'){
-        const ok = confirm(
-          '이 Google 계정은 이미 다른 기기에서 사용 중입니다.\n\n' +
-          '그 계정으로 로그인하시겠습니까?\n' +
-          '(현재 기기의 임시 데이터는 사라집니다)'
-        );
-        if(ok){
-          // 현재 익명 데이터 삭제 후 그 계정으로 로그인
-          const cred = e.credential;
-          const anonUid = _fbAuth.currentUser?.uid;
-          (async () => {
-            try {
-              if(anonUid){
-                try { await _fbDb.ref('users/'+anonUid).remove(); } catch(_){}
-                try { await _fbDb.ref('leaderboard/'+anonUid).remove(); } catch(_){}
-              }
-              await _fbAuth.signOut();
-              await _fbAuth.signInWithCredential(cred);
-            } catch(e2){ alert('계정 전환 실패: ' + e2.message); }
-          })();
-        }
-      } else if(e.code && e.code !== 'auth/no-auth-event'){
-        // no-auth-event는 일반 페이지 로드 시 정상
-        console.warn('[Auth] Redirect 결과 에러:', e);
-      }
-    });
-  }
+  // (Redirect 결과는 onAuthStateChanged 안에서 race condition 없이 처리)
 
   window.linkOrSignInWithGoogle = async function(){
     if(!_fbAuth){ alert('Firebase 미초기화'); return; }
@@ -1757,6 +1802,8 @@ window.startTutorial = function(){
         tag: MY_TAG,
         acceptedAt: Date.now()
       });
+      // 4. 첫 친구 업적
+      try { await _fbDb.ref(`users/${MY_UID}/achievements/first_friend`).set({unlockedAt:Date.now()}); } catch(_){}
       renderFriends();
     } catch(e){
       alert('수락 실패: ' + (e.message || e));
@@ -1773,6 +1820,129 @@ window.startTutorial = function(){
     } catch(e){
       console.warn('거절 실패:', e.message);
     }
+  };
+
+  // ===== 업적 시스템 =====
+  // 정의: id, 제목, 설명, 조건 (수동 트리거)
+  const ACHIEVEMENTS = [
+    { id:'first_win', name:'첫 승리', desc:'첫 게임에서 승리', icon:'🏆' },
+    { id:'five_wins', name:'다섯 번의 승리', desc:'누적 5승', icon:'🥉' },
+    { id:'ten_wins', name:'10승 달성', desc:'누적 10승', icon:'🥈' },
+    { id:'fifty_wins', name:'전설로 가는 길', desc:'누적 50승', icon:'🥇' },
+    { id:'hundred_wins', name:'100승의 영광', desc:'누적 100승', icon:'👑' },
+    { id:'first_omok', name:'5목 첫 완성', desc:'5목으로 첫 승리', icon:'⭕' },
+    { id:'first_mate', name:'체크메이트', desc:'체크메이트로 첫 승리', icon:'♔' },
+    { id:'ai_easy', name:'AI 쉬움 격파', desc:'쉬움 난이도 AI 승리', icon:'🤖' },
+    { id:'ai_normal', name:'AI 보통 격파', desc:'보통 난이도 AI 승리', icon:'🤖' },
+    { id:'ai_hard', name:'AI 어려움 격파', desc:'어려움 난이도 AI 승리', icon:'🔥' },
+    { id:'silver_tier', name:'실버 진입', desc:'ELO 1200 도달', icon:'🥈' },
+    { id:'gold_tier', name:'골드 진입', desc:'ELO 1400 도달', icon:'🥇' },
+    { id:'platinum_tier', name:'플래티넘 진입', desc:'ELO 1600 도달', icon:'💎' },
+    { id:'diamond_tier', name:'다이아몬드 진입', desc:'ELO 1800 도달', icon:'💠' },
+    { id:'first_friend', name:'첫 친구', desc:'친구 추가 첫 성공', icon:'👥' },
+  ];
+
+  let _myAchievements = {};
+  async function loadAchievements(){
+    if(!MY_UID || !_fbDb) return {};
+    try {
+      const snap = await _fbDb.ref(`users/${MY_UID}/achievements`).once('value');
+      _myAchievements = snap.val() || {};
+      return _myAchievements;
+    } catch(e){ return {}; }
+  }
+
+  window.openAchievementsModal = async function(){
+    document.getElementById('achievementsModal').classList.add('show');
+    const list = document.getElementById('achList');
+    const prog = document.getElementById('achProgress');
+    list.innerHTML = '<div class="empty-small">로딩 중...</div>';
+    await loadAchievements();
+    const unlocked = Object.keys(_myAchievements).length;
+    prog.innerHTML = `<b style="color:var(--gold)">${unlocked}</b> / ${ACHIEVEMENTS.length} 달성`;
+    list.innerHTML = ACHIEVEMENTS.map(a => {
+      const got = !!_myAchievements[a.id];
+      return `
+        <div class="ach-item ${got?'got':'locked'}">
+          <div class="ach-icon">${got ? a.icon : '🔒'}</div>
+          <div class="ach-info">
+            <div class="ach-name">${a.name}</div>
+            <div class="ach-desc">${a.desc}</div>
+          </div>
+          ${got ? '<div class="ach-badge">✓</div>' : ''}
+        </div>`;
+    }).join('');
+  };
+  window.closeAchievementsModal = function(){
+    document.getElementById('achievementsModal').classList.remove('show');
+  };
+
+  // ===== 칭호 시스템 =====
+  // 자동 부여: ELO 티어 기반 + 랭킹 1~3등
+  function getMyTierTitle(elo){
+    if(elo >= 1800) return { id:'tier_diamond', name:'💠 다이아몬드', color:'#5ac8fa' };
+    if(elo >= 1600) return { id:'tier_platinum', name:'🔷 플래티넘', color:'#af52de' };
+    if(elo >= 1400) return { id:'tier_gold', name:'🥇 골드', color:'#f5c842' };
+    if(elo >= 1200) return { id:'tier_silver', name:'🥈 실버', color:'#bbb' };
+    return { id:'tier_bronze', name:'🥉 브론즈', color:'#cd7f32' };
+  }
+  
+  let _myRanking = null; // 1~3 또는 null
+
+  async function loadMyRanking(){
+    if(!MY_UID || !_fbDb) return null;
+    try {
+      const snap = await _fbDb.ref('leaderboard').once('value');
+      const obj = snap.val() || {};
+      const arr = Object.entries(obj)
+        .map(([uid, info]) => ({uid, elo: info.elo||1200}))
+        .sort((a,b)=> b.elo - a.elo);
+      const idx = arr.findIndex(x => x.uid === MY_UID);
+      if(idx === 0) return 1;
+      if(idx === 1) return 2;
+      if(idx === 2) return 3;
+      return null;
+    } catch(e){ return null; }
+  }
+
+  window.openTitlesModal = async function(){
+    document.getElementById('titlesModal').classList.add('show');
+    const list = document.getElementById('titlesList');
+    list.innerHTML = '<div class="empty-small">로딩 중...</div>';
+    
+    const tier = getMyTierTitle(MY_ELO);
+    _myRanking = await loadMyRanking();
+    
+    const titles = [];
+    // 티어 칭호 (현재 ELO 기준 자동)
+    titles.push({
+      id: tier.id, name: tier.name, color: tier.color,
+      desc: '현재 티어 칭호 (자동)', earned: true
+    });
+    // 순위 칭호
+    if(_myRanking === 1){
+      titles.push({ id:'rank_1', name:'👑 1위', color:'#ffd700', desc:'전 세계 랭킹 1위', earned:true });
+    }
+    if(_myRanking === 2){
+      titles.push({ id:'rank_2', name:'🥈 2위', color:'#c0c0c0', desc:'전 세계 랭킹 2위', earned:true });
+    }
+    if(_myRanking === 3){
+      titles.push({ id:'rank_3', name:'🥉 3위', color:'#cd7f32', desc:'전 세계 랭킹 3위', earned:true });
+    }
+    if(!_myRanking){
+      titles.push({ id:'rank_top3', name:'TOP 3', color:'#888', desc:'랭킹 1~3위 도달 시 자동 부여', earned:false });
+    }
+    
+    list.innerHTML = titles.map(t => `
+      <div class="title-item ${t.earned?'earned':'locked'}">
+        <div class="title-name" style="${t.earned?`color:${t.color}`:''}">${t.name}</div>
+        <div class="title-desc">${t.desc}</div>
+        ${t.earned ? '<div class="ach-badge">✓</div>' : '<div class="ach-icon">🔒</div>'}
+      </div>
+    `).join('');
+  };
+  window.closeTitlesModal = function(){
+    document.getElementById('titlesModal').classList.remove('show');
   };
 
   // ===== 사용자 태그 생성 =====
@@ -1808,9 +1978,56 @@ window.startTutorial = function(){
     return generateTag();
   }
 
+  // ===== 인증 흐름 =====
+  // race condition 방지: 첫 onAuthStateChanged 호출 시 반드시 getRedirectResult 먼저 await
+  let _checkedRedirect = false;
+
+  async function handleCredentialAlreadyInUse(e){
+    const ok = confirm(
+      '이 Google 계정은 이미 다른 기기에서 사용 중입니다.\n\n' +
+      '그 계정으로 로그인하시겠습니까?\n' +
+      '(현재 기기의 임시 데이터는 사라집니다)'
+    );
+    if(!ok) return;
+    const cred = e.credential;
+    const anonUid = _fbAuth.currentUser?.uid;
+    try {
+      if(anonUid){
+        try { await _fbDb.ref('users/'+anonUid).remove(); } catch(_){}
+        try { await _fbDb.ref('leaderboard/'+anonUid).remove(); } catch(_){}
+      }
+      await _fbAuth.signOut();
+      await _fbAuth.signInWithCredential(cred);
+    } catch(e2){
+      alert('계정 전환 실패: ' + (e2.message||e2));
+    }
+  }
+
   _fbAuth.onAuthStateChanged(async user=>{
     if(_authTimedOut) return;
     try {
+      // 첫 호출 시 redirect 결과 먼저 await (모바일 Google 로그인 후 복귀)
+      // 이걸 안 하면 signInAnonymously()가 먼저 트리거되어 익명 사용자로 덮어씌워짐
+      if(!_checkedRedirect){
+        _checkedRedirect = true;
+        try {
+          const result = await _fbAuth.getRedirectResult();
+          if(result && result.user){
+            console.log('[Auth] Redirect 로그인 성공:', result.user.email || '(no email)');
+            // user 객체가 업데이트됨. 이번 콜백의 user는 이미 그 user거나, 곧 다시 트리거됨.
+            // 이 콜백 안에서 정상 흐름 계속.
+            user = result.user;
+          }
+        } catch(redirectErr){
+          if(redirectErr.code === 'auth/credential-already-in-use'){
+            await handleCredentialAlreadyInUse(redirectErr);
+            return; // signInWithCredential이 새 user로 콜백 다시 트리거
+          } else if(redirectErr.code && redirectErr.code !== 'auth/no-auth-event'){
+            console.warn('[Auth] getRedirectResult error:', redirectErr.code, redirectErr.message);
+          }
+        }
+      }
+
       if(!user){
         try { await _fbAuth.signInAnonymously(); }
         catch(e){ clearTimeout(authTimeout); setOfflineMode('익명 로그인 실패: ' + (e.message||e)); }
@@ -2236,6 +2453,27 @@ window.startTutorial = function(){
     window.scrollTo(0, 0);
   };
 
+  // 데스크탑: 탭 접기/펼치기
+  window.toggleTabCollapse = function(btn){
+    const panel = btn.closest('.tab-panel');
+    if(!panel) return;
+    const isCollapsed = panel.classList.toggle('collapsed');
+    btn.lastChild.textContent = isCollapsed ? ' 목록 펼치기' : ' 목록 접기';
+    try {
+      localStorage.setItem(`tab_collapsed_${panel.dataset.tab}`, isCollapsed ? '1' : '0');
+    } catch(_){}
+  };
+  // 시작 시 저장된 collapse 상태 복원
+  document.querySelectorAll('.tab-panel').forEach(p => {
+    try {
+      if(localStorage.getItem(`tab_collapsed_${p.dataset.tab}`) === '1'){
+        p.classList.add('collapsed');
+        const btn = p.querySelector('.tab-collapse-btn');
+        if(btn) btn.lastChild.textContent = ' 목록 펼치기';
+      }
+    } catch(_){}
+  });
+
   // ===== 방 목록 모달 =====
   window.openRoomListModal = function(){
     document.getElementById('roomListModal').classList.add('show');
@@ -2254,6 +2492,21 @@ window.startTutorial = function(){
     } catch(e){ return 'ai'; }
   })();
   window.switchLobbyTab(savedTab);
+
+  // ===== 모달 열림 시 모바일 탭바 숨김 (:has() 미지원 브라우저 fallback) =====
+  if(window.matchMedia && matchMedia('(max-width:768px)').matches){
+    const checkModalsOpen = () => {
+      const anyOpen = !!document.querySelector('.modal.show, .ai-modal.show, .room-list-modal.show, .cust-modal.show');
+      document.body.classList.toggle('modal-open', anyOpen);
+    };
+    const observer = new MutationObserver(checkModalsOpen);
+    observer.observe(document.body, {
+      subtree: true,
+      attributes: true,
+      attributeFilter: ['class']
+    });
+    checkModalsOpen();
+  }
 })();
 </script>
 

@@ -2267,6 +2267,9 @@ function endGame(emoji, title, desc, winner /* 'w'|'b'|'draw' */){
   const eloEl = document.getElementById('endElo');
   eloEl.style.display = 'none';
 
+  // 업적 검사 (승리 / AI 격파 / 5목 / 체크메이트 등)
+  try { checkAchievements(winner, title, desc); } catch(e){ console.warn('업적 검사 실패:', e); }
+
   const rematchBtn = document.getElementById('rematchBtn');
   // 관전자/리플레이 외엔 모든 모드에서 표시 (라벨은 모드별로 다름)
   if(IS_SPEC || IS_REPLAY){
@@ -2344,6 +2347,55 @@ function showEndModal(){
 function openRules(){ document.getElementById('rulesModal').classList.add('show'); }
 function closeRules(){ document.getElementById('rulesModal').classList.remove('show'); }
 
+// ===== 업적 검사 =====
+async function unlockAch(id){
+  if(!_fbDb || !MY_UID) return;
+  try {
+    const snap = await _fbDb.ref(`users/${MY_UID}/achievements/${id}`).once('value');
+    if(snap.exists()) return; // 이미 달성
+    await _fbDb.ref(`users/${MY_UID}/achievements/${id}`).set({ unlockedAt: Date.now() });
+    showFlash(`🏆 업적 해제: ${id}`);
+  } catch(e){
+    console.warn('[Ach] unlock 실패:', e.message);
+  }
+}
+
+async function checkAchievements(winner, title, desc){
+  if(IS_SPEC || IS_REPLAY) return;
+  if(!MY_COLOR && !IS_AI && !IS_LOCAL) return;
+  
+  const iWon = winner === MY_COLOR;
+  
+  // 승리 기반 업적
+  if(iWon){
+    // 5목 / 체크메이트
+    if(title && title.indexOf('오목') >= 0) await unlockAch('first_omok');
+    if(title && title.indexOf('체크메이트') >= 0) await unlockAch('first_mate');
+    
+    // 누적 승수는 ELO 갱신 후 검사 (applyEloChange가 _myInfo 업데이트). 여기서는 AI 격파만.
+    if(IS_AI){
+      const diff = window._aiDifficulty || 'normal';
+      if(diff === 'easy') await unlockAch('ai_easy');
+      else if(diff === 'normal') await unlockAch('ai_normal');
+      else if(diff === 'hard') await unlockAch('ai_hard');
+    }
+  }
+}
+
+// ELO 갱신 후 누적 승수/티어 검사 (applyEloChange 안에서 호출)
+async function checkPostEloAchievements(newElo, newW){
+  if(!_fbDb || !MY_UID) return;
+  if(newW === 1) await unlockAch('first_win');
+  if(newW >= 5) await unlockAch('five_wins');
+  if(newW >= 10) await unlockAch('ten_wins');
+  if(newW >= 50) await unlockAch('fifty_wins');
+  if(newW >= 100) await unlockAch('hundred_wins');
+  if(newElo >= 1200) await unlockAch('silver_tier');
+  if(newElo >= 1400) await unlockAch('gold_tier');
+  if(newElo >= 1600) await unlockAch('platinum_tier');
+  if(newElo >= 1800) await unlockAch('diamond_tier');
+}
+
 async function applyEloChange(winner){
   if(!_gameRatingInfo){ console.warn('[ELO] _gameRatingInfo 없음 — 적용 안 함'); return null; }
   if(!_fbDb){ console.warn('[ELO] _fbDb 없음 — 적용 안 함'); return null; }
@@ -2398,6 +2450,8 @@ async function applyEloChange(winner){
       elo: newElo, w: upd.w, l: upd.l, d: upd.d
     });
     console.log('[ELO] 업데이트 성공', upd);
+    // 업적: 누적 승수 + 티어 갱신
+    try { await checkPostEloAchievements(newElo, upd.w); } catch(_){}
   }catch(e){
     console.error('[ELO] 업데이트 실패',e);
     throw e; // 위에서 잡아 사용자에게 표시
