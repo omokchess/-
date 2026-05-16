@@ -60,12 +60,42 @@ input{font-family:inherit;outline:none}
 .mode{background:var(--panel);border:1px solid var(--border);border-radius:14px;padding:18px;
   cursor:pointer;transition:all .15s;display:flex;flex-direction:column;gap:8px;color:var(--text);text-align:left}
 .mode:hover{transform:translateY(-2px);border-color:var(--gold);box-shadow:0 6px 22px rgba(245,200,66,.15)}
-.mode .icon{font-size:30px}
-.mode .mt{font-weight:800;font-size:16px}
-.mode .md{font-size:12px;color:var(--muted);line-height:1.5}
+.mode .icon{
+  display:flex;align-items:center;justify-content:center;
+  width:52px;height:52px;border-radius:14px;
+  margin:0 auto 10px;
+  background:linear-gradient(135deg,rgba(245,200,66,.14),rgba(245,200,66,.04));
+  border:1px solid rgba(245,200,66,.2);
+  transition:all .25s cubic-bezier(.4,0,.2,1);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.04)
+}
+.mode .icon svg{
+  width:26px;height:26px;color:var(--gold);
+  transition:transform .25s cubic-bezier(.4,0,.2,1);
+  filter:drop-shadow(0 1px 2px rgba(245,200,66,.25))
+}
+.mode:hover .icon{
+  background:linear-gradient(135deg,rgba(245,200,66,.24),rgba(245,200,66,.1));
+  border-color:rgba(245,200,66,.5);
+  transform:translateY(-2px) scale(1.04);
+  box-shadow:0 6px 18px rgba(245,200,66,.2),inset 0 1px 0 rgba(255,255,255,.08)
+}
+.mode:hover .icon svg{transform:scale(1.08) rotate(-3deg)}
 .mode.mode-tutorial{border-color:rgba(48,209,88,.45);background:linear-gradient(135deg, var(--panel), rgba(48,209,88,.06))}
 .mode.mode-tutorial:hover{border-color:var(--green);box-shadow:0 0 0 1px var(--green), 0 0 14px rgba(48,209,88,.25)}
 .mode.mode-tutorial .mt{color:var(--green)}
+.mode.mode-tutorial .icon{
+  background:linear-gradient(135deg,rgba(48,209,88,.16),rgba(48,209,88,.04));
+  border-color:rgba(48,209,88,.3)
+}
+.mode.mode-tutorial .icon svg{color:var(--green);filter:drop-shadow(0 1px 2px rgba(48,209,88,.3))}
+.mode.mode-tutorial:hover .icon{
+  background:linear-gradient(135deg,rgba(48,209,88,.28),rgba(48,209,88,.1));
+  border-color:rgba(48,209,88,.6);
+  box-shadow:0 6px 18px rgba(48,209,88,.25),inset 0 1px 0 rgba(255,255,255,.08)
+}
+.mode .mt{font-weight:800;font-size:16px}
+.mode .md{font-size:12px;color:var(--muted);line-height:1.5}
 
 /* AI 난이도 모달 */
 .modal{position:fixed;inset:0;background:rgba(0,0,0,.7);display:none;align-items:flex-start;justify-content:center;z-index:100;padding:20px;overflow-y:auto;-webkit-overflow-scrolling:touch}
@@ -383,17 +413,17 @@ input{font-family:inherit;outline:none}
       <h2 class="tab-title">🤖 AI</h2>
       <div class="modes">
         <button class="mode" onclick="openAiModal()">
-          <div class="icon">🤖</div>
+          <div class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="16" height="16" rx="2"/><rect x="9" y="9" width="6" height="6"/><path d="M15 2v2M9 2v2M15 20v2M9 20v2M20 9h2M20 15h2M2 9h2M2 15h2"/></svg></div>
           <div class="mt">AI 대전</div>
           <div class="md">3가지 난이도의 컴퓨터와</div>
         </button>
         <button class="mode" onclick="openAiVaiModal()">
-          <div class="icon">⚔️</div>
+          <div class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="14.5 17.5 3 6 3 3 6 3 17.5 14.5"/><line x1="13" y1="19" x2="19" y2="13"/><line x1="16" y1="16" x2="20" y2="20"/><line x1="19" y1="21" x2="21" y2="19"/><polyline points="14.5 6.5 18 3 21 3 21 6 17.5 9.5"/><line x1="5" y1="14" x2="9" y2="18"/><line x1="7" y1="17" x2="4" y2="20"/><line x1="3" y1="19" x2="5" y2="21"/></svg></div>
           <div class="mt">AI VS AI</div>
           <div class="md">두 AI가 싸우는 걸 구경</div>
         </button>
         <button class="mode" onclick="location.href='FRONTIER.html?mode=evolve'">
-          <div class="icon">🧬</div>
+          <div class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5a3 3 0 1 0-5.997.125 4 4 0 0 0-2.526 5.77 4 4 0 0 0 .556 6.588A4 4 0 1 0 12 18Z"/><path d="M12 5a3 3 0 1 1 5.997.125 4 4 0 0 1 2.526 5.77 4 4 0 0 1-.556 6.588A4 4 0 1 1 12 18Z"/><path d="M15 13a4.5 4.5 0 0 1-3-4 4.5 4.5 0 0 1-3 4"/><path d="M17.599 6.5a3 3 0 0 0 .399-1.375"/><path d="M6.003 5.125A3 3 0 0 0 6.401 6.5"/><path d="M3.477 10.896a4 4 0 0 1 .585-.396"/><path d="M19.938 10.5a4 4 0 0 1 .585.396"/><path d="M6 18a4 4 0 0 1-1.967-.516"/><path d="M19.967 17.484A4 4 0 0 1 18 18"/></svg></div>
           <div class="mt">AI 학습</div>
           <div class="md">자가 대국으로 학습하는 AI</div>
         </button>
@@ -405,17 +435,17 @@ input{font-family:inherit;outline:none}
       <h2 class="tab-title">🎮 메인 게임</h2>
       <div class="modes">
         <button class="mode" onclick="goCreate()">
-          <div class="icon">➕</div>
+          <div class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><line x1="12" y1="11" x2="12" y2="17"/><line x1="9" y1="14" x2="15" y2="14"/></svg></div>
           <div class="mt">방 만들기</div>
           <div class="md">새 방을 만들어 친구 초대</div>
         </button>
         <button class="mode" onclick="goLocal()">
-          <div class="icon">👥</div>
+          <div class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></div>
           <div class="mt">로컬 2인</div>
           <div class="md">한 기기에서 두 명이 번갈아</div>
         </button>
         <button class="mode" onclick="openRoomListModal()">
-          <div class="icon">📜</div>
+          <div class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg></div>
           <div class="mt">방 목록</div>
           <div class="md">진행 중인 온라인 방 보기 <span class="badge" id="rcountBtn">0</span></div>
         </button>
@@ -456,17 +486,17 @@ input{font-family:inherit;outline:none}
       </div>
       <div class="modes">
         <button class="mode" onclick="location.href='replays.html'">
-          <div class="icon">📺</div>
+          <div class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="20" height="20" rx="2.18" ry="2.18"/><line x1="7" y1="2" x2="7" y2="22"/><line x1="17" y1="2" x2="17" y2="22"/><line x1="2" y1="12" x2="22" y2="12"/><line x1="2" y1="7" x2="7" y2="7"/><line x1="2" y1="17" x2="7" y2="17"/><line x1="17" y1="17" x2="22" y2="17"/><line x1="17" y1="7" x2="22" y2="7"/></svg></div>
           <div class="mt">리플레이</div>
           <div class="md">이전 게임 다시 보기</div>
         </button>
         <button class="mode mode-tutorial" onclick="askTutorial()">
-          <div class="icon">📚</div>
+          <div class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg></div>
           <div class="mt">튜토리얼</div>
           <div class="md">처음이라면 여기부터</div>
         </button>
         <button class="mode" onclick="location.href='ranking.html'">
-          <div class="icon">🏆</div>
+          <div class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"/></svg></div>
           <div class="mt">랭킹</div>
           <div class="md">전 세계 ELO 순위</div>
         </button>
