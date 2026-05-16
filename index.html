@@ -265,22 +265,37 @@ input{font-family:inherit;outline:none}
   display:flex;align-items:center;justify-content:center;gap:8px}
 .tab-title svg{width:20px;height:20px;color:var(--gold)}
 
-/* 데스크탑: 4 컬럼 가로 배치 */
+/* 데스크탑: flex 가로 배치 + 중앙 정렬 (collapsed 패널도 적절히 처리) */
 @media (min-width:769px){
   .lobby-grid{
-    display:grid;
-    grid-template-columns:1fr 1fr 1fr 1fr;
+    display:flex;
+    flex-wrap:wrap;
+    justify-content:center;
+    align-items:flex-start;
     gap:16px;
     max-width:1400px;
     margin:24px auto 0;
-    align-items:start
+    padding:0 12px
   }
   .tab-panel{
     background:var(--panel);
     border:1px solid var(--border);
     border-radius:14px;
     padding:18px 16px;
-    margin-top:0
+    margin-top:0;
+    flex:1 1 280px;
+    min-width:0;
+    max-width:340px
+  }
+  /* 접힌 패널: 좁은 고정 너비 (균등 분배 안 함) */
+  .tab-panel.collapsed{
+    flex:0 0 auto;
+    width:180px;
+    max-width:180px
+  }
+  .tab-panel.collapsed .tab-title{
+    white-space:nowrap;
+    font-size:16px
   }
   /* 데스크탑: 한 컬럼 안에선 버튼 세로 스택 */
   .tab-panel .modes{
