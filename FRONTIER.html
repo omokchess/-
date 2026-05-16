@@ -2274,29 +2274,42 @@ function endGame(emoji, title, desc, winner /* 'w'|'b'|'draw' */){
   }
 
   // ELO 적용 (온라인만)
-  if(IS_NET && !IS_SPEC && _gameRatingInfo && winner){
-    eloEl.textContent = '레이팅 계산 중...';
-    eloEl.style.display = '';
-    _eloPending = true;
-    setEndNavDisabled(true);
-    applyEloChange(winner).then(diff => {
-      _eloPending = false;
-      setEndNavDisabled(false);
-      if(diff !== null){
-        const sign = diff > 0 ? '+' : '';
-        eloEl.className = 'elo-change ' + (diff>0?'up':diff<0?'dn':'');
-        eloEl.innerHTML = `레이팅 <b>${sign}${diff}</b> → ${MY_ELO_P + diff}`;
-      } else {
-        eloEl.className = 'elo-change';
-        eloEl.innerHTML = '⚠ ELO 업데이트 실패 (콘솔 확인)';
-      }
-    }).catch(e => {
-      _eloPending = false;
-      setEndNavDisabled(false);
-      console.error('applyEloChange error:', e);
+  if(IS_NET && !IS_SPEC){
+    if(!_gameRatingInfo){
+      eloEl.style.display = '';
       eloEl.className = 'elo-change';
-      eloEl.innerHTML = '⚠ ELO 오류: ' + (e && e.message ? e.message : e);
-    });
+      eloEl.innerHTML = '⚠ ELO 정보 없음 — 게임 시작 데이터 교환 실패';
+      console.warn('[ELO] _gameRatingInfo가 null. HELLO 메시지 교환 실패 가능성.');
+    } else if(!winner){
+      eloEl.style.display = '';
+      eloEl.className = 'elo-change';
+      eloEl.innerHTML = '⚠ 승자 정보 없음 — ELO 적용 안 됨';
+      console.warn('[ELO] winner가 null/undefined.', {winner, _gameRatingInfo});
+    } else {
+      eloEl.textContent = '레이팅 계산 중...';
+      eloEl.style.display = '';
+      _eloPending = true;
+      setEndNavDisabled(true);
+      console.log('[ELO] 시작 — winner:', winner, 'MY_COLOR:', MY_COLOR, '_gameRatingInfo:', _gameRatingInfo);
+      applyEloChange(winner).then(diff => {
+        _eloPending = false;
+        setEndNavDisabled(false);
+        if(diff !== null){
+          const sign = diff > 0 ? '+' : '';
+          eloEl.className = 'elo-change ' + (diff>0?'up':diff<0?'dn':'');
+          eloEl.innerHTML = `레이팅 <b>${sign}${diff}</b> → ${MY_ELO_P + diff}`;
+        } else {
+          eloEl.className = 'elo-change';
+          eloEl.innerHTML = '⚠ ELO 업데이트 실패 (콘솔 확인)';
+        }
+      }).catch(e => {
+        _eloPending = false;
+        setEndNavDisabled(false);
+        console.error('applyEloChange error:', e);
+        eloEl.className = 'elo-change';
+        eloEl.innerHTML = '⚠ ELO 오류: ' + (e && e.message ? e.message : e);
+      });
+    }
   } else if(IS_AI || IS_LOCAL){
     eloEl.style.display = '';
     eloEl.className = 'elo-change';
