@@ -30,6 +30,9 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','Pretendard Variabl
 .btn-danger{padding:6px 12px;background:transparent;color:var(--red);border:1px solid var(--red);
   border-radius:6px;cursor:pointer;font-size:12px;font-weight:600;margin-left:auto}
 .btn-danger:hover{background:rgba(255,69,58,.1)}
+.btn-import{padding:6px 12px;background:transparent;color:var(--gold);border:1px solid var(--gold);
+  border-radius:6px;cursor:pointer;font-size:12px;font-weight:600}
+.btn-import:hover{background:rgba(245,200,66,.1)}
 
 .replay-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:12px}
 .replay-card{background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:14px;
@@ -103,6 +106,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','Pretendard Variabl
       <option value="oldest">오래된순</option>
       <option value="moves">수 많은순</option>
     </select>
+    <button class="btn-import" onclick="document.getElementById('importFile').click()">⬆ 가져오기</button>
+    <input type="file" id="importFile" accept=".json,application/json" style="display:none" onchange="importReplay(event)">
     <button class="btn-danger" onclick="confirmClearAll()">🗑 모두 삭제</button>
   </div>
 
@@ -241,6 +246,54 @@ function escapeHtml(s){
 
 function openReplay(id){
   location.href = 'FRONTIER.html?role=replay&rid=' + id;
+}
+
+function importReplay(event){
+  const file = event.target.files && event.target.files[0];
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    try {
+      const data = JSON.parse(e.target.result);
+      if(!data || data.type !== 'frontier-replay' || !data.replay){
+        alert('유효한 FRONTIER 리플레이 파일이 아닙니다.\n(type: "frontier-replay" 필요)');
+        return;
+      }
+      // 새 id 발급 (기존 id 충돌 방지)
+      const newId = 'rep_' + Date.now() + '_' + Math.random().toString(36).slice(2,8);
+      // 메타 정보 추출
+      const meta = data.meta || {};
+      meta.id = newId;
+      meta.savedAt = Date.now(); // 가져온 시각
+      meta.imported = true;
+      // 리플레이 데이터 저장
+      localStorage.setItem('frontier_replay_' + newId, JSON.stringify(data.replay));
+      // 인덱스 업데이트
+      let index = [];
+      try { index = JSON.parse(localStorage.getItem('frontier_replay_index') || '[]'); } catch(_){}
+      index.unshift(meta);
+      // 최대 100개로 제한 (오래된 거 자동 제거)
+      while(index.length > 100){
+        const old = index.pop();
+        try { localStorage.removeItem('frontier_replay_' + old.id); } catch(_){}
+      }
+      localStorage.setItem('frontier_replay_index', JSON.stringify(index));
+      alert('✓ 리플레이 가져오기 성공!');
+      // 새 입력 가능하도록 input 초기화
+      event.target.value = '';
+      // 목록 새로고침
+      loadReplays();
+      renderList();
+    } catch(err){
+      alert('파일 파싱 실패: ' + err.message);
+      event.target.value = '';
+    }
+  };
+  reader.onerror = () => {
+    alert('파일 읽기 실패');
+    event.target.value = '';
+  };
+  reader.readAsText(file);
 }
 
 function downloadReplay(id){

@@ -287,11 +287,21 @@ input{font-family:inherit;outline:none}
     grid-template-columns:1fr;
     gap:10px
   }
-  /* 모든 mode 버튼 같은 높이로 통일 */
+  /* 모든 mode 버튼: 컬럼 전체 너비 + 높이는 너비의 2/3 */
   .tab-panel .mode{
-    min-height:120px;
-    height:120px
+    width:100%;
+    aspect-ratio:3/2;
+    min-height:unset;
+    height:auto;
+    justify-content:center;
+    padding:22px
   }
+  .tab-panel .mode .icon{
+    width:64px;height:64px;border-radius:16px;margin:0 auto 14px
+  }
+  .tab-panel .mode .icon svg{width:34px;height:34px}
+  .tab-panel .mode .mt{font-size:18px;text-align:center}
+  .tab-panel .mode .md{font-size:12px;text-align:center;color:var(--muted)}
   /* 데스크탑: 탭 콘텐츠 접기/펼치기 토글 */
   .tab-collapse-btn{
     display:flex;align-items:center;gap:6px;
@@ -547,7 +557,7 @@ input{font-family:inherit;outline:none}
         <button class="mode" onclick="openAiModal()">
           <div class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="16" height="16" rx="2"/><rect x="9" y="9" width="6" height="6"/><path d="M15 2v2M9 2v2M15 20v2M9 20v2M20 9h2M20 15h2M2 9h2M2 15h2"/></svg></div>
           <div class="mt">AI 대전</div>
-          <div class="md">3가지 난이도의 컴퓨터와</div>
+          <div class="md">AI와 대전</div>
         </button>
       </div>
     </div>
@@ -647,6 +657,14 @@ input{font-family:inherit;outline:none}
           <div class="empty-small">차단한 사용자 없음</div>
         </div>
       </details>
+
+      <div class="modes">
+        <button class="mode mode-add-friend" onclick="openAddFriendModal()">
+          <div class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="8.5" cy="7" r="4"/><line x1="20" y1="8" x2="20" y2="14"/><line x1="23" y1="11" x2="17" y2="11"/></svg></div>
+          <div class="mt">친구 추가</div>
+          <div class="md">친구 코드로 새 친구 등록</div>
+        </button>
+      </div>
     </div>
 
     <!-- 기타 탭 -->
