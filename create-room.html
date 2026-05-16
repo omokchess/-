@@ -194,6 +194,7 @@ fbInit();
 const Q = new URLSearchParams(location.search);
 const MY_UID = Q.get('uid');
 const MY_NICK = Q.get('nick') || '익명';
+const MY_TAG = Q.get('tag') || '';
 const MY_ELO = parseInt(Q.get('elo')||'1200');
 
 // =============== 방 코드 ===============
@@ -343,6 +344,7 @@ async function createRoom(){
     gameActive: false,
     hostUid: MY_UID,
     hostNick: MY_NICK,
+    hostTag: MY_TAG,
     hostElo: MY_ELO
   };
   try{
@@ -370,7 +372,7 @@ async function createRoom(){
         // 페이지 떠나기 전 myRoomCode 보호 (이건 게임 페이지 이슈, 여기선 단순 이동)
         const params = new URLSearchParams({
           role:'host', room:MY_CODE, time:SEL_TIME, inc:SEL_INC,
-          uid:MY_UID, nick:MY_NICK, elo:MY_ELO,
+          uid:MY_UID, nick:MY_NICK, tag:MY_TAG, elo:MY_ELO,
           hand:data.hand
         });
         // 즉시 이동

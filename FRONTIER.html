@@ -52,6 +52,8 @@ input{font-family:inherit;outline:none}
   display:flex;align-items:center;justify-content:center;font-weight:900;font-size:13px;flex-shrink:0}
 .pcard .av.b{background:#1c1c1e;color:var(--gold);border:1px solid var(--gold)}
 .pcard .pn{font-weight:700;font-size:13px;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ingame-tag{font-family:'Menlo','Courier New',monospace;font-size:10px;
+  color:var(--muted);opacity:.7;font-weight:500;margin-left:3px;letter-spacing:.3px}
 .pcard .pe{font-size:11px;color:var(--muted)}
 .pcard .ck{font-size:11px;color:var(--orange);margin-top:4px}
 .pcard .check-stats{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:6px;margin-top:5px;font-size:10px;line-height:1.2;width:100%}
@@ -868,6 +870,7 @@ const DIFF      = Q.get('difficulty') || 'normal';
 const TIME_LIMIT_RAW = Q.get('time') || 'unlimited';
 const MY_UID    = Q.get('uid') || ('local-' + Math.random().toString(36).slice(2,8));
 const MY_NICK_P = Q.get('nick') || (MODE==='ai' ? '플레이어' : '나');
+const MY_TAG_P  = Q.get('tag') || '';
 const MY_ELO_P  = parseInt(Q.get('elo') || '1200');
 
 // INIT_HAND must be declared BEFORE parsing _handParam to avoid ReferenceError
@@ -3284,17 +3287,19 @@ function onPeerMessage(data){
     if(NET_ROLE === 'host'){
       // 게스트 정보 받음
       _gameRatingInfo = {
-        whiteUid: MY_UID, whiteElo: MY_ELO_P, whiteNick: MY_NICK_P,
-        blackUid: data.guestUid, blackElo: data.guestElo, blackNick: data.guestNick
+        whiteUid: MY_UID, whiteElo: MY_ELO_P, whiteNick: MY_NICK_P, whiteTag: MY_TAG_P,
+        blackUid: data.guestUid, blackElo: data.guestElo, blackNick: data.guestNick, blackTag: data.guestTag||''
       };
-      document.getElementById('oppName').textContent = data.guestNick + ` (${data.guestElo})`;
+      const gTag = data.guestTag ? `<span class="ingame-tag">#${escapeHtml(data.guestTag)}</span>` : '';
+      document.getElementById('oppName').innerHTML = escapeHtml(data.guestNick) + gTag + ` (${data.guestElo})`;
       document.getElementById('oppMeta').textContent = '흑 ELO ' + data.guestElo;
     } else {
       _gameRatingInfo = {
-        whiteUid: data.hostUid, whiteElo: data.hostElo, whiteNick: data.hostNick,
-        blackUid: MY_UID, blackElo: MY_ELO_P, blackNick: MY_NICK_P
+        whiteUid: data.hostUid, whiteElo: data.hostElo, whiteNick: data.hostNick, whiteTag: data.hostTag||'',
+        blackUid: MY_UID, blackElo: MY_ELO_P, blackNick: MY_NICK_P, blackTag: MY_TAG_P
       };
-      document.getElementById('oppName').textContent = data.hostNick + ` (${data.hostElo})`;
+      const hTag = data.hostTag ? `<span class="ingame-tag">#${escapeHtml(data.hostTag)}</span>` : '';
+      document.getElementById('oppName').innerHTML = escapeHtml(data.hostNick) + hTag + ` (${data.hostElo})`;
       document.getElementById('oppMeta').textContent = '백 ELO ' + data.hostElo;
       // 게스트는 호스트 손패 설정을 받음 (URL과 같지만 동기화)
       if(data.hand){
@@ -4142,7 +4147,9 @@ function init(){
   }
 
   // UI 초기 정보
-  document.getElementById('myName').textContent = MY_NICK_P + (IS_NET ? ` (${MY_ELO_P})` : '');
+  const myTagHtml = MY_TAG_P ? `<span class="ingame-tag">#${MY_TAG_P}</span>` : '';
+  const myEloTxt = IS_NET ? ` (${MY_ELO_P})` : '';
+  document.getElementById('myName').innerHTML = escapeHtml(MY_NICK_P) + myTagHtml + myEloTxt;
   document.getElementById('myAv').textContent = (MY_COLOR === 'w' ? 'W' : 'B');
   document.getElementById('myAv').className = 'av' + (MY_COLOR==='b'?' b':'');
   document.getElementById('myMeta').textContent = MY_COLOR === 'w' ? '백' : '흑';

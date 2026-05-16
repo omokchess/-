@@ -299,11 +299,25 @@ input{font-family:inherit;outline:none}
   color:#1c1c1e;display:inline-flex;align-items:center;justify-content:center;
   font-size:32px;font-weight:700;font-family:'Cinzel',serif;
   box-shadow:0 4px 14px rgba(245,200,66,.3);margin-bottom:12px}
-.big-name-row{display:flex;align-items:center;justify-content:center;gap:8px;margin-bottom:14px}
+.big-name-row{display:flex;align-items:center;justify-content:center;gap:8px;margin-bottom:4px}
 .big-name{font-size:22px;font-weight:700;color:var(--text);font-family:'Cinzel',serif}
 .big-edit{background:transparent;border:1px solid var(--border);color:var(--muted);
   padding:4px 8px;border-radius:6px;cursor:pointer;font-size:12px}
 .big-edit:hover{background:var(--panel2);color:var(--gold)}
+.big-tag-row{text-align:center;margin-bottom:14px}
+.big-tag{display:inline-block;font-family:'Menlo','Courier New',monospace;
+  font-size:13px;color:var(--muted);background:var(--panel2);padding:3px 10px;
+  border-radius:12px;cursor:pointer;border:1px solid var(--border);
+  letter-spacing:.5px;transition:all .15s;user-select:all}
+.big-tag:hover{color:var(--gold);border-color:var(--gold);background:rgba(245,200,66,.08)}
+.big-tag.copied{color:var(--green);border-color:var(--green);background:rgba(48,209,88,.1)}
+
+/* 인라인 사용자 태그 (방 카드, 게임 내 표시 등) */
+.usertag{display:inline-block;margin-left:4px;font-family:'Menlo',monospace;
+  font-size:11px;color:var(--muted);background:rgba(255,255,255,.04);
+  padding:1px 6px;border-radius:8px;letter-spacing:.3px;vertical-align:middle}
+.usertag-sm{display:inline-block;margin-left:2px;font-family:'Menlo',monospace;
+  font-size:10px;color:var(--muted);opacity:.7;letter-spacing:.3px}
 .big-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:14px}
 .bs-item{background:var(--panel2);border-radius:8px;padding:10px 6px;text-align:center}
 .bs-val{font-size:16px;font-weight:700;color:var(--gold);font-family:'Cinzel',serif;margin-bottom:3px}
@@ -460,6 +474,9 @@ input{font-family:inherit;outline:none}
         <div class="big-name-row">
           <span class="big-name" id="bigName">로딩…</span>
           <button class="big-edit" onclick="changeNick()" title="닉네임 변경">✎</button>
+        </div>
+        <div class="big-tag-row">
+          <span class="big-tag" id="bigTagFull" onclick="copyMyTag()" title="클릭하여 친구 코드 복사">#—</span>
         </div>
         <div class="big-stats">
           <div class="bs-item">
@@ -984,7 +1001,7 @@ window.startTutorial = function(){
   }
 
   // ===== 사용자 정보 =====
-  let MY_UID = null, MY_NICK = '', MY_ELO = 1200, MY_W=0, MY_L=0, MY_D=0;
+  let MY_UID = null, MY_NICK = '', MY_TAG = '', MY_ELO = 1200, MY_W=0, MY_L=0, MY_D=0;
   let _authTimedOut = false;
   const authTimeout = setTimeout(()=>{
     if(!MY_UID){
@@ -992,6 +1009,34 @@ window.startTutorial = function(){
       setOfflineMode('익명 로그인 시간 초과 (8초 경과)');
     }
   }, 8000);
+
+  // ===== 사용자 태그 생성 =====
+  // 헷갈리는 문자 제외 (0/O, 1/I/L)
+  const TAG_CHARS = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
+  function generateTag(){
+    let tag = '';
+    for(let i = 0; i < 6; i++){
+      tag += TAG_CHARS[Math.floor(Math.random() * TAG_CHARS.length)];
+    }
+    return tag;
+  }
+  // 고유 태그 발급 (중복 안 나올 때까지 재시도)
+  async function assignUniqueTag(uid){
+    for(let attempt = 0; attempt < 10; attempt++){
+      const candidate = generateTag();
+      const snap = await _fbDb.ref('userTags/' + candidate).once('value');
+      if(!snap.exists()){
+        // 사용 가능 — 등록
+        await _fbDb.ref('userTags/' + candidate).set(uid);
+        return candidate;
+      }
+    }
+    // 극히 드문 경우 — 8자리로 fallback
+    let tag = '';
+    for(let i = 0; i < 8; i++) tag += TAG_CHARS[Math.floor(Math.random() * TAG_CHARS.length)];
+    await _fbDb.ref('userTags/' + tag).set(uid);
+    return tag;
+  }
 
   _fbAuth.onAuthStateChanged(async user=>{
     if(_authTimedOut) return;
@@ -1006,17 +1051,32 @@ window.startTutorial = function(){
       const snap = await _fbDb.ref('users/'+MY_UID).once('value');
       const u = snap.val();
       if(!u || !u.nick){
+        // 새 사용자
         let nick = prompt('닉네임을 입력하세요 (12자 이내)','플레이어'+Math.floor(Math.random()*9000+1000));
         if(!nick) nick = '플레이어'+Math.floor(Math.random()*9000+1000);
         nick = nick.slice(0,12);
-        MY_NICK = nick; MY_ELO = 1200;
-        await _fbDb.ref('users/'+MY_UID).set({nick, elo:1200, w:0, l:0, d:0, t:Date.now()});
-        await _fbDb.ref('leaderboard/'+MY_UID).set({nick, elo:1200, w:0, l:0, d:0});
+        const tag = await assignUniqueTag(MY_UID);
+        MY_NICK = nick; MY_TAG = tag; MY_ELO = 1200;
+        await _fbDb.ref('users/'+MY_UID).set({nick, tag, elo:1200, w:0, l:0, d:0, t:Date.now()});
+        await _fbDb.ref('leaderboard/'+MY_UID).set({nick, tag, elo:1200, w:0, l:0, d:0});
       } else {
         MY_NICK = u.nick || '익명';
         MY_ELO = u.elo || 1200;
         MY_W = u.w || 0; MY_L = u.l || 0; MY_D = u.d || 0;
+        // 기존 사용자 마이그레이션: 태그 없으면 발급
+        if(!u.tag){
+          MY_TAG = await assignUniqueTag(MY_UID);
+          await _fbDb.ref('users/'+MY_UID + '/tag').set(MY_TAG);
+          await _fbDb.ref('leaderboard/'+MY_UID + '/tag').set(MY_TAG);
+        } else {
+          MY_TAG = u.tag;
+        }
       }
+      // 전역에 노출 (다른 페이지에서 URL 파라미터로 전달)
+      window.MY_UID = MY_UID;
+      window.MY_NICK = MY_NICK;
+      window.MY_TAG = MY_TAG;
+      window.MY_ELO = MY_ELO;
       renderProfile();
       watchRooms();
     } catch(e){
@@ -1041,12 +1101,40 @@ window.startTutorial = function(){
     const bigEl = document.getElementById('bigElo');
     const bigRc = document.getElementById('bigRecord');
     const bigTr = document.getElementById('bigTier');
+    const bigTg = document.getElementById('bigTagFull');
     if(bigAv) bigAv.textContent = MY_NICK.charAt(0).toUpperCase();
     if(bigNm) bigNm.textContent = MY_NICK;
     if(bigEl) bigEl.textContent = MY_ELO;
     if(bigRc) bigRc.textContent = `${MY_W}승 ${MY_L}패${MY_D?` ${MY_D}무`:''}`;
     if(bigTr){ bigTr.textContent = t.name; bigTr.style.background = t.color; }
+    if(bigTg) bigTg.textContent = '#' + MY_TAG;
   }
+
+  // 친구 코드 복사
+  window.copyMyTag = function(){
+    if(!MY_TAG) return;
+    const fullCode = MY_NICK + '#' + MY_TAG;
+    const el = document.getElementById('bigTagFull');
+    const doCopy = () => {
+      if(navigator.clipboard && navigator.clipboard.writeText){
+        return navigator.clipboard.writeText(fullCode);
+      }
+      // Fallback: prompt
+      prompt('친구 코드 (복사하세요):', fullCode);
+      return Promise.resolve();
+    };
+    doCopy().then(()=>{
+      if(el){
+        const orig = el.textContent;
+        el.classList.add('copied');
+        el.textContent = '✓ 복사됨';
+        setTimeout(()=>{
+          el.classList.remove('copied');
+          el.textContent = '#' + MY_TAG;
+        }, 1500);
+      }
+    }).catch(()=>{});
+  };
 
   window.changeNick = async function(){
     const cur = MY_NICK;
@@ -1151,7 +1239,7 @@ window.startTutorial = function(){
           <h4>방 정보</h4>
           <div class="cust-meta">
             <span class="k">방 이름</span><span class="v">${r.name?escapeHtml(r.name):'(이름 없음)'}</span>
-            <span class="k">호스트</span><span class="v">${escapeHtml(r.hostNick||'?')}${r.hostElo?` · ${r.hostElo}`:''}</span>
+            <span class="k">호스트</span><span class="v">${escapeHtml(r.hostNick||'?')}${r.hostTag?`<span class="usertag">#${r.hostTag}</span>`:''}${r.hostElo?` · ${r.hostElo}`:''}</span>
             <span class="k">시간 제한</span><span class="v">⏱ ${formatTime(r.timeLimit)}</span>
             <span class="k">비밀번호</span><span class="v">${r.password?'🔒 있음':'없음'}</span>
             ${r.desc?`<span class="k">설명</span><span class="v">${escapeHtml(r.desc)}</span>`:''}
@@ -1216,8 +1304,8 @@ window.startTutorial = function(){
             ${r.password?'<span class="lock">🔒</span>':''}
           </div>
           <div class="rmeta">
-            <span>호스트: ${escapeHtml(r.hostNick||'?')}</span>
-            ${r.guestNick?`<span>vs ${escapeHtml(r.guestNick)}</span>`:''}
+            <span>호스트: ${escapeHtml(r.hostNick||'?')}${r.hostTag?`<span class="usertag-sm">#${r.hostTag}</span>`:''}</span>
+            ${r.guestNick?`<span>vs ${escapeHtml(r.guestNick)}${r.guestTag?`<span class="usertag-sm">#${r.guestTag}</span>`:''}</span>`:''}
             <span>⏱ ${formatTime(r.timeLimit)}</span>
           </div>
           <div class="rcustom">
@@ -1278,12 +1366,12 @@ window.startTutorial = function(){
     if(r.guestUid && r.guestUid !== MY_UID){ alert('이미 게스트가 입장했습니다.'); return; }
     try {
       await _fbDb.ref('rooms/'+code).update({
-        guestUid: MY_UID, guestNick: MY_NICK, guestElo: MY_ELO
+        guestUid: MY_UID, guestNick: MY_NICK, guestTag: MY_TAG||'', guestElo: MY_ELO
       });
     } catch(e){ alert('입장 처리 실패: '+(e.message||e)); return; }
     const params = new URLSearchParams({
       role:'guest', room:code, time:r.timeLimit||'unlimited', inc:r.timeInc||'0',
-      uid:MY_UID, nick:MY_NICK, elo:MY_ELO,
+      uid:MY_UID, nick:MY_NICK, tag:MY_TAG||'', elo:MY_ELO,
       hand:r.hand||'K1Q1R2B2N2P8SH0SN0JP0'
     });
     location.href = 'FRONTIER.html?'+params.toString();
@@ -1294,7 +1382,7 @@ window.startTutorial = function(){
     const params = new URLSearchParams({
       role:'spectator', room:code, time:r.timeLimit||'unlimited', inc:r.timeInc||'0',
       uid:MY_UID||'spec-'+Math.random().toString(36).slice(2,8),
-      nick:MY_NICK||'관전자', elo:MY_ELO||1200,
+      nick:MY_NICK||'관전자', tag:MY_TAG||'', elo:MY_ELO||1200,
       hand:r.hand||'K1Q1R2B2N2P8SH0SN0JP0'
     });
     location.href = 'FRONTIER.html?'+params.toString();
@@ -1303,7 +1391,7 @@ window.startTutorial = function(){
   // ===== 방 만들기 =====
   window.goCreate = function(){
     if(!MY_UID){ alert('로그인이 완료되지 않았습니다. 잠시 후 다시 시도하세요.'); return; }
-    const params = new URLSearchParams({uid:MY_UID, nick:MY_NICK, elo:MY_ELO});
+    const params = new URLSearchParams({uid:MY_UID, nick:MY_NICK, tag:MY_TAG||'', elo:MY_ELO});
     location.href = 'create-room.html?'+params.toString();
   };
 
