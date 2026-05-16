@@ -203,8 +203,23 @@ function genCode(){
   let s=''; for(let i=0;i<6;i++) s += ch[Math.floor(Math.random()*ch.length)];
   return s;
 }
-let MY_CODE = genCode();
+// 친구 대전에서 미리 정한 코드 사용 (sessionStorage)
+let _presetCode = null, _isFriendBattle = false;
+try {
+  _presetCode = sessionStorage.getItem('preset_room_code');
+  _isFriendBattle = sessionStorage.getItem('preset_room_private') === '1';
+  if(_presetCode){
+    // 한 번 쓰고 즉시 제거
+    sessionStorage.removeItem('preset_room_code');
+    sessionStorage.removeItem('preset_room_private');
+  }
+} catch(_){}
+let MY_CODE = _presetCode || genCode();
 document.getElementById('codeVal').textContent = MY_CODE;
+if(_isFriendBattle){
+  // 친구 대전 모드 표시
+  document.getElementById('codeHint').innerHTML = '<span style="color:#bf5af2">👥 친구 대전 — 초대 전송됨</span>';
+}
 
 function copyCode(){
   navigator.clipboard.writeText(MY_CODE).then(()=>showToast('코드 복사됨: '+MY_CODE));
