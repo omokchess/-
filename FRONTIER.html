@@ -101,7 +101,16 @@ input{font-family:inherit;outline:none}
   font-size:calc(var(--cs) * .68);line-height:1;cursor:pointer;transition:background .1s}
 .cell.lt{background:var(--light)}
 .cell.dk{background:var(--dark)}
-.cell.king-zone::before{content:'';position:absolute;inset:2px;border:2px dashed rgba(245,200,66,.5);border-radius:4px;pointer-events:none}
+.cell.king-zone::before{content:'';position:absolute;inset:2px;border:3px dashed rgba(245,200,66,.85);
+  border-radius:4px;pointer-events:none;animation:king-pulse 1.8s ease-in-out infinite;
+  box-shadow:0 0 12px rgba(245,200,66,.4),inset 0 0 12px rgba(245,200,66,.2)}
+.cell.king-zone::after{content:'♚';position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+  font-size:32px;color:rgba(245,200,66,.18);pointer-events:none;font-family:'Arial Unicode MS','Segoe UI Symbol',sans-serif;
+  animation:king-pulse 1.8s ease-in-out infinite}
+@keyframes king-pulse{
+  0%,100%{opacity:.7;transform:scale(1)}
+  50%{opacity:1;transform:scale(1.03)}
+}
 .cell.place-zone::after{content:'';position:absolute;inset:0;background:rgba(48,209,88,.15);pointer-events:none}
 .cell.corner-zone::after{content:'';position:absolute;inset:0;background:rgba(255,69,58,.18);pointer-events:none}
 .cell.move::after{content:'';position:absolute;width:30%;height:30%;background:rgba(48,209,88,.55);border-radius:50%;pointer-events:none}
@@ -700,8 +709,13 @@ body.replay-mode #chatBtn,body.replay-mode #chatPanel,body.replay-mode #forfeitB
     <h2>폰 프로모션</h2>
     <p>승급할 기물을 선택하세요</p>
     <div class="promo-opts" id="promoOpts"></div>
+    <div class="actions" style="justify-content:center;margin-top:14px">
+      <button class="btn btn-ghost" onclick="hidePromoForLook()">👁 보드 보기</button>
+    </div>
   </div>
 </div>
+<!-- 프로모션 임시 숨김 시 복귀 버튼 -->
+<button class="end-restore" id="promoRestore" onclick="showPromoModal()" style="display:none">⬆ 프로모션 선택</button>
 
 <!-- 종료 모달 -->
 <div class="modal" id="endModal">
@@ -2007,14 +2021,25 @@ function promptPromotion(color){
       `<button class="promo-opt ${color}" data-k="${k}">${SYMBOLS[color][k]}</button>`
     ).join('');
     document.getElementById('promoModal').classList.add('show');
+    document.getElementById('promoRestore').style.display = 'none';
     document.querySelectorAll('.promo-opt').forEach(b => {
       b.onclick = () => {
         document.getElementById('promoModal').classList.remove('show');
+        document.getElementById('promoRestore').style.display = 'none';
         resolve(b.dataset.k);
       };
     });
   });
 }
+// 프로모션 모달 임시 숨김 — 보드 확인용
+window.hidePromoForLook = function(){
+  document.getElementById('promoModal').classList.remove('show');
+  document.getElementById('promoRestore').style.display = '';
+};
+window.showPromoModal = function(){
+  document.getElementById('promoModal').classList.add('show');
+  document.getElementById('promoRestore').style.display = 'none';
+};
 
 // ===================================================================
 // 11. submitAction (로컬/AI/네트워크 분기)
@@ -3072,41 +3097,115 @@ function playSnd(type){
   const ctx = audio(); if(!ctx) return;
   if(ctx.state === 'suspended') ctx.resume();
   const now = ctx.currentTime;
-  const o = ctx.createOscillator();
-  const g = ctx.createGain();
-  o.connect(g); g.connect(ctx.destination);
-  if(type === 'move' || type === 'place'){
-    o.type = 'square';
-    o.frequency.setValueAtTime(220, now);
-    g.gain.setValueAtTime(0.18, now);
-    g.gain.exponentialRampToValueAtTime(0.001, now + 0.07);
-    o.start(now); o.stop(now + 0.08);
+
+  // === 나무 체스판 위 기물 놓는 소리 합성 헬퍼 ===
+  // 1. 짧은 임팩트 노이즈 (filter로 나무 톤만 통과)
+  // 2. 낮은 sine 공명 (나무 통 울림)
+  function wood(opts){
+    const {
+      impactFreq = 800,    // 임팩트 필터 중심 주파수 (고:날카로움, 저:묵직함)
+      impactQ = 1.5,        // 필터 Q값 (높을수록 좁은 주파수 통과)
+      impactGain = 0.4,
+      resonanceFreq = 180,  // 나무 공명 주파수
+      resonanceGain = 0.18,
+      duration = 0.08,
+      delay = 0
+    } = opts;
+    const startTime = now + delay;
+
+    // 노이즈 버퍼 (임팩트)
+    const len = Math.floor(ctx.sampleRate * duration);
+    const buf = ctx.createBuffer(1, len, ctx.sampleRate);
+    const d = buf.getChannelData(0);
+    for(let i = 0; i < len; i++){
+      // exponential decay envelope (빠른 감쇠)
+      const env = Math.pow(1 - i/len, 4);
+      d[i] = (Math.random()*2 - 1) * env;
+    }
+    const noise = ctx.createBufferSource();
+    noise.buffer = buf;
+    // Bandpass 필터: 나무 임팩트 주파수만 강조
+    const filter = ctx.createBiquadFilter();
+    filter.type = 'bandpass';
+    filter.frequency.setValueAtTime(impactFreq, startTime);
+    filter.Q.setValueAtTime(impactQ, startTime);
+    const ng = ctx.createGain();
+    ng.gain.setValueAtTime(impactGain, startTime);
+    noise.connect(filter).connect(ng).connect(ctx.destination);
+    noise.start(startTime);
+
+    // 낮은 sine (나무 통 울림 — body resonance)
+    const o = ctx.createOscillator();
+    const og = ctx.createGain();
+    o.connect(og).connect(ctx.destination);
+    o.type = 'sine';
+    o.frequency.setValueAtTime(resonanceFreq, startTime);
+    o.frequency.exponentialRampToValueAtTime(resonanceFreq * 0.65, startTime + duration);
+    og.gain.setValueAtTime(0, startTime);
+    og.gain.linearRampToValueAtTime(resonanceGain, startTime + 0.003);
+    og.gain.exponentialRampToValueAtTime(0.001, startTime + duration + 0.04);
+    o.start(startTime);
+    o.stop(startTime + duration + 0.05);
+  }
+
+  if(type === 'move'){
+    // 가벼운 "tok" — 기물이 보드 위 스르륵 후 살짝 놓는 느낌
+    wood({
+      impactFreq: 1200, impactQ: 2,
+      impactGain: 0.35,
+      resonanceFreq: 220, resonanceGain: 0.14,
+      duration: 0.06
+    });
+  } else if(type === 'place'){
+    // 묵직한 "thock" — 기물 처음 보드에 놓는 느낌, 더 깊은 울림
+    wood({
+      impactFreq: 700, impactQ: 1.5,
+      impactGain: 0.5,
+      resonanceFreq: 130, resonanceGain: 0.25,
+      duration: 0.12
+    });
   } else if(type === 'capture'){
-    o.type = 'square';
-    o.frequency.setValueAtTime(180, now);
-    g.gain.setValueAtTime(0.22, now);
-    g.gain.exponentialRampToValueAtTime(0.001, now + 0.1);
-    o.start(now); o.stop(now + 0.11);
-    const o2 = ctx.createOscillator();
-    const g2 = ctx.createGain();
-    o2.connect(g2); g2.connect(ctx.destination);
-    o2.type='square'; o2.frequency.setValueAtTime(150, now+0.06);
-    g2.gain.setValueAtTime(0.18, now+0.06);
-    g2.gain.exponentialRampToValueAtTime(0.001, now+0.16);
-    o2.start(now+0.06); o2.stop(now+0.17);
+    // 강한 "clock" — 기물 부딪히는 소리 (살짝 두 번)
+    wood({
+      impactFreq: 900, impactQ: 1.2,
+      impactGain: 0.55,
+      resonanceFreq: 110, resonanceGain: 0.28,
+      duration: 0.1
+    });
+    // 보조 클릭 (약간 시간차) — 기물 두 개 부딪힘
+    wood({
+      impactFreq: 1500, impactQ: 2.5,
+      impactGain: 0.3,
+      resonanceFreq: 200, resonanceGain: 0.12,
+      duration: 0.05,
+      delay: 0.04
+    });
   } else if(type === 'end'){
-    o.type='triangle';
-    o.frequency.setValueAtTime(330, now);
-    o.frequency.exponentialRampToValueAtTime(110, now+0.4);
-    g.gain.setValueAtTime(0.2, now);
-    g.gain.exponentialRampToValueAtTime(0.001, now+0.5);
-    o.start(now); o.stop(now+0.5);
+    // 종료 — 부드러운 종 화음 (도-미-솔)
+    const notes = [523.25, 659.25, 783.99];
+    notes.forEach((freq, i) => {
+      const o = ctx.createOscillator();
+      const g = ctx.createGain();
+      o.connect(g); g.connect(ctx.destination);
+      o.type = 'sine';
+      o.frequency.setValueAtTime(freq, now + i*0.08);
+      g.gain.setValueAtTime(0, now + i*0.08);
+      g.gain.linearRampToValueAtTime(0.11, now + i*0.08 + 0.015);
+      g.gain.exponentialRampToValueAtTime(0.001, now + i*0.08 + 1.3);
+      o.start(now + i*0.08); o.stop(now + i*0.08 + 1.4);
+    });
   } else if(type === 'chat'){
-    o.type='sine';
-    o.frequency.setValueAtTime(660, now);
-    g.gain.setValueAtTime(0.1, now);
-    g.gain.exponentialRampToValueAtTime(0.001, now+0.15);
-    o.start(now); o.stop(now+0.16);
+    // 채팅 "ping" — 깨끗한 sine
+    const o = ctx.createOscillator();
+    const g = ctx.createGain();
+    o.connect(g); g.connect(ctx.destination);
+    o.type = 'sine';
+    o.frequency.setValueAtTime(880, now);
+    o.frequency.exponentialRampToValueAtTime(660, now + 0.1);
+    g.gain.setValueAtTime(0, now);
+    g.gain.linearRampToValueAtTime(0.1, now + 0.005);
+    g.gain.exponentialRampToValueAtTime(0.001, now + 0.2);
+    o.start(now); o.stop(now + 0.22);
   }
 }
 
@@ -3485,7 +3584,7 @@ function startTimerIfNeeded(){
   _bTimeLeft = TIME_LIMIT;
   _turnStartTime = Date.now();
   if(_timerInterval) clearInterval(_timerInterval);
-  _timerInterval = setInterval(updateTimer, 200);
+  _timerInterval = setInterval(updateTimer, 100);
   updateTimer();
 }
 
@@ -3498,9 +3597,11 @@ function updateTimer(){
   const bDisp = turn === 'b' ? Math.max(0, _bTimeLeft - elapsedNow) : _bTimeLeft;
 
   const fmt = s => {
-    s = Math.max(0, Math.ceil(s));
-    const m = Math.floor(s/60), x = s%60;
-    return (m<10?'0':'')+m+':'+(x<10?'0':'')+x;
+    if(s < 0) s = 0;
+    const m = Math.floor(s / 60);
+    const sec = s - m * 60;
+    // 항상 소수점 1자리 표시 (실시간 흐름 보임)
+    return (m<10?'0':'') + m + ':' + (sec<10?'0':'') + sec.toFixed(1);
   };
 
   // 토픽바 듀얼 타이머
@@ -3716,9 +3817,13 @@ function confirmLeave(){
   showConfirm('로비 이동', '게임을 떠나면 기권 처리됩니다. 계속하시겠습니까?', () => {
     if(IS_NET){
       sendToPeer({ t:'FORFEIT', from: MY_NICK_P });
+      // 본인도 endGame 호출 → ELO 차감 + 종료 모달 표시
+      // 모달에서 ELO 변동 확인 후 사용자가 "로비로" 누르면 떠남
+      endGame('🏳','기권', '기권하고 떠났습니다.', opp(MY_COLOR));
+    } else {
       cleanupRoom();
+      goLobby();
     }
-    goLobby();
   });
 }
 function goLobby(){

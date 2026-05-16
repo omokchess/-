@@ -64,6 +64,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','Pretendard Variabl
   border-radius:6px;font-size:12px;font-weight:700;cursor:pointer;text-decoration:none;text-align:center}
 .replay-card .rc-action.del{background:transparent;color:var(--red);border:1px solid var(--red);flex:0 0 auto;width:38px}
 .replay-card .rc-action.del:hover{background:rgba(255,69,58,.1)}
+.replay-card .rc-action.dl{background:transparent;color:var(--muted);border:1px solid var(--border);flex:0 0 auto;width:38px}
+.replay-card .rc-action.dl:hover{background:var(--panel2);color:var(--gold);border-color:var(--gold)}
 
 .empty-state{text-align:center;padding:60px 20px;color:var(--muted)}
 .empty-state .ico{font-size:60px;opacity:.3;margin-bottom:12px}
@@ -224,6 +226,7 @@ function renderList(){
         </div>
         <div class="rc-actions">
           <a class="rc-action" href="FRONTIER.html?role=replay&rid=${r.id}" onclick="event.stopPropagation()">▶ 재생</a>
+          <button class="rc-action dl" onclick="event.stopPropagation();downloadReplay('${r.id}')" title="JSON으로 다운로드">⬇</button>
           <button class="rc-action del" onclick="event.stopPropagation();confirmDelete('${r.id}')" title="삭제">🗑</button>
         </div>
       </div>`;
@@ -238,6 +241,34 @@ function escapeHtml(s){
 
 function openReplay(id){
   location.href = 'FRONTIER.html?role=replay&rid=' + id;
+}
+
+function downloadReplay(id){
+  let full;
+  try { full = JSON.parse(localStorage.getItem('frontier_replay_' + id)); } catch(e){}
+  if(!full){ alert('리플레이 데이터를 찾을 수 없습니다.'); return; }
+  const meta = _replays.find(r => r.id === id) || {};
+  const data = {
+    version: 1,
+    type: 'frontier-replay',
+    meta: meta,
+    replay: full,
+    exportedAt: Date.now()
+  };
+  const json = JSON.stringify(data, null, 2);
+  const blob = new Blob([json], {type: 'application/json'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  // 파일명: frontier-replay-YYYYMMDD-HHmm.json
+  const d = new Date(meta.savedAt || Date.now());
+  const pad = n => (n<10?'0':'')+n;
+  const fname = `frontier-replay-${d.getFullYear()}${pad(d.getMonth()+1)}${pad(d.getDate())}-${pad(d.getHours())}${pad(d.getMinutes())}.json`;
+  a.href = url;
+  a.download = fname;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  setTimeout(()=>URL.revokeObjectURL(url), 1000);
 }
 
 function confirmDelete(id){
