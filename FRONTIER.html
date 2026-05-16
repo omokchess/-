@@ -694,7 +694,10 @@ body.replay-mode #chatBtn,body.replay-mode #chatPanel,body.replay-mode #forfeitB
 <div class="chat-panel" id="chatPanel">
   <div class="chat-head">
     <span>채팅</span>
-    <button onclick="toggleChat()" style="font-size:18px;color:var(--muted)">×</button>
+    <div style="display:flex;gap:8px;align-items:center">
+      <button id="chatBlockBtn" onclick="toggleBlockOpponent()" title="상대 차단" style="display:none;font-size:11px;color:var(--red);background:transparent;border:1px solid var(--red);padding:3px 8px;border-radius:5px;cursor:pointer;font-weight:700">🚫 차단</button>
+      <button onclick="toggleChat()" style="font-size:18px;color:var(--muted);background:transparent;border:none;cursor:pointer">×</button>
+    </div>
   </div>
   <div class="chat-msgs" id="chatMsgs"></div>
   <div class="chat-input">
@@ -3388,11 +3391,11 @@ function onPeerMessage(data){
   if(!data || !data.t) return;
   if(data.t === 'HELLO'){
     if(NET_ROLE === 'host'){
-      // 게스트 정보 받음
       _gameRatingInfo = {
         whiteUid: MY_UID, whiteElo: MY_ELO_P, whiteNick: MY_NICK_P, whiteTag: MY_TAG_P,
         blackUid: data.guestUid, blackElo: data.guestElo, blackNick: data.guestNick, blackTag: data.guestTag||''
       };
+      _opponentUid = data.guestUid;
       const gTag = data.guestTag ? `<span class="ingame-tag">#${escapeHtml(data.guestTag)}</span>` : '';
       document.getElementById('oppName').innerHTML = escapeHtml(data.guestNick) + gTag + ` (${data.guestElo})`;
       document.getElementById('oppMeta').textContent = '흑 ELO ' + data.guestElo;
@@ -3401,16 +3404,21 @@ function onPeerMessage(data){
         whiteUid: data.hostUid, whiteElo: data.hostElo, whiteNick: data.hostNick, whiteTag: data.hostTag||'',
         blackUid: MY_UID, blackElo: MY_ELO_P, blackNick: MY_NICK_P, blackTag: MY_TAG_P
       };
+      _opponentUid = data.hostUid;
       const hTag = data.hostTag ? `<span class="ingame-tag">#${escapeHtml(data.hostTag)}</span>` : '';
       document.getElementById('oppName').innerHTML = escapeHtml(data.hostNick) + hTag + ` (${data.hostElo})`;
       document.getElementById('oppMeta').textContent = '백 ELO ' + data.hostElo;
-      // 게스트는 호스트 손패 설정을 받음 (URL과 같지만 동기화)
       if(data.hand){
         hands.w = {...DEFAULT_HAND, ...data.hand};
         hands.b = {...DEFAULT_HAND, ...data.hand};
         renderAll();
       }
     }
+    // 차단 검사 — 내가 이미 차단한 상대인지 확인
+    checkOpponentBlocked();
+    // 채팅 차단 버튼 표시
+    const bBtn = document.getElementById('chatBlockBtn');
+    if(bBtn) bBtn.style.display = '';
     publishGameState();
     startTimerIfNeeded();
   } else if(data.t === 'MOVE'){
@@ -3430,6 +3438,11 @@ function onPeerMessage(data){
     if(NET_ROLE === 'host') publishGameState();
     postMoveCheck(r);
   } else if(data.t === 'CHAT'){
+    // 차단된 상대 채팅 무시
+    if(_opponentBlocked){
+      console.log('[Chat] 차단된 상대 메시지 무시');
+      return;
+    }
     addChatMsg(data.from || '상대', data.msg, false);
     playSnd('chat');
     if(!_chatOpen){
@@ -3533,6 +3546,9 @@ function initSpectator(){
 // ===================================================================
 let _chatOpen = false;
 let _chatUnread = 0;
+let _opponentBlocked = false;  // 이 게임의 상대가 차단됐는지 (채팅 무시)
+let _opponentUid = null;       // 상대 UID (차단/친구추가 시 사용)
+let _myBlockedSet = new Set(); // 내 차단 목록 UID 집합
 let _chatLog = [];
 
 function toggleChat(){
@@ -3568,6 +3584,81 @@ function sendChat(){
 }
 function escapeHtml(s){return String(s).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c]);}
 document.getElementById('chatInput').addEventListener('keydown', e => { if(e.key==='Enter') sendChat(); });
+
+// ===== 채팅 차단 =====
+async function checkOpponentBlocked(){
+  _opponentBlocked = false;
+  if(!_opponentUid || !_fbDb || !MY_UID || IS_SPEC) return;
+  try {
+    const snap = await _fbDb.ref(`users/${MY_UID}/blocked/${_opponentUid}`).once('value');
+    if(snap.exists()){
+      _opponentBlocked = true;
+      addChatMsg('시스템', '차단한 사용자입니다. 메시지가 자동으로 무시됩니다.', null, true);
+      updateBlockButtonUI();
+    }
+  } catch(e){
+    console.warn('[Block] 차단 확인 실패:', e.message);
+  }
+}
+
+function updateBlockButtonUI(){
+  const btn = document.getElementById('chatBlockBtn');
+  if(!btn) return;
+  if(_opponentBlocked){
+    btn.innerHTML = '✓ 차단됨';
+    btn.style.color = 'var(--green)';
+    btn.style.borderColor = 'var(--green)';
+  } else {
+    btn.innerHTML = '🚫 차단';
+    btn.style.color = 'var(--red)';
+    btn.style.borderColor = 'var(--red)';
+  }
+}
+
+window.toggleBlockOpponent = async function(){
+  if(!_opponentUid){
+    alert('상대 정보가 아직 없습니다.');
+    return;
+  }
+  if(!_fbDb || !MY_UID){
+    alert('네트워크 정보 없음');
+    return;
+  }
+  if(_opponentBlocked){
+    // 차단 해제
+    if(!confirm('이 사용자의 차단을 해제하시겠습니까?')) return;
+    try {
+      await _fbDb.ref(`users/${MY_UID}/blocked/${_opponentUid}`).remove();
+      _opponentBlocked = false;
+      addChatMsg('시스템', '차단 해제됨', null, true);
+      updateBlockButtonUI();
+    } catch(e){
+      alert('차단 해제 실패: ' + e.message);
+    }
+  } else {
+    // 차단
+    if(!confirm('이 사용자를 차단하시겠습니까?\n앞으로 이 사용자의 채팅이 보이지 않습니다.')) return;
+    try {
+      // 상대 닉/태그 정보 추출
+      const oppNick = _gameRatingInfo
+        ? (MY_COLOR === 'w' ? _gameRatingInfo.blackNick : _gameRatingInfo.whiteNick)
+        : '상대';
+      const oppTag = _gameRatingInfo
+        ? (MY_COLOR === 'w' ? _gameRatingInfo.blackTag : _gameRatingInfo.whiteTag)
+        : '';
+      await _fbDb.ref(`users/${MY_UID}/blocked/${_opponentUid}`).set({
+        nick: oppNick, tag: oppTag, blockedAt: Date.now()
+      });
+      // 친구라면 자동 삭제
+      try { await _fbDb.ref(`users/${MY_UID}/friends/${_opponentUid}`).remove(); } catch(_){}
+      _opponentBlocked = true;
+      addChatMsg('시스템', `${oppNick} 차단됨. 메시지가 더 이상 표시되지 않습니다.`, null, true);
+      updateBlockButtonUI();
+    } catch(e){
+      alert('차단 실패: ' + e.message);
+    }
+  }
+};
 
 // ===================================================================
 // 17. 타이머 — 체스식 총 시간 (Fischer 증분)
