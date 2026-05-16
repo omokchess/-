@@ -1042,28 +1042,105 @@ window.startTutorial = function(){
   }, 12000);
 
   // ===== Google 로그인 =====
+  // 환경 감지
+  function isInAppBrowser(){
+    const ua = navigator.userAgent || '';
+    return /KAKAOTALK|FBAN|FBAV|Instagram|Line\/|NAVER|wv\)/i.test(ua);
+  }
+  function isMobileBrowser(){
+    return /Android|iPhone|iPad|iPod/i.test(navigator.userAgent || '');
+  }
+
+  // 페이지 로드 시 redirect 결과 확인 (모바일 로그인 후 돌아옴)
+  if(_fbAuth){
+    _fbAuth.getRedirectResult().then(result => {
+      if(result && result.user){
+        console.log('[Auth] Redirect 로그인 성공');
+        // onAuthStateChanged가 자동으로 트리거됨
+      }
+    }).catch(e => {
+      if(e.code === 'auth/credential-already-in-use'){
+        const ok = confirm(
+          '이 Google 계정은 이미 다른 기기에서 사용 중입니다.\n\n' +
+          '그 계정으로 로그인하시겠습니까?\n' +
+          '(현재 기기의 임시 데이터는 사라집니다)'
+        );
+        if(ok){
+          // 현재 익명 데이터 삭제 후 그 계정으로 로그인
+          const cred = e.credential;
+          const anonUid = _fbAuth.currentUser?.uid;
+          (async () => {
+            try {
+              if(anonUid){
+                try { await _fbDb.ref('users/'+anonUid).remove(); } catch(_){}
+                try { await _fbDb.ref('leaderboard/'+anonUid).remove(); } catch(_){}
+              }
+              await _fbAuth.signOut();
+              await _fbAuth.signInWithCredential(cred);
+            } catch(e2){ alert('계정 전환 실패: ' + e2.message); }
+          })();
+        }
+      } else if(e.code && e.code !== 'auth/no-auth-event'){
+        // no-auth-event는 일반 페이지 로드 시 정상
+        console.warn('[Auth] Redirect 결과 에러:', e);
+      }
+    });
+  }
+
   window.linkOrSignInWithGoogle = async function(){
     if(!_fbAuth){ alert('Firebase 미초기화'); return; }
+    
+    // 인앱 브라우저 차단
+    if(isInAppBrowser()){
+      const ua = navigator.userAgent;
+      let appName = '인앱 브라우저';
+      if(/KAKAOTALK/i.test(ua)) appName = '카카오톡';
+      else if(/FBAN|FBAV/i.test(ua)) appName = 'Facebook';
+      else if(/Instagram/i.test(ua)) appName = 'Instagram';
+      else if(/Line\//i.test(ua)) appName = 'Line';
+      else if(/NAVER/i.test(ua)) appName = '네이버';
+      alert(
+        `${appName} 앱 안에서는 Google 로그인이 차단됩니다.\n\n` +
+        `오른쪽 위 메뉴 (⋮) → "다른 브라우저로 열기" 또는 ` +
+        `"Chrome/Safari에서 열기"를 선택해주세요.`
+      );
+      return;
+    }
+
     const provider = new firebase.auth.GoogleAuthProvider();
     const currentUser = _fbAuth.currentUser;
-    
+
+    // 모바일: redirect 방식 (popup 차단 잦음)
+    if(isMobileBrowser()){
+      try {
+        if(currentUser && currentUser.isAnonymous){
+          await currentUser.linkWithRedirect(provider);
+        } else if(!currentUser){
+          await _fbAuth.signInWithRedirect(provider);
+        } else {
+          alert('이미 Google 계정에 연결되어 있습니다.');
+          return;
+        }
+        // 리다이렉트되어 페이지가 떠남. 돌아오면 getRedirectResult가 처리.
+      } catch(e){
+        alert('Google 로그인 실패: ' + (e.message || e));
+      }
+      return;
+    }
+
+    // 데스크탑: popup 방식 (편의성)
     try {
       if(currentUser && currentUser.isAnonymous){
-        // 시나리오 1: 익명 → Google 연결 (같은 UID 유지, 데이터 보존)
         await currentUser.linkWithPopup(provider);
         alert('✓ Google 계정 연결 완료!\n이제 다른 기기에서도 같은 계정 사용 가능.');
       } else if(!currentUser){
-        // 시나리오 2: 로그아웃 상태 → Google로 새로 로그인
         await _fbAuth.signInWithPopup(provider);
       } else {
-        // 시나리오 3: 이미 Google 연결됨 — 그냥 메시지
         alert('이미 Google 계정에 연결되어 있습니다.');
         return;
       }
-      // onAuthStateChanged가 트리거되어 데이터 다시 로드됨
     } catch(e){
       if(e.code === 'auth/credential-already-in-use'){
-        // 시나리오 4: 그 Google 계정은 이미 다른 익명 계정에 연결됨 (다른 기기에서 가입한 적 있음)
         const ok = confirm(
           '이 Google 계정은 이미 다른 기기에서 사용 중입니다.\n\n' +
           '그 계정으로 로그인하시겠습니까?\n' +
@@ -1071,13 +1148,11 @@ window.startTutorial = function(){
         );
         if(ok){
           try {
-            // 현재 익명 계정 데이터 삭제 (선택)
             const anonUid = currentUser?.uid;
             if(anonUid) {
               try { await _fbDb.ref('users/'+anonUid).remove(); } catch(_){}
               try { await _fbDb.ref('leaderboard/'+anonUid).remove(); } catch(_){}
             }
-            // 그 Google 계정으로 sign in (signInWithPopup 다시)
             await _fbAuth.signOut();
             await _fbAuth.signInWithPopup(provider);
           } catch(e2){
@@ -1087,7 +1162,7 @@ window.startTutorial = function(){
       } else if(e.code === 'auth/popup-closed-by-user' || e.code === 'auth/cancelled-popup-request'){
         // 사용자가 취소 — 조용히 무시
       } else if(e.code === 'auth/popup-blocked'){
-        alert('팝업이 차단되었습니다. 브라우저 설정에서 팝업 허용 후 다시 시도하세요.');
+        alert('팝업이 차단되었습니다.\n주소창 옆 팝업 아이콘 클릭 → 허용 후 다시 시도하세요.\n\n또는 다른 브라우저(Chrome/Safari)로 열어보세요.');
       } else {
         alert('Google 로그인 실패: ' + (e.message || e));
       }
