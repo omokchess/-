@@ -287,6 +287,11 @@ input{font-family:inherit;outline:none}
     grid-template-columns:1fr;
     gap:10px
   }
+  /* 모든 mode 버튼 같은 높이로 통일 */
+  .tab-panel .mode{
+    min-height:120px;
+    height:120px
+  }
   /* 헤더: 작은 프로필 숨김 (큰 프로필이 내 페이지에) */
   .head .profile{display:none}
   .head{justify-content:center;text-align:center;margin-bottom:6px}
@@ -407,6 +412,13 @@ input{font-family:inherit;outline:none}
 .mode.mode-friend .mt{color:#bf5af2}
 .mode.mode-friend .icon{background:linear-gradient(135deg, #af52de, #6e3c97)}
 .mode.mode-friend .icon svg{color:#fff;filter:drop-shadow(0 1px 2px rgba(0,0,0,.3))}
+
+/* 친구 추가 카드 (메인 게임 탭 하단) — 청록색 */
+.mode.mode-add-friend{border-color:rgba(64,200,224,.4);background:linear-gradient(135deg, var(--panel), rgba(64,200,224,.06))}
+.mode.mode-add-friend:hover{border-color:#40c8e0;box-shadow:0 0 0 1px #40c8e0, 0 0 14px rgba(64,200,224,.2)}
+.mode.mode-add-friend .mt{color:#5ad5ec}
+.mode.mode-add-friend .icon{background:linear-gradient(135deg, #5ad5ec, #2980a1)}
+.mode.mode-add-friend .icon svg{color:#fff;filter:drop-shadow(0 1px 2px rgba(0,0,0,.3))}
 .bn-btn.active{color:var(--gold)}
 .bn-btn:active{transform:scale(.95)}
 
@@ -419,14 +431,18 @@ input{font-family:inherit;outline:none}
   .tab-panel{display:none;margin-top:8px}
   .tab-panel.tab-active{display:block}
   
-  /* 하단 탭바 표시 */
-  .bottom-nav{display:grid;grid-template-columns:repeat(3,1fr);
+  /* 하단 탭바 표시 — 4탭 한 줄, no wrap */
+  .bottom-nav{display:grid;grid-template-columns:repeat(4,1fr);
     position:fixed;bottom:0;left:0;right:0;z-index:100;
     background:rgba(28,28,30,.96);backdrop-filter:blur(12px);
     border-top:1px solid var(--border);
     box-shadow:0 -4px 14px rgba(0,0,0,.4);
     padding:6px 0 calc(6px + env(safe-area-inset-bottom));
     height:auto}
+  .bn-btn{min-width:0;padding:8px 4px}
+  
+  /* 콘텐츠 영역이 하단 탭바에 가려지지 않게 padding 확장 */
+  .wrap{padding-bottom:calc(90px + env(safe-area-inset-bottom))}
   
   .tab-title{font-size:20px;margin-top:8px}
   .big-profile{padding:22px 14px}
@@ -483,24 +499,14 @@ input{font-family:inherit;outline:none}
 
   <!-- ========= 3 컬럼 / 3 탭 ========= -->
   <div class="lobby-grid">
-    <!-- AI 탭 -->
+    <!-- 모드 탭 -->
     <div class="tab-panel" data-tab="ai">
-      <h2 class="tab-title"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="16" height="16" rx="2"/><rect x="9" y="9" width="6" height="6"/><path d="M15 2v2M9 2v2M15 20v2M9 20v2M20 9h2M20 15h2M2 9h2M2 15h2"/></svg> AI</h2>
+      <h2 class="tab-title"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg> 모드</h2>
       <div class="modes">
         <button class="mode" onclick="openAiModal()">
           <div class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="16" height="16" rx="2"/><rect x="9" y="9" width="6" height="6"/><path d="M15 2v2M9 2v2M15 20v2M9 20v2M20 9h2M20 15h2M2 9h2M2 15h2"/></svg></div>
           <div class="mt">AI 대전</div>
           <div class="md">3가지 난이도의 컴퓨터와</div>
-        </button>
-        <button class="mode" onclick="openAiVaiModal()">
-          <div class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="14.5 17.5 3 6 3 3 6 3 17.5 14.5"/><line x1="13" y1="19" x2="19" y2="13"/><line x1="16" y1="16" x2="20" y2="20"/><line x1="19" y1="21" x2="21" y2="19"/><polyline points="14.5 6.5 18 3 21 3 21 6 17.5 9.5"/><line x1="5" y1="14" x2="9" y2="18"/><line x1="7" y1="17" x2="4" y2="20"/><line x1="3" y1="19" x2="5" y2="21"/></svg></div>
-          <div class="mt">AI VS AI</div>
-          <div class="md">두 AI가 싸우는 걸 구경</div>
-        </button>
-        <button class="mode" onclick="location.href='FRONTIER.html?mode=evolve'">
-          <div class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5a3 3 0 1 0-5.997.125 4 4 0 0 0-2.526 5.77 4 4 0 0 0 .556 6.588A4 4 0 1 0 12 18Z"/><path d="M12 5a3 3 0 1 1 5.997.125 4 4 0 0 1 2.526 5.77 4 4 0 0 1-.556 6.588A4 4 0 1 1 12 18Z"/><path d="M15 13a4.5 4.5 0 0 1-3-4 4.5 4.5 0 0 1-3 4"/><path d="M17.599 6.5a3 3 0 0 0 .399-1.375"/><path d="M6.003 5.125A3 3 0 0 0 6.401 6.5"/><path d="M3.477 10.896a4 4 0 0 1 .585-.396"/><path d="M19.938 10.5a4 4 0 0 1 .585.396"/><path d="M6 18a4 4 0 0 1-1.967-.516"/><path d="M19.967 17.484A4 4 0 0 1 18 18"/></svg></div>
-          <div class="mt">AI 학습</div>
-          <div class="md">자가 대국으로 학습하는 AI</div>
         </button>
       </div>
     </div>
@@ -522,12 +528,17 @@ input{font-family:inherit;outline:none}
         <button class="mode" onclick="goLocal()">
           <div class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></div>
           <div class="mt">로컬 2인</div>
-          <div class="md">한 기기에서 두 명이 번갈아</div>
+          <div class="md">한 기기에서 두 명이 번갈아 진행</div>
         </button>
         <button class="mode" onclick="openRoomListModal()">
           <div class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg></div>
           <div class="mt">방 목록</div>
           <div class="md">진행 중인 온라인 방 보기 <span class="badge" id="rcountBtn">0</span></div>
+        </button>
+        <button class="mode mode-add-friend" onclick="openAddFriendModal()">
+          <div class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="8.5" cy="7" r="4"/><line x1="20" y1="8" x2="20" y2="14"/><line x1="23" y1="11" x2="17" y2="11"/></svg></div>
+          <div class="mt">친구 추가</div>
+          <div class="md">친구 코드로 새 친구 등록</div>
         </button>
       </div>
     </div>
@@ -571,14 +582,6 @@ input{font-family:inherit;outline:none}
           </a>
         </div>
       </div>
-      <div class="modes">
-        <button class="mode" onclick="location.href='replays.html'">
-          <div class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="20" height="20" rx="2.18" ry="2.18"/><line x1="7" y1="2" x2="7" y2="22"/><line x1="17" y1="2" x2="17" y2="22"/><line x1="2" y1="12" x2="22" y2="12"/><line x1="2" y1="7" x2="7" y2="7"/><line x1="2" y1="17" x2="7" y2="17"/><line x1="17" y1="17" x2="22" y2="17"/><line x1="17" y1="7" x2="22" y2="7"/></svg></div>
-          <div class="mt">리플레이</div>
-          <div class="md">이전 게임 다시 보기</div>
-        </button>
-      </div>
-
       <!-- 친구 섹션 -->
       <div class="social-section">
         <div class="section-head">
@@ -612,6 +615,11 @@ input{font-family:inherit;outline:none}
     <div class="tab-panel" data-tab="misc">
       <h2 class="tab-title"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/></svg> 기타</h2>
       <div class="modes">
+        <button class="mode" onclick="location.href='replays.html'">
+          <div class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="20" height="20" rx="2.18" ry="2.18"/><line x1="7" y1="2" x2="7" y2="22"/><line x1="17" y1="2" x2="17" y2="22"/><line x1="2" y1="12" x2="22" y2="12"/><line x1="2" y1="7" x2="7" y2="7"/><line x1="2" y1="17" x2="7" y2="17"/><line x1="17" y1="17" x2="22" y2="17"/><line x1="17" y1="7" x2="22" y2="7"/></svg></div>
+          <div class="mt">리플레이</div>
+          <div class="md">이전 게임 다시 보기</div>
+        </button>
         <button class="mode" onclick="location.href='ranking.html'">
           <div class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"/></svg></div>
           <div class="mt">랭킹</div>
@@ -677,6 +685,23 @@ input{font-family:inherit;outline:none}
       <div class="actions" style="justify-content:center;gap:10px">
         <button class="btn btn-ghost" onclick="declineInvite()">거절</button>
         <button class="btn btn-gold" onclick="acceptInvite()">수락 → 입장</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 친구 요청 받기 모달 -->
+  <div class="modal" id="friendReqRecvModal">
+    <div class="modal-card" style="max-width:380px;width:90%;text-align:center">
+      <h3 style="display:flex;align-items:center;justify-content:center;gap:8px">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#5ad5ec" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="8.5" cy="7" r="4"/><line x1="20" y1="8" x2="20" y2="14"/><line x1="23" y1="11" x2="17" y2="11"/></svg>
+        친구 요청
+      </h3>
+      <p id="friendReqMsg" style="margin:14px 0;font-size:14px;line-height:1.6">
+        —
+      </p>
+      <div class="actions" style="justify-content:center;gap:10px">
+        <button class="btn btn-ghost" onclick="declineFriendRequest()">거절</button>
+        <button class="btn btn-gold" onclick="acceptFriendRequest()">수락</button>
       </div>
     </div>
   </div>
@@ -1441,23 +1466,24 @@ window.startTutorial = function(){
         return;
       }
       
-      // leaderboard는 공개 — 프로필 조회 가능
-      const profSnap = await _fbDb.ref('leaderboard/' + friendUid).once('value');
-      const prof = profSnap.val() || {};
-      const friendNick = prof.nick || expectedNick;
-      const friendTag = prof.tag || tag;
+      // 이미 요청 보낸 적 있는지
+      const pendingSnap = await _fbDb.ref(`friendRequests/${friendUid}/${MY_UID}`).once('value');
+      if(pendingSnap.exists()){
+        resultEl.innerHTML = '<span style="color:var(--gold)">이미 요청을 보냈습니다. 상대 수락 대기 중.</span>';
+        return;
+      }
       
-      await _fbDb.ref(`users/${MY_UID}/friends/${friendUid}`).set({
-        nick: friendNick,
-        tag: friendTag,
-        addedAt: Date.now()
+      // 친구 요청 전송 (즉시 추가가 아닌 요청 후 수락 흐름)
+      await _fbDb.ref(`friendRequests/${friendUid}/${MY_UID}`).set({
+        nick: MY_NICK,
+        tag: MY_TAG,
+        sentAt: Date.now()
       });
       
-      resultEl.innerHTML = `<span style="color:var(--green)">✓ ${escapeAttr(friendNick)}#${friendTag} 추가 완료!</span>`;
+      resultEl.innerHTML = `<span style="color:var(--green)">✓ 친구 요청 전송!<br>상대가 수락하면 친구로 등록됩니다.</span>`;
       setTimeout(() => {
         closeAddFriendModal();
-        renderFriends();
-      }, 800);
+      }, 1200);
     } catch(e){
       resultEl.innerHTML = '<span style="color:var(--red)">⚠ ' + (e.message || e) + '</span>';
     }
@@ -1634,6 +1660,121 @@ window.startTutorial = function(){
     try { await _fbDb.ref(`invitations/${MY_UID}/${inv.fromUid}`).remove(); } catch(_){}
   };
 
+  // ===== 친구 요청 / 수락 시스템 =====
+  let _friendReqListener = null, _friendAcceptListener = null;
+  let _currentFriendReq = null;
+
+  function startFriendRequestListener(){
+    if(!_fbDb || !MY_UID || _friendReqListener) return;
+    const ref = _fbDb.ref(`friendRequests/${MY_UID}`);
+    _friendReqListener = ref.on('child_added', async snap => {
+      const senderUid = snap.key;
+      const data = snap.val();
+      if(!data) return;
+      // 차단된 사용자한테서 온 요청 자동 무시
+      try {
+        const blockSnap = await _fbDb.ref(`users/${MY_UID}/blocked/${senderUid}`).once('value');
+        if(blockSnap.exists()){
+          await ref.child(senderUid).remove();
+          return;
+        }
+      } catch(_){}
+      // 이미 친구면 자동 수락 (양쪽 동시 추가 같은 케이스)
+      try {
+        const friSnap = await _fbDb.ref(`users/${MY_UID}/friends/${senderUid}`).once('value');
+        if(friSnap.exists()){
+          await ref.child(senderUid).remove();
+          return;
+        }
+      } catch(_){}
+      // 이미 모달 떠있으면 큐 처리 안 함 (다음 새로고침 때 다시 받음)
+      if(_currentFriendReq) return;
+      _currentFriendReq = { senderUid, ...data };
+      document.getElementById('friendReqMsg').innerHTML = 
+        `<b style="color:#5ad5ec">${escapeAttr(data.nick||'?')}</b>` +
+        `<span style="color:var(--muted);font-family:Menlo,monospace;font-size:12px;margin-left:6px">#${escapeAttr(data.tag||'')}</span>` +
+        `<br><span style="font-size:13px;color:var(--muted)">가 친구 요청을 보냈습니다.</span>`;
+      document.getElementById('friendReqRecvModal').classList.add('show');
+    });
+  }
+
+  function startFriendAcceptedListener(){
+    if(!_fbDb || !MY_UID || _friendAcceptListener) return;
+    const ref = _fbDb.ref(`friendAccepted/${MY_UID}`);
+    _friendAcceptListener = ref.on('child_added', async snap => {
+      const accepterUid = snap.key;
+      const data = snap.val();
+      if(!data) return;
+      try {
+        // 내 friends에 추가
+        await _fbDb.ref(`users/${MY_UID}/friends/${accepterUid}`).set({
+          nick: data.nick,
+          tag: data.tag,
+          addedAt: data.acceptedAt || Date.now()
+        });
+        // 알림 노드 삭제
+        await ref.child(accepterUid).remove();
+        renderFriends();
+        // Flash 메시지 (있다면)
+        showFriendAcceptedToast(data.nick, data.tag);
+      } catch(e){
+        console.warn('[Friend] 수락 처리 실패:', e.message);
+      }
+    });
+  }
+
+  function showFriendAcceptedToast(nick, tag){
+    // 간단한 토스트 알림
+    let toast = document.getElementById('friendAcceptToast');
+    if(!toast){
+      toast = document.createElement('div');
+      toast.id = 'friendAcceptToast';
+      toast.style.cssText = 'position:fixed;top:24px;left:50%;transform:translateX(-50%);background:linear-gradient(135deg,#40c8e0,#2980a1);color:#fff;padding:12px 20px;border-radius:10px;font-weight:700;font-size:14px;z-index:10000;box-shadow:0 4px 14px rgba(0,0,0,.3);transition:opacity .3s';
+      document.body.appendChild(toast);
+    }
+    toast.textContent = `✓ ${nick}#${tag} 가 친구 요청을 수락했습니다!`;
+    toast.style.opacity = '1';
+    setTimeout(()=>{ toast.style.opacity = '0'; }, 3500);
+  }
+
+  window.acceptFriendRequest = async function(){
+    if(!_currentFriendReq) return;
+    const req = _currentFriendReq;
+    _currentFriendReq = null;
+    document.getElementById('friendReqRecvModal').classList.remove('show');
+    try {
+      // 1. 받은 요청 삭제
+      await _fbDb.ref(`friendRequests/${MY_UID}/${req.senderUid}`).remove();
+      // 2. 내 friends에 등록
+      await _fbDb.ref(`users/${MY_UID}/friends/${req.senderUid}`).set({
+        nick: req.nick,
+        tag: req.tag,
+        addedAt: Date.now()
+      });
+      // 3. 보낸 사람에게 알림 (그쪽 listener가 처리)
+      await _fbDb.ref(`friendAccepted/${req.senderUid}/${MY_UID}`).set({
+        nick: MY_NICK,
+        tag: MY_TAG,
+        acceptedAt: Date.now()
+      });
+      renderFriends();
+    } catch(e){
+      alert('수락 실패: ' + (e.message || e));
+    }
+  };
+
+  window.declineFriendRequest = async function(){
+    if(!_currentFriendReq) return;
+    const req = _currentFriendReq;
+    _currentFriendReq = null;
+    document.getElementById('friendReqRecvModal').classList.remove('show');
+    try {
+      await _fbDb.ref(`friendRequests/${MY_UID}/${req.senderUid}`).remove();
+    } catch(e){
+      console.warn('거절 실패:', e.message);
+    }
+  };
+
   // ===== 사용자 태그 생성 =====
   const TAG_CHARS = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
   function generateTag(){
@@ -1724,6 +1865,8 @@ window.startTutorial = function(){
       renderFriends();
       renderBlocked();
       startInviteListener();
+      startFriendRequestListener();
+      startFriendAcceptedListener();
       watchRooms();
     } catch(e){
       clearTimeout(authTimeout);
@@ -2118,7 +2261,7 @@ window.startTutorial = function(){
 <nav class="bottom-nav">
   <button class="bn-btn" data-tab="ai" onclick="switchLobbyTab('ai')">
     <div class="bn-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="16" height="16" rx="2"/><rect x="9" y="9" width="6" height="6"/><path d="M15 2v2M9 2v2M15 20v2M9 20v2M20 9h2M20 15h2M2 9h2M2 15h2"/></svg></div>
-    <div class="bn-label">AI</div>
+    <div class="bn-label">모드</div>
   </button>
   <button class="bn-btn" data-tab="main" onclick="switchLobbyTab('main')">
     <div class="bn-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="6" y1="11" x2="10" y2="11"/><line x1="8" y1="9" x2="8" y2="13"/><line x1="15" y1="12" x2="15.01" y2="12"/><line x1="18" y1="10" x2="18.01" y2="10"/><path d="M17.32 5H6.68a4 4 0 0 0-3.978 3.59c-.006.052-.01.101-.017.152C2.604 9.416 2 14.456 2 16a3 3 0 0 0 3 3c1 0 1.5-.5 2-1l1.414-1.414A2 2 0 0 1 9.828 16h4.344a2 2 0 0 1 1.414.586L17 18c.5.5 1 1 2 1a3 3 0 0 0 3-3c0-1.545-.604-6.584-.685-7.258-.007-.05-.011-.1-.017-.151A4 4 0 0 0 17.32 5z"/></svg></div>

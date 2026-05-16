@@ -3390,6 +3390,17 @@ function setupConn(conn){
 function onPeerMessage(data){
   if(!data || !data.t) return;
   if(data.t === 'HELLO'){
+    // 같은 계정 매칭 방지
+    const otherUid = NET_ROLE === 'host' ? data.guestUid : data.hostUid;
+    if(otherUid && otherUid === MY_UID){
+      sendToPeer({t:'REJECT', reason:'same_account'});
+      showFlash('자기 자신과는 매칭할 수 없습니다');
+      setTimeout(()=>{
+        cleanupRoom();
+        goLobby();
+      }, 1500);
+      return;
+    }
     if(NET_ROLE === 'host'){
       _gameRatingInfo = {
         whiteUid: MY_UID, whiteElo: MY_ELO_P, whiteNick: MY_NICK_P, whiteTag: MY_TAG_P,
@@ -3462,6 +3473,15 @@ function onPeerMessage(data){
     }
   } else if(data.t === 'END'){
     // 다른 쪽에서 종료 시 동기화 (이미 종료됐을 수 있음)
+  } else if(data.t === 'REJECT'){
+    // 호스트가 거부 (같은 계정 등)
+    let msg = '연결이 거부되었습니다';
+    if(data.reason === 'same_account') msg = '자기 자신과는 매칭할 수 없습니다';
+    showFlash(msg);
+    setTimeout(()=>{
+      cleanupRoom();
+      goLobby();
+    }, 1500);
   }
 }
 
