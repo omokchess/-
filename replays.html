@@ -245,6 +245,21 @@ function escapeHtml(s){
 }
 
 function openReplay(id){
+  // 일일 퀘스트 진행 (리플레이 보기)
+  try {
+    let data = JSON.parse(localStorage.getItem('frontier_quests') || 'null');
+    if(data && data.quests){
+      let changed = false;
+      data.quests.forEach(q => {
+        if(!q.completed && q.type === 'replay'){
+          q.progress = Math.min(q.target, q.progress + 1);
+          if(q.progress >= q.target) q.completed = true;
+          changed = true;
+        }
+      });
+      if(changed) localStorage.setItem('frontier_quests', JSON.stringify(data));
+    }
+  } catch(_){}
   location.href = 'FRONTIER.html?role=replay&rid=' + id;
 }
 

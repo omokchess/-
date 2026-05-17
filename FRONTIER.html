@@ -563,9 +563,97 @@ body.replay-mode #chatBtn,body.replay-mode #chatPanel,body.replay-mode #forfeitB
   .replay-turn-display{padding:5px 10px;font-size:12px;min-width:60px}
   .replay-list{grid-template-columns:repeat(auto-fill,minmax(140px,1fr));max-height:200px}
 }
+/* ===== 물약 모드 (potion mode) ===== */
+.cell.blocked-cell{
+  position:relative;
+  background:repeating-linear-gradient(45deg, rgba(255,69,58,.4) 0 8px, rgba(255,69,58,.15) 8px 16px) !important;
+  cursor:not-allowed;
+  pointer-events:none
+}
+.cell.blocked-cell::after{
+  content:attr(data-block-turns);
+  position:absolute;
+  top:4px;right:4px;
+  background:rgba(255,69,58,.85);
+  color:#fff;
+  font-size:10px;font-weight:800;
+  border-radius:50%;
+  width:14px;height:14px;
+  display:flex;align-items:center;justify-content:center
+}
+
+#potionInvContainer{
+  background:var(--panel);
+  border:1px solid var(--border);
+  border-radius:10px;
+  padding:10px 12px;
+  margin-top:10px;
+  font-size:12px
+}
+#potionInvContainer .pot-row{
+  display:flex;align-items:center;gap:10px;
+  padding:4px 0
+}
+#potionInvContainer .pot-row.pot-opp{
+  border-top:1px dashed var(--border);
+  margin-top:4px;padding-top:8px
+}
+#potionInvContainer .pot-side{
+  color:var(--muted);font-weight:700;flex:0 0 40px
+}
+#potionInvContainer .pot-count{color:var(--text)}
+#potionInvContainer .pot-points{color:var(--gold);font-weight:700;margin-left:auto}
+#potionInvContainer .pot-list{
+  display:flex;flex-wrap:wrap;gap:6px;
+  margin-top:8px;padding-top:8px;
+  border-top:1px solid var(--border)
+}
+#potionInvContainer .pot-item{
+  width:36px;height:36px;
+  background:var(--panel2);border:1px solid var(--border);
+  border-radius:8px;
+  display:flex;align-items:center;justify-content:center;
+  font-size:18px;cursor:pointer;
+  transition:all .15s;position:relative
+}
+#potionInvContainer .pot-item:hover{
+  transform:translateY(-2px);
+  border-color:var(--gold);
+  box-shadow:0 4px 12px rgba(0,0,0,.4)
+}
+#potionInvContainer .pot-item .pot-lv{
+  position:absolute;bottom:-4px;right:-4px;
+  background:linear-gradient(135deg,#ffd60a,#ff9500);
+  color:#000;font-size:9px;font-weight:800;
+  border-radius:50%;width:14px;height:14px;
+  display:flex;align-items:center;justify-content:center
+}
+#potionInvContainer .pot-empty{
+  color:var(--muted);text-align:center;width:100%;
+  padding:6px;font-size:11px
+}
+
+.revive-opt{
+  display:flex;align-items:center;gap:14px;
+  padding:12px 14px;background:var(--panel2);
+  border:1px solid var(--border);border-radius:10px;
+  cursor:pointer;transition:all .15s
+}
+.revive-opt:hover:not(.disabled){
+  border-color:var(--gold);
+  background:linear-gradient(135deg, var(--panel2), rgba(245,200,66,.08))
+}
+.revive-opt.disabled{opacity:.4;cursor:not-allowed}
+.revive-piece{font-size:36px;line-height:1;flex:0 0 44px;text-align:center}
+.revive-info{flex:1;min-width:0}
+.revive-name{font-weight:700;font-size:15px;margin-bottom:2px}
+.revive-meta{font-size:12px;color:var(--muted)}
+
+/* 보드 회전 (조커 포션) */
+body.board-flipped .board{transform:rotate(180deg)}
+body.board-flipped .cell{transform:rotate(180deg)}
+
 </style>
-</head>
-<body>
 <div class="app">
   <div class="topbar">
     <div class="tb-left">
@@ -638,6 +726,8 @@ body.replay-mode #chatBtn,body.replay-mode #chatPanel,body.replay-mode #forfeitB
       <h4 id="myHandTitle">내 손패</h4>
       <div class="hand-list" id="myHand"></div>
     </div>
+    <!-- 물약 모드 인벤토리 -->
+    <div id="potionInvContainer" style="display:none"></div>
   </div>
 </div>
 
@@ -708,6 +798,31 @@ body.replay-mode #chatBtn,body.replay-mode #chatPanel,body.replay-mode #forfeitB
 
 <!-- 프로모션 모달 -->
 <div class="modal" id="promoModal">
+
+<!-- 물약 사용 확인 모달 -->
+<div class="modal" id="potionUseModal" onclick="if(event.target.id==='potionUseModal') closePotionUseModal()">
+  <div class="modal-card" style="max-width:340px;text-align:center">
+    <div id="puIcon" style="margin-bottom:10px"></div>
+    <h3 id="puTitle">물약</h3>
+    <p id="puDesc" style="font-size:13px;color:var(--muted);margin:8px 0 14px;line-height:1.5"></p>
+    <div id="puCost" style="font-size:13px;margin-bottom:12px"></div>
+    <div class="actions" style="justify-content:center;gap:8px">
+      <button class="btn btn-ghost" onclick="closePotionUseModal()">취소</button>
+      <button class="btn btn-gold" id="puUseBtn">사용</button>
+    </div>
+  </div>
+</div>
+
+<!-- 부활 기물 선택 모달 -->
+<div class="modal" id="reviveModal" onclick="if(event.target.id==='reviveModal') closeReviveModal()">
+  <div class="modal-card" style="max-width:380px">
+    <h3 id="reviveTitle" style="text-align:center">부활할 기물 선택</h3>
+    <div id="reviveList" style="margin:12px 0;display:flex;flex-direction:column;gap:8px;max-height:50vh;overflow-y:auto"></div>
+    <div class="actions" style="justify-content:center">
+      <button class="btn btn-ghost" onclick="closeReviveModal()">취소</button>
+    </div>
+  </div>
+</div>
   <div class="modal-card">
     <h2>폰 프로모션</h2>
     <p>승급할 기물을 선택하세요</p>
@@ -920,6 +1035,38 @@ const IS_EVOLVE = (MODE === 'evolve');
 const IS_NET   = (NET_ROLE === 'host' || NET_ROLE === 'guest');
 const IS_SPEC  = (NET_ROLE === 'spectator');
 const IS_REPLAY = (MODE === 'replay');
+const IS_POTION = (Q.get('potion') === '1');
+
+// ===== 물약 모드 =====
+const POTION_TYPES = {
+  revive: { name:'부활 물약', icon:'🧪', color:'#5ac8fa',
+            desc:'죽은 기물 1개 부활. 비용 = 기물가치/2 (반올림 올림)',
+            mergeDesc:'(합체) 부활 비용 50% 할인' },
+  block:  { name:'차단 물약', icon:'🚫', color:'#ff453a',
+            desc:'빈 칸 1개를 3턴간 차단. 이동·배치 불가, 통과는 가능',
+            mergeDesc:'(합체) 차단 칸 2개 동시 선택' },
+  joker:  { name:'조커 포션', icon:'🃏', color:'#bf5af2',
+            desc:'양쪽 진영 색 교환 + 시점 회전',
+            mergeDesc:'(합체) 색 교환 후 본인 한 번 더 둘 수 있음' },
+  time:   { name:'시간 물약', icon:'⏰', color:'#30d158',
+            desc:'본인 시간 +3분',
+            mergeDesc:'(합체) 상대 시간 -2분' },
+  peek:   { name:'엿보기 물약', icon:'👁', color:'#f5c842',
+            desc:'상대 물약 인벤토리 한 번 공개',
+            mergeDesc:'(합체) 상대 물약 하나 훔치기' }
+};
+const POTION_KEYS = ['revive','block','joker','time','peek'];
+
+// 물약 상태 (게임 시작 후 초기화)
+let myInventory = [];      // [{id, type, level (1=일반 2=합체), color}]
+let oppInventoryCount = 0; // 상대 인벤토리 개수만 (엿보기 안 쓰면 종류 비공개)
+let oppInventoryRevealed = null; // 엿보기 사용 후 상대 인벤토리 (배열 또는 null)
+let myPoints = 10;
+let oppPoints = 10;
+let blockedCells = []; // [{r, c, turnsLeft, owner}]
+let _potionAwardedThisTurn = { w: false, b: false }; // 턴 시작 시 자동 획득 중복 방지
+const MAX_INVENTORY_SIZE = 8; // 인벤토리 최대 개수
+let _potionIdCounter = 0;
 
 // AI 난이도 — AI 모드는 단일, AI vs AI는 양쪽 별도
 const W_DIFF = Q.get('wdiff') || DIFF;
@@ -1214,6 +1361,8 @@ function applyAction(action, opts={}){
     const { kind, r, c, color } = action;
     if(!hands[color][kind] || hands[color][kind] <= 0) return { ok:false, err:'손패 없음' };
     if(board[r][c]) return { ok:false, err:'점유됨' };
+    // 차단 칸 검사 (물약 모드)
+    if(IS_POTION && isCellBlocked(r, c)) return { ok:false, err:'차단된 칸' };
     // 첫 수: 반드시 킹부터
     if(!kingPlaced[color] && kind !== 'K') return { ok:false, err:'첫 수는 킹' };
     // 킹은 4x4
@@ -1232,6 +1381,8 @@ function applyAction(action, opts={}){
     const p = board[fr][fc];
     if(!p) return { ok:false, err:'기물 없음' };
     if(p.color !== turn) return { ok:false, err:'본인 기물 아님' };
+    // 차단 칸 검사 (물약 모드) — 목적지가 차단 칸이면 이동 불가 (통과는 후속 pieceMoves에서 알아서 처리)
+    if(IS_POTION && isCellBlocked(tr, tc)) return { ok:false, err:'차단된 칸' };
     // 양쪽 킹 모두 배치 안 됨 → 이동 불가
     if(!kingPlaced.w || !kingPlaced.b) return { ok:false, err:'킹 미배치' };
 
@@ -1323,9 +1474,508 @@ function applyAction(action, opts={}){
   return finalizeAfterMove(opponentInCheck, snap, silent);
 }
 
+// ===== 물약 모드 핵심 함수 =====
+function genPotionId(){ return 'p_' + (++_potionIdCounter) + '_' + Math.random().toString(36).slice(2,5); }
+
+function awardRandomPotion(forColor){
+  // 인벤토리 가득 차면 지급 안 함
+  const target = (forColor === MY_COLOR) ? myInventory : null;
+  if(forColor === MY_COLOR){
+    if(myInventory.length >= MAX_INVENTORY_SIZE) return null;
+  }
+  const type = POTION_KEYS[Math.floor(Math.random() * POTION_KEYS.length)];
+  const newPotion = { id: genPotionId(), type, level: 1, color: forColor };
+  if(forColor === MY_COLOR){
+    myInventory.push(newPotion);
+    renderPotionUI();
+  } else if(!IS_LOCAL && !IS_AI){
+    oppInventoryCount = Math.min(oppInventoryCount + 1, MAX_INVENTORY_SIZE);
+    renderPotionUI();
+  } else {
+    // 로컬/AI: 상대도 내가 관리. 별도 변수 사용
+    if(!window._localOppInv) window._localOppInv = [];
+    if(window._localOppInv.length < MAX_INVENTORY_SIZE){
+      window._localOppInv.push(newPotion);
+    }
+    renderPotionUI();
+  }
+  return newPotion;
+}
+
+function handlePotionTurnStart(newTurnColor){
+  // 차단 칸 카운트다운 (새 턴 시작 시)
+  if(blockedCells.length){
+    blockedCells = blockedCells.map(c => ({...c, turnsLeft: c.turnsLeft - 1})).filter(c => c.turnsLeft > 0);
+    drawBlockedOverlay();
+  }
+  // 첫 턴은 게임 시작 시점에 이미 양쪽 손에 1개씩 줬으므로 여기서 추가만
+  // 이 턴 시작이 이미 처리됐다면 (예: 합체 후 재진입) 중복 방지
+  if(_potionAwardedThisTurn[newTurnColor]) return;
+  _potionAwardedThisTurn[newTurnColor] = true;
+  // 반대 색은 다음 턴에 다시 받을 수 있게 reset
+  _potionAwardedThisTurn[opp(newTurnColor)] = false;
+  awardRandomPotion(newTurnColor);
+  // 매 턴 +1 P 지급
+  if(newTurnColor === MY_COLOR){
+    myPoints++;
+  } else if(IS_LOCAL || IS_AI){
+    oppPoints++;
+  }
+  // 상대(네트워크)의 포인트는 직접 관리 안 함 (그쪽에서 자기 것 관리)
+  updatePointsUI();
+}
+
+function initPotionMode(){
+  if(!IS_POTION) return;
+  myInventory = [];
+  oppInventoryCount = 0;
+  oppInventoryRevealed = null;
+  myPoints = 10;
+  oppPoints = 10;
+  blockedCells = [];
+  _potionAwardedThisTurn = { w:false, b:false };
+  // 게임 시작 시 양쪽 손에 첫 물약 1개씩
+  awardRandomPotion('w');
+  awardRandomPotion('b');
+  // 시작 시 자기 턴 (white)이라면 미리 1개 더 (자기 턴 첫 시작도 자동 획득)
+  _potionAwardedThisTurn.w = false; // 첫 턴 시작에서 awardRandomPotion이 한 번 더 호출되도록
+  renderPotionUI();
+  updatePointsUI();
+}
+
+// ===== 차단 칸 검증 =====
+function isCellBlocked(r, c){
+  if(!IS_POTION) return false;
+  return blockedCells.some(b => b.r === r && b.c === c);
+}
+
+function drawBlockedOverlay(){
+  if(!IS_POTION) return;
+  document.querySelectorAll('.cell.blocked-cell').forEach(el => el.classList.remove('blocked-cell'));
+  blockedCells.forEach(({r, c, turnsLeft}) => {
+    const sq = document.querySelector(`.cell[data-r="${r}"][data-c="${c}"]`);
+    if(sq){
+      sq.classList.add('blocked-cell');
+      sq.dataset.blockTurns = turnsLeft;
+    }
+  });
+}
+
+function renderPotionUI(){
+  const container = document.getElementById('potionInvContainer');
+  if(!container) return;
+  if(IS_POTION){
+    container.style.display = '';
+  } else {
+    container.style.display = 'none';
+    return;
+  }
+  const myCount = myInventory.length;
+  const oppCount = IS_LOCAL || IS_AI ? (window._localOppInv || []).length : oppInventoryCount;
+  container.innerHTML = `
+    <div class="pot-row">
+      <span class="pot-side">내 인벤</span>
+      <span class="pot-count">🧪 ${myCount}/${MAX_INVENTORY_SIZE}</span>
+      <span class="pot-points">💰 ${myPoints}P</span>
+    </div>
+    <div class="pot-row pot-opp">
+      <span class="pot-side">상대</span>
+      <span class="pot-count">🧪 ${oppCount}</span>
+      <span class="pot-points">💰 ${IS_LOCAL || IS_AI ? oppPoints + 'P' : '???'}</span>
+    </div>
+    <div class="pot-list" id="potionMyList">
+      ${myInventory.map(p => `
+        <div class="pot-item" data-id="${p.id}" data-type="${p.type}" draggable="true"
+             onclick="openPotionMenu('${p.id}')"
+             title="${POTION_TYPES[p.type].name}">
+          <span style="color:${POTION_TYPES[p.type].color}">${POTION_TYPES[p.type].icon}</span>
+          ${p.level > 1 ? '<span class="pot-lv">2</span>' : ''}
+        </div>
+      `).join('') || '<div class="pot-empty">— 비어있음 —</div>'}
+    </div>
+    ${oppInventoryRevealed ? `
+      <div class="pot-list" style="border-top:1px dashed var(--border);margin-top:6px">
+        <div style="width:100%;font-size:11px;color:var(--gold);margin-bottom:4px">👁 상대 (엿보기 공개됨)</div>
+        ${oppInventoryRevealed.map(p => `
+          <div class="pot-item" title="${POTION_TYPES[p.type].name}" style="opacity:.6">
+            <span style="color:${POTION_TYPES[p.type].color}">${POTION_TYPES[p.type].icon}</span>
+            ${p.level > 1 ? '<span class="pot-lv">2</span>' : ''}
+          </div>
+        `).join('')}
+      </div>
+    ` : ''}
+  `;
+  // 드래그 합체 핸들러 부착
+  attachPotionDragHandlers();
+}
+
+function updatePointsUI(){ renderPotionUI(); }
+
+// ===== 인벤토리 클릭 → 사용/취소 메뉴 =====
+let _pendingPotion = null; // 현재 선택된 물약 (사용 대기)
+let _pendingMerge = null;  // 합체 대기 (드래그 출발)
+
+window.openPotionMenu = function(potionId){
+  if(!IS_POTION) return;
+  // 자기 턴이 아니면 사용 불가
+  if(!isMyTurnForPotion()){
+    showFlash('자기 턴에만 물약 사용 가능');
+    return;
+  }
+  const p = myInventory.find(x => x.id === potionId);
+  if(!p) return;
+  const type = POTION_TYPES[p.type];
+  const cost = getPotionCost(p);
+  const modal = document.getElementById('potionUseModal');
+  document.getElementById('puIcon').innerHTML = `<span style="color:${type.color};font-size:42px">${type.icon}</span>`;
+  document.getElementById('puTitle').textContent = type.name + (p.level > 1 ? ' (강화)' : '');
+  document.getElementById('puDesc').textContent = p.level > 1 ? type.mergeDesc : type.desc;
+  document.getElementById('puCost').innerHTML = cost > 0 ? `사용 비용: <b style="color:var(--gold)">${cost}P</b>` : '<span style="color:var(--green)">비용 없음</span>';
+  document.getElementById('puUseBtn').disabled = myPoints < cost;
+  document.getElementById('puUseBtn').onclick = () => {
+    closePotionUseModal();
+    usePotion(potionId);
+  };
+  modal.classList.add('show');
+};
+window.closePotionUseModal = function(){
+  document.getElementById('potionUseModal').classList.remove('show');
+};
+
+function isMyTurnForPotion(){
+  if(IS_REPLAY || IS_SPEC || gameOver) return false;
+  if(IS_LOCAL) return true;
+  return turn === MY_COLOR;
+}
+
+function getPotionCost(potion){
+  const base = POTION_TYPES[potion.type].cost || 0;
+  // 합체는 cost는 같지만 효과 다름 (level 2)
+  return base;
+}
+
+// ===== 드래그 합체 핸들러 =====
+function attachPotionDragHandlers(){
+  document.querySelectorAll('#potionMyList .pot-item').forEach(el => {
+    el.addEventListener('dragstart', (e) => {
+      _pendingMerge = el.dataset.id;
+      el.style.opacity = '0.5';
+      e.dataTransfer.effectAllowed = 'move';
+      // Firefox 호환
+      try { e.dataTransfer.setData('text/plain', el.dataset.id); } catch(_){}
+    });
+    el.addEventListener('dragend', () => {
+      el.style.opacity = '';
+      _pendingMerge = null;
+    });
+    el.addEventListener('dragover', (e) => {
+      if(_pendingMerge && _pendingMerge !== el.dataset.id){
+        const src = myInventory.find(p => p.id === _pendingMerge);
+        const tgt = myInventory.find(p => p.id === el.dataset.id);
+        if(src && tgt && src.type === tgt.type && src.level === 1 && tgt.level === 1){
+          e.preventDefault();
+          el.style.boxShadow = '0 0 0 2px var(--gold)';
+        }
+      }
+    });
+    el.addEventListener('dragleave', () => { el.style.boxShadow = ''; });
+    el.addEventListener('drop', (e) => {
+      e.preventDefault();
+      el.style.boxShadow = '';
+      const srcId = _pendingMerge;
+      const tgtId = el.dataset.id;
+      if(srcId && tgtId && srcId !== tgtId) mergePotions(srcId, tgtId);
+    });
+  });
+}
+
+function mergePotions(srcId, tgtId){
+  const src = myInventory.find(p => p.id === srcId);
+  const tgt = myInventory.find(p => p.id === tgtId);
+  if(!src || !tgt) return;
+  if(src.type !== tgt.type){
+    showFlash('같은 종류 물약끼리만 합체 가능');
+    return;
+  }
+  if(src.level > 1 || tgt.level > 1){
+    showFlash('이미 강화된 물약은 합체 불가');
+    return;
+  }
+  // 합체: src 제거 + tgt level 2로
+  myInventory = myInventory.filter(p => p.id !== srcId);
+  tgt.level = 2;
+  showFlash(`✨ ${POTION_TYPES[tgt.type].name} 강화!`, 1500);
+  renderPotionUI();
+  if(IS_NET) sendToPeer({ t:'POTION_MERGE', srcId, tgtId });
+}
+
+// ===== 물약 사용 =====
+function usePotion(potionId){
+  const p = myInventory.find(x => x.id === potionId);
+  if(!p) return;
+  const cost = getPotionCost(p);
+  if(myPoints < cost){
+    showFlash('포인트 부족');
+    return;
+  }
+  
+  // 타입별 사용 분기
+  switch(p.type){
+    case 'revive': openReviveModal(potionId); break;
+    case 'block':  openBlockSelect(potionId); break;
+    case 'joker':  applyJokerPotion(potionId); break;
+    case 'time':   applyTimePotion(potionId); break;
+    case 'peek':   applyPeekPotion(potionId); break;
+  }
+}
+
+function consumePotion(potionId, cost){
+  myInventory = myInventory.filter(p => p.id !== potionId);
+  myPoints -= cost;
+  renderPotionUI();
+  if(IS_NET){
+    // 네트워크에는 결과만 전송, 인벤 동기는 그쪽에서 카운트로 처리
+    sendToPeer({ t:'POTION_USED', potionId });
+  }
+}
+
+// ----- 부활 물약 -----
+function openReviveModal(potionId){
+  const p = myInventory.find(x => x.id === potionId);
+  if(!p) return;
+  const myColor = IS_LOCAL ? turn : MY_COLOR;
+  // 죽은 기물 = DEFAULT_HAND - hands[myColor] - 보드 위 기물
+  const myDead = countDeadPieces(myColor);
+  const deadList = Object.entries(myDead).filter(([k,v]) => v > 0 && k !== 'K');
+  if(deadList.length === 0){
+    showFlash('부활할 죽은 기물 없음');
+    return;
+  }
+  const modal = document.getElementById('reviveModal');
+  const html = deadList.map(([kind, count]) => {
+    const v = PIECE_VALUES[kind] || 10;
+    const cost = Math.ceil(v / 2) * (p.level === 2 ? 0.5 : 1);
+    const actualCost = Math.ceil(cost);
+    const piece = pieceGlyph(myColor, kind);
+    return `
+      <div class="revive-opt ${myPoints < actualCost ? 'disabled' : ''}" 
+           onclick="${myPoints >= actualCost ? `confirmRevive('${potionId}','${kind}',${actualCost})` : ''}">
+        <div class="revive-piece" style="color:${myColor==='w'?'#fff':'#000'};text-shadow:${myColor==='w'?'0 0 4px rgba(0,0,0,.8)':'0 0 4px rgba(255,255,255,.4)'}">${piece}</div>
+        <div class="revive-info">
+          <div class="revive-name">${getPieceName(kind)}</div>
+          <div class="revive-meta">남은 ${count}개 · 비용 <b style="color:var(--gold)">${actualCost}P</b></div>
+        </div>
+      </div>
+    `;
+  }).join('');
+  document.getElementById('reviveList').innerHTML = html;
+  document.getElementById('reviveTitle').textContent = '부활할 기물 선택' + (p.level === 2 ? ' (50% 할인 적용)' : '');
+  modal.classList.add('show');
+}
+window.closeReviveModal = function(){
+  document.getElementById('reviveModal').classList.remove('show');
+};
+window.confirmRevive = function(potionId, kind, cost){
+  closeReviveModal();
+  // 부활 위치 자동: 그 기물 종류의 시작 위치 또는 같은 색 시작 영역 첫 빈 칸
+  const myColor = IS_LOCAL ? turn : MY_COLOR;
+  const placePos = findRevivePosition(kind, myColor);
+  if(!placePos){
+    showFlash('부활 위치 없음 (보드 가득)');
+    return;
+  }
+  // 보드에 배치
+  board[placePos.r][placePos.c] = (kind === 'SN') ? { color: myColor, kind, attacks: 0 } : { color: myColor, kind };
+  consumePotion(potionId, cost);
+  renderAll();
+  showFlash(`✨ ${getPieceName(kind)} 부활!`);
+  playSnd('place');
+  if(IS_NET) sendToPeer({ t:'POTION_REVIVE', kind, r: placePos.r, c: placePos.c, color: myColor });
+}
+function countDeadPieces(color){
+  // INIT_HAND 기준 - 보드 위 현재 + 손패
+  const total = {...INIT_HAND};
+  const onBoard = {};
+  for(let r=0;r<8;r++) for(let c=0;c<8;c++){
+    const p = board[r][c];
+    if(p && p.color === color){
+      onBoard[p.kind] = (onBoard[p.kind] || 0) + 1;
+    }
+  }
+  const dead = {};
+  Object.keys(total).forEach(k => {
+    dead[k] = total[k] - (onBoard[k]||0) - (hands[color][k]||0);
+    if(dead[k] < 0) dead[k] = 0;
+  });
+  return dead;
+}
+function findRevivePosition(kind, color){
+  // 우선 그 색 진영 시작 영역에서 빈 칸 찾기
+  // white 진영: r=5,6,7 / black 진영: r=0,1,2
+  const myRows = color === 'w' ? [7,6,5,4] : [0,1,2,3];
+  for(const r of myRows){
+    for(let c=0;c<8;c++){
+      if(!board[r][c] && !isCellBlocked(r,c)){
+        if(kind === 'SN' && !inCornerZone(r,c)) continue;
+        return {r, c};
+      }
+    }
+  }
+  // 진영에 없으면 아무 빈 칸
+  for(let r=0;r<8;r++) for(let c=0;c<8;c++){
+    if(!board[r][c] && !isCellBlocked(r,c)) return {r, c};
+  }
+  return null;
+}
+function getPieceName(kind){
+  return {K:'킹',Q:'퀸',R:'룩',B:'비숍',N:'나이트',P:'폰',SH:'방패',SN:'스나이퍼',JP:'어쌔신'}[kind] || kind;
+}
+function pieceGlyph(color, kind){
+  const G = {
+    w:{K:'♔',Q:'♕',R:'♖',B:'♗',N:'♘',P:'♙',SH:'⬢',SN:'⊕',JP:'✦'},
+    b:{K:'♚',Q:'♛',R:'♜',B:'♝',N:'♞',P:'♟',SH:'⬢',SN:'⊕',JP:'✦'}
+  };
+  return G[color][kind] || '?';
+}
+
+// ----- 차단 물약 -----
+let _pendingBlockPotion = null;
+let _pendingBlockClicksLeft = 0;
+function openBlockSelect(potionId){
+  const p = myInventory.find(x => x.id === potionId);
+  if(!p) return;
+  _pendingBlockPotion = potionId;
+  _pendingBlockClicksLeft = p.level === 2 ? 2 : 1;
+  showFlash(`🚫 차단할 빈 칸을 선택하세요 ${_pendingBlockClicksLeft}개`, 3000);
+  // 사용자가 보드 클릭 시 onCellClick 에서 처리 (밑에서 별도 hook)
+}
+function tryBlockCellClick(r, c){
+  if(!_pendingBlockPotion) return false;
+  // 빈 칸만 차단 가능
+  if(board[r][c]){
+    showFlash('빈 칸만 차단 가능');
+    return true; // 클릭은 소비 (취소 안 됨)
+  }
+  if(isCellBlocked(r,c)){
+    showFlash('이미 차단된 칸');
+    return true;
+  }
+  const myColor = IS_LOCAL ? turn : MY_COLOR;
+  blockedCells.push({r, c, turnsLeft: 3, owner: myColor});
+  _pendingBlockClicksLeft--;
+  drawBlockedOverlay();
+  if(IS_NET) sendToPeer({ t:'POTION_BLOCK', r, c, color: myColor });
+  if(_pendingBlockClicksLeft <= 0){
+    const cost = POTION_TYPES.block.cost;
+    consumePotion(_pendingBlockPotion, cost);
+    _pendingBlockPotion = null;
+    playSnd('place');
+    showFlash('✓ 차단 완료');
+  } else {
+    showFlash(`${_pendingBlockClicksLeft}개 더 선택`);
+  }
+  return true;
+}
+
+// ----- 조커 포션 (색 swap + 보드 회전) -----
+function applyJokerPotion(potionId){
+  const p = myInventory.find(x => x.id === potionId);
+  if(!p) return;
+  const cost = POTION_TYPES.joker.cost;
+  // 모든 기물 색 swap
+  for(let r=0;r<8;r++) for(let c=0;c<8;c++){
+    if(board[r][c]) board[r][c].color = opp(board[r][c].color);
+  }
+  // 손패도 swap
+  const tmpHand = {...hands.w}; hands.w = {...hands.b}; hands.b = tmpHand;
+  // kingPlaced swap
+  const tmpKP = kingPlaced.w; kingPlaced.w = kingPlaced.b; kingPlaced.b = tmpKP;
+  // 차단 칸 소유자 swap
+  blockedCells.forEach(b => { b.owner = opp(b.owner); });
+  // 시간도 swap (각자 자기 시계)
+  const tmpT = _wTimeLeft; _wTimeLeft = _bTimeLeft; _bTimeLeft = tmpT;
+  // 내 색 swap
+  if(!IS_LOCAL){
+    MY_COLOR = opp(MY_COLOR);
+    document.body.classList.toggle('board-flipped');
+  }
+  consumePotion(potionId, cost);
+  // 합체 시 한 번 더 둘 수 있음
+  if(p.level === 2){
+    // turn 안 넘김
+    showFlash('🃏 조커 강화! 한 번 더 두기');
+  } else {
+    showFlash('🃏 진영 교환!');
+  }
+  renderAll();
+  playSnd('move');
+  if(IS_NET) sendToPeer({ t:'POTION_JOKER', level: p.level });
+}
+
+// ----- 시간 물약 -----
+function applyTimePotion(potionId){
+  const p = myInventory.find(x => x.id === potionId);
+  if(!p) return;
+  const myColor = IS_LOCAL ? turn : MY_COLOR;
+  const oppColor = opp(myColor);
+  if(myColor === 'w'){
+    _wTimeLeft += 180 * 1000;
+    if(p.level === 2) _bTimeLeft = Math.max(0, _bTimeLeft - 120 * 1000);
+  } else {
+    _bTimeLeft += 180 * 1000;
+    if(p.level === 2) _wTimeLeft = Math.max(0, _wTimeLeft - 120 * 1000);
+  }
+  consumePotion(potionId, POTION_TYPES.time.cost);
+  showFlash(p.level === 2 ? '⏰ 내 +3분, 상대 -2분!' : '⏰ +3분');
+  renderTimer();
+  if(IS_NET) sendToPeer({ t:'POTION_TIME', level: p.level, color: myColor });
+}
+
+// ----- 엿보기 물약 -----
+function applyPeekPotion(potionId){
+  const p = myInventory.find(x => x.id === potionId);
+  if(!p) return;
+  // 상대 인벤토리 공개
+  if(IS_LOCAL || IS_AI){
+    oppInventoryRevealed = (window._localOppInv || []).map(x => ({...x}));
+  } else {
+    // 네트워크: 상대에게 요청해서 받아옴
+    sendToPeer({ t:'POTION_PEEK_REQ' });
+    oppInventoryRevealed = []; // 대기 중
+    showFlash('👁 상대 인벤토리 요청...');
+  }
+  // 합체: 훔치기
+  if(p.level === 2){
+    if(IS_LOCAL || IS_AI){
+      const oppInv = window._localOppInv || [];
+      if(oppInv.length > 0 && myInventory.length < MAX_INVENTORY_SIZE){
+        const stolen = oppInv.splice(Math.floor(Math.random() * oppInv.length), 1)[0];
+        stolen.color = (IS_LOCAL ? turn : MY_COLOR);
+        myInventory.push(stolen);
+        showFlash(`👁 강화: ${POTION_TYPES[stolen.type].name} 훔침!`);
+      }
+    } else {
+      sendToPeer({ t:'POTION_STEAL_REQ' });
+    }
+  }
+  consumePotion(potionId, POTION_TYPES.peek.cost);
+  renderPotionUI();
+  // 공개는 자기 턴 동안만
+  setTimeout(()=>{ oppInventoryRevealed = null; renderPotionUI(); }, 12000);
+}
+
+function renderTimer(){
+  // 타이머 즉시 갱신용 — 실제 함수는 별도 있음. 그게 자동 갱신.
+}
+
 function finalizeAfterMove(opponentInCheck, snap, silent=false){
   // 차례 넘김
   turn = opp(turn);
+
+  // 물약 모드: 새 턴 색에 물약 자동 지급 + 차단 칸 감소 (silent 검증 호출은 제외)
+  if(IS_POTION && !silent){
+    handlePotionTurnStart(turn);
+  }
 
   // 5연속 검사 — 단순 보드 스캔, 재귀 없음 → silent에서도 안전하게 검사
   const fiveWin = checkFiveInRow();
@@ -1824,6 +2474,10 @@ function renderAll(){
   renderHands();
   renderStatus();
   updateMaterial();
+  if(IS_POTION){
+    drawBlockedOverlay();
+    renderPotionUI();
+  }
   // 시트가 열려있으면 데이터 갱신 (수가 진행될 때 시트가 stale 안 되게)
   const sheet = document.getElementById('oppSheet');
   if(sheet && sheet.classList.contains('show')) populateOppSheet();
@@ -1885,6 +2539,11 @@ function onCellClick(e){
   const r = parseInt(e.currentTarget.dataset.r);
   const c = parseInt(e.currentTarget.dataset.c);
   const myCol = IS_LOCAL ? turn : MY_COLOR;
+
+  // 차단 물약 사용 중이면 가로채기
+  if(_pendingBlockPotion && IS_POTION){
+    if(tryBlockCellClick(r, c)) return;
+  }
 
   // 손패 배치 모드
   if(SEL && SEL.kind === 'place'){
@@ -2269,6 +2928,20 @@ function endGame(emoji, title, desc, winner /* 'w'|'b'|'draw' */){
 
   // 업적 검사 (승리 / AI 격파 / 5목 / 체크메이트 등)
   try { checkAchievements(winner, title, desc); } catch(e){ console.warn('업적 검사 실패:', e); }
+  
+  // 일일 퀘스트 진행 추적 (localStorage 사용)
+  if(!IS_SPEC && !IS_REPLAY){
+    try {
+      const win = winner === MY_COLOR;
+      let winType = null;
+      if(title && title.indexOf('오목') >= 0) winType = 'omok';
+      else if(title && title.indexOf('체크메이트') >= 0) winType = 'mate';
+      const mode = IS_AI ? 'ai' : IS_LOCAL ? 'local' : IS_NET ? 'online' : 'other';
+      const data = { mode, win, winType, isPotion: IS_POTION };
+      // index.html의 함수에 접근 못 함 — localStorage 직접 갱신
+      trackQuestProgressLocal('game_end', data);
+    } catch(e){ console.warn('일일 퀘스트 추적 실패:', e); }
+  }
 
   const rematchBtn = document.getElementById('rematchBtn');
   // 관전자/리플레이 외엔 모든 모드에서 표시 (라벨은 모드별로 다름)
@@ -2346,6 +3019,48 @@ function showEndModal(){
 // 규칙 보기/닫기
 function openRules(){ document.getElementById('rulesModal').classList.add('show'); }
 function closeRules(){ document.getElementById('rulesModal').classList.remove('show'); }
+
+// ===== 일일 퀘스트 진행 추적 (localStorage 직접) =====
+function trackQuestProgressLocal(eventType, payload){
+  let data;
+  try { data = JSON.parse(localStorage.getItem('frontier_quests') || 'null'); } catch(_){}
+  if(!data || !data.quests) return; // 퀘스트 미생성 — 다음 로비 방문 시 생성됨
+  let anyChange = false;
+  let anyCompleted = 0;
+  data.quests.forEach(q => {
+    if(q.completed) return;
+    let inc = 0;
+    if(eventType === 'game_end'){
+      const {mode, win, winType, isPotion} = payload || {};
+      if(q.type === 'play') inc = 1;
+      if(q.type === 'win' && win) inc = 1;
+      if(q.type === 'ai' && mode === 'ai') inc = 1;
+      if(q.type === 'mate_win' && win && winType === 'mate') inc = 1;
+      if(q.type === 'omok_win' && win && winType === 'omok') inc = 1;
+      if(q.type === 'potion_play' && isPotion) inc = 1;
+      if(q.type === 'local' && mode === 'local') inc = 1;
+    }
+    if(inc > 0){
+      q.progress = Math.min(q.target, q.progress + inc);
+      if(q.progress >= q.target && !q.completed){
+        q.completed = true;
+        anyCompleted++;
+      }
+      anyChange = true;
+    }
+  });
+  if(anyChange){
+    try { localStorage.setItem('frontier_quests', JSON.stringify(data)); } catch(_){}
+    // 업적 (FRONTIER.html에선 MY_UID 같이 변수가 다름. Firebase 직접 접근)
+    try {
+      if(window._fbDb && window.MY_UID){
+        const completedCount = data.quests.filter(q => q.completed).length;
+        if(completedCount >= 1) window._fbDb.ref(`users/${window.MY_UID}/achievements/quest_first`).set({unlockedAt:Date.now()}).catch(()=>{});
+        if(completedCount >= 3) window._fbDb.ref(`users/${window.MY_UID}/achievements/quest_all`).set({unlockedAt:Date.now()}).catch(()=>{});
+      }
+    } catch(_){}
+  }
+}
 
 // ===== 업적 검사 =====
 async function unlockAch(id){
@@ -3537,6 +4252,90 @@ function onPeerMessage(data){
       goLobby();
     }, 1500);
   }
+  // ===== 물약 모드 메시지 =====
+  else if(data.t === 'POTION_USED'){
+    // 상대가 물약 1개 사용 — 상대 인벤 카운트 -1
+    if(oppInventoryCount > 0) oppInventoryCount--;
+    renderPotionUI();
+  } else if(data.t === 'POTION_MERGE'){
+    // 상대 합체 — 카운트 -1 (2개 → 1개 level 2)
+    if(oppInventoryCount > 0) oppInventoryCount--;
+    renderPotionUI();
+  } else if(data.t === 'POTION_REVIVE'){
+    // 상대가 부활 사용 — 보드에 추가
+    board[data.r][data.c] = (data.kind === 'SN') ? { color: data.color, kind: data.kind, attacks: 0 } : { color: data.color, kind: data.kind };
+    renderAll();
+    playSnd('place');
+    showFlash(`상대가 ${getPieceName(data.kind)} 부활`, 1800);
+  } else if(data.t === 'POTION_BLOCK'){
+    // 상대가 차단 칸 추가
+    blockedCells.push({r: data.r, c: data.c, turnsLeft: 3, owner: data.color});
+    drawBlockedOverlay();
+    showFlash('상대가 칸을 차단', 1500);
+  } else if(data.t === 'POTION_JOKER'){
+    // 양쪽 다 색 swap + 보드 회전
+    for(let r=0;r<8;r++) for(let c=0;c<8;c++){
+      if(board[r][c]) board[r][c].color = opp(board[r][c].color);
+    }
+    const tmpHand = {...hands.w}; hands.w = {...hands.b}; hands.b = tmpHand;
+    const tmpKP = kingPlaced.w; kingPlaced.w = kingPlaced.b; kingPlaced.b = tmpKP;
+    blockedCells.forEach(b => { b.owner = opp(b.owner); });
+    const tmpT = _wTimeLeft; _wTimeLeft = _bTimeLeft; _bTimeLeft = tmpT;
+    MY_COLOR = opp(MY_COLOR);
+    document.body.classList.toggle('board-flipped');
+    if(data.level === 2){
+      showFlash('🃏 상대 조커 강화! 한 번 더 둠');
+    } else {
+      showFlash('🃏 진영 교환됨!');
+    }
+    renderAll();
+    playSnd('move');
+  } else if(data.t === 'POTION_TIME'){
+    // 상대 시간 물약 적용
+    if(data.color === 'w'){
+      _wTimeLeft += 180 * 1000;
+      if(data.level === 2) _bTimeLeft = Math.max(0, _bTimeLeft - 120 * 1000);
+    } else {
+      _bTimeLeft += 180 * 1000;
+      if(data.level === 2) _wTimeLeft = Math.max(0, _wTimeLeft - 120 * 1000);
+    }
+    showFlash('⏰ 상대 시간 조작', 1500);
+  } else if(data.t === 'POTION_PEEK_REQ'){
+    // 상대가 내 인벤 보고 싶음 — 응답
+    sendToPeer({ t:'POTION_PEEK_RESP', inventory: myInventory.map(p => ({type:p.type, level:p.level})) });
+    showFlash('👁 상대가 내 인벤을 봤음', 1500);
+  } else if(data.t === 'POTION_PEEK_RESP'){
+    // 상대 인벤 받음
+    oppInventoryRevealed = data.inventory || [];
+    renderPotionUI();
+    setTimeout(()=>{ oppInventoryRevealed = null; renderPotionUI(); }, 12000);
+  } else if(data.t === 'POTION_STEAL_REQ'){
+    // 상대가 내 물약 훔치려 함 — 랜덤 1개 빼서 보내줌
+    if(myInventory.length > 0){
+      const idx = Math.floor(Math.random() * myInventory.length);
+      const stolen = myInventory[idx];
+      myInventory.splice(idx, 1);
+      sendToPeer({ t:'POTION_STEAL_RESP', potion: {type: stolen.type, level: stolen.level} });
+      renderPotionUI();
+      showFlash(`👁 상대가 ${POTION_TYPES[stolen.type].name} 훔침!`, 2000);
+    } else {
+      sendToPeer({ t:'POTION_STEAL_RESP', potion: null });
+    }
+  } else if(data.t === 'POTION_STEAL_RESP'){
+    // 훔치기 성공 결과
+    if(data.potion && myInventory.length < MAX_INVENTORY_SIZE){
+      myInventory.push({
+        id: genPotionId(),
+        type: data.potion.type,
+        level: data.potion.level,
+        color: MY_COLOR
+      });
+      showFlash(`✨ ${POTION_TYPES[data.potion.type].name} 획득!`);
+    } else if(!data.potion){
+      showFlash('상대 인벤이 비어있음');
+    }
+    renderPotionUI();
+  }
 }
 
 function sendToPeer(obj){
@@ -4466,6 +5265,9 @@ function init(){
   if(IS_LOCAL || IS_AI || IS_AIVAI){
     if(TIME_LIMIT > 0) startTimerIfNeeded();
   }
+
+  // 물약 모드 초기화
+  if(IS_POTION) initPotionMode();
 
   netInit();
   renderAll();

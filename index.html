@@ -467,6 +467,29 @@ input{font-family:inherit;outline:none}
 .title-name{flex:1}
 .title-desc{font-size:11px;color:var(--muted);flex:0 0 auto;max-width:50%;text-align:right}
 
+/* 일일 퀘스트 아이템 */
+.quest-item{background:var(--panel2);border:1px solid var(--border);border-radius:10px;padding:12px 14px;margin-bottom:8px}
+.quest-item.completed{background:linear-gradient(135deg,var(--panel2),rgba(48,209,88,.08));border-color:rgba(48,209,88,.4)}
+.quest-name{font-weight:700;font-size:14px;margin-bottom:4px}
+.quest-desc{font-size:11px;color:var(--muted);margin-bottom:8px}
+.quest-progress{display:flex;align-items:center;gap:10px}
+.quest-bar{flex:1;height:6px;background:rgba(255,255,255,.08);border-radius:3px;overflow:hidden}
+.quest-fill{height:100%;background:linear-gradient(90deg,var(--gold),#ff9500);transition:width .3s}
+.quest-item.completed .quest-fill{background:linear-gradient(90deg,var(--green),#0f9d58)}
+.quest-pct{font-size:11px;color:var(--muted);font-weight:700;font-family:Menlo,monospace}
+
+/* 데일리스트릭 표시 */
+.streak-current{font-size:18px;font-weight:800;color:#ff9500}
+.streak-current b{color:var(--gold);font-size:24px;margin:0 4px}
+
+/* 모드 카드 — 일일 퀘스트 (녹색) */
+.mode.mode-daily{border-color:rgba(48,209,88,.45);background:linear-gradient(135deg, var(--panel), rgba(48,209,88,.06))}
+.mode.mode-daily:hover{border-color:var(--green);box-shadow:0 0 0 1px var(--green), 0 0 14px rgba(48,209,88,.25)}
+.mode.mode-daily .mt{color:var(--green)}
+.mode.mode-daily .icon{background:linear-gradient(135deg,#30d158,#0f9d58)}
+.mode.mode-daily .icon svg{color:#fff;filter:drop-shadow(0 1px 2px rgba(0,0,0,.3))}
+.mode.mode-daily .badge{background:var(--green);color:#fff}
+
 /* 방 목록 모달 */
 .room-list-modal{max-width:720px;width:92%;max-height:80vh;overflow-y:auto}
 .rlm-head{display:flex;justify-content:space-between;align-items:center;
@@ -522,8 +545,8 @@ input{font-family:inherit;outline:none}
   .tab-panel{display:none;margin-top:8px}
   .tab-panel.tab-active{display:block}
   
-  /* 하단 탭바 표시 — 4탭 한 줄, no wrap */
-  .bottom-nav{display:grid;grid-template-columns:repeat(4,1fr);
+  /* 하단 탭바 표시 — 5탭 한 줄, no wrap */
+  .bottom-nav{display:grid;grid-template-columns:repeat(5,1fr);
     position:fixed;bottom:0;left:0;right:0;z-index:100;
     background:rgba(28,28,30,.96);backdrop-filter:blur(12px);
     border-top:1px solid var(--border);
@@ -669,6 +692,11 @@ input{font-family:inherit;outline:none}
             <div class="bs-label">전적</div>
           </div>
         </div>
+        <!-- 데일리 스트릭 작은 뱃지 -->
+        <div class="streak-badge" id="streakBadge" onclick="openDailyQuestModal()" 
+             style="display:flex;align-items:center;justify-content:center;gap:8px;padding:8px 14px;background:linear-gradient(135deg,rgba(255,149,0,.15),rgba(255,69,58,.1));border:1px solid rgba(255,149,0,.3);border-radius:8px;margin:0 0 12px;font-size:13px;font-weight:700;cursor:pointer;transition:all .15s">
+          🔥 <span id="streakCount">0</span>일 연속 접속
+        </div>
         <!-- 계정 섹션 (익명 / Google) -->
         <div class="account-section" id="accountSection">
           <!-- 동적으로 채워짐 -->
@@ -720,6 +748,24 @@ input{font-family:inherit;outline:none}
       </div>
     </div>
 
+    <!-- 퀘스트 탭 -->
+    <div class="tab-panel" data-tab="quest">
+      <h2 class="tab-title"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg> 퀘스트</h2>
+      <button class="tab-collapse-btn" onclick="toggleTabCollapse(this)"><span class="arrow"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg></span> 목록 접기</button>
+      <div class="modes">
+        <button class="mode mode-daily" onclick="openDailyQuestModal()">
+          <div class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg></div>
+          <div class="mt">일일 퀘스트 <span class="badge" id="questBadge" style="display:none">3</span></div>
+          <div class="md">매일 새 퀘스트 + 데일리 스트릭</div>
+        </button>
+        <button class="mode" onclick="openAchievementsModal()">
+          <div class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="7"/><polyline points="8.21 13.89 7 23 12 20 17 23 15.79 13.88"/></svg></div>
+          <div class="mt">업적 보기</div>
+          <div class="md" id="achCountDesc">달성한 업적 확인</div>
+        </button>
+      </div>
+    </div>
+
     <!-- 기타 탭 -->
     <div class="tab-panel" data-tab="misc">
       <h2 class="tab-title"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/></svg> 기타</h2>
@@ -734,11 +780,6 @@ input{font-family:inherit;outline:none}
           <div class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"/></svg></div>
           <div class="mt">랭킹</div>
           <div class="md">전 세계 ELO 순위</div>
-        </button>
-        <button class="mode" onclick="openAchievementsModal()">
-          <div class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="7"/><polyline points="8.21 13.89 7 23 12 20 17 23 15.79 13.88"/></svg></div>
-          <div class="mt">업적 보기</div>
-          <div class="md" id="achCountDesc">달성한 업적 확인</div>
         </button>
         <button class="mode" onclick="openTitlesModal()">
           <div class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg></div>
@@ -759,6 +800,7 @@ input{font-family:inherit;outline:none}
     <button class="ds-btn" data-tab="main" onclick="switchLobbyTab('main')">메인 게임</button>
     <button class="ds-btn" data-tab="ai" onclick="switchLobbyTab('ai')">모드</button>
     <button class="ds-btn" data-tab="mypage" onclick="switchLobbyTab('mypage')">내 페이지</button>
+    <button class="ds-btn" data-tab="quest" onclick="switchLobbyTab('quest')">퀘스트</button>
     <button class="ds-btn" data-tab="misc" onclick="switchLobbyTab('misc')">기타</button>
   </aside>
   </div>
@@ -831,6 +873,21 @@ input{font-family:inherit;outline:none}
       </div>
       <div class="actions" style="justify-content:center">
         <button class="btn btn-ghost" onclick="closeFriendReqList()">닫기</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 일일 퀘스트 모달 -->
+  <div class="modal" id="dailyQuestModal" onclick="if(event.target.id==='dailyQuestModal') closeDailyQuestModal()">
+    <div class="modal-card" style="max-width:480px;width:94%;max-height:85vh;display:flex;flex-direction:column">
+      <h3 style="text-align:center;display:flex;align-items:center;justify-content:center;gap:8px;margin-bottom:8px">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--gold)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+        일일 퀘스트
+      </h3>
+      <div id="streakDisplay" style="text-align:center;margin-bottom:14px"></div>
+      <div id="questList" style="overflow-y:auto;flex:1"></div>
+      <div class="actions" style="justify-content:center">
+        <button class="btn btn-ghost" onclick="closeDailyQuestModal()">닫기</button>
       </div>
     </div>
   </div>
@@ -913,6 +970,13 @@ input{font-family:inherit;outline:none}
       <div class="local-pieces" id="aiPieces"></div>
       <div class="local-time-label">⏱ 1턴 시간 제한</div>
       <div class="local-times" id="aiTimes"></div>
+      <label style="display:flex;align-items:center;gap:10px;padding:10px;background:var(--panel2);border:1px solid var(--border);border-radius:8px;cursor:pointer;margin-top:12px">
+        <input type="checkbox" id="aiPotion" style="width:18px;height:18px;accent-color:#bf5af2">
+        <div style="flex:1">
+          <div style="font-weight:700;font-size:13px">🧪 물약 모드</div>
+          <div style="font-size:11px;color:var(--muted);margin-top:2px">매 턴 랜덤 물약 + 5종 효과</div>
+        </div>
+      </label>
       <div class="local-summary" id="aiSummary"></div>
       <div class="actions">
         <button class="btn btn-ghost" onclick="closeAi()">취소</button>
@@ -950,6 +1014,13 @@ input{font-family:inherit;outline:none}
       <div class="local-pieces" id="localPieces"></div>
       <div class="local-time-label">⏱ 1턴 시간 제한</div>
       <div class="local-times" id="localTimes"></div>
+      <label style="display:flex;align-items:center;gap:10px;padding:10px;background:var(--panel2);border:1px solid var(--border);border-radius:8px;cursor:pointer;margin-top:12px">
+        <input type="checkbox" id="localPotion" style="width:18px;height:18px;accent-color:#bf5af2">
+        <div style="flex:1">
+          <div style="font-weight:700;font-size:13px">🧪 물약 모드</div>
+          <div style="font-size:11px;color:var(--muted);margin-top:2px">매 턴 랜덤 물약 + 5종 효과</div>
+        </div>
+      </label>
       <div class="local-summary" id="localSummary"></div>
       <div class="actions">
         <button class="btn btn-ghost" onclick="closeLocalModal()">취소</button>
@@ -1041,6 +1112,8 @@ window.startLocalGame = function(){
     hand: hand,
     time: window._localTime
   });
+  const potionEl = document.getElementById('localPotion');
+  if(potionEl && potionEl.checked) params.set('potion','1');
   location.href = 'FRONTIER.html?' + params.toString();
 };
 
@@ -1140,6 +1213,8 @@ window.startAiGame = function(){
     time: window._aiTime
   });
   if(genomeId) params.set('gid', genomeId);
+  const potionEl = document.getElementById('aiPotion');
+  if(potionEl && potionEl.checked) params.set('potion','1');
   location.href = 'FRONTIER.html?' + params.toString();
 };
 
@@ -1965,24 +2040,225 @@ window.startTutorial = function(){
   };
 
   // ===== 업적 시스템 =====
-  // 정의: id, 제목, 설명, 조건 (수동 트리거)
+  // 친근한 이름 + 밈 포함
   const ACHIEVEMENTS = [
-    { id:'first_win', name:'첫 승리', desc:'첫 게임에서 승리', icon:'🏆' },
-    { id:'five_wins', name:'다섯 번의 승리', desc:'누적 5승', icon:'🥉' },
-    { id:'ten_wins', name:'10승 달성', desc:'누적 10승', icon:'🥈' },
-    { id:'fifty_wins', name:'전설로 가는 길', desc:'누적 50승', icon:'🥇' },
-    { id:'hundred_wins', name:'100승의 영광', desc:'누적 100승', icon:'👑' },
-    { id:'first_omok', name:'5목 첫 완성', desc:'5목으로 첫 승리', icon:'⭕' },
-    { id:'first_mate', name:'체크메이트', desc:'체크메이트로 첫 승리', icon:'♔' },
-    { id:'ai_easy', name:'AI 쉬움 격파', desc:'쉬움 난이도 AI 승리', icon:'🤖' },
-    { id:'ai_normal', name:'AI 보통 격파', desc:'보통 난이도 AI 승리', icon:'🤖' },
-    { id:'ai_hard', name:'AI 어려움 격파', desc:'어려움 난이도 AI 승리', icon:'🔥' },
-    { id:'silver_tier', name:'실버 진입', desc:'ELO 1200 도달', icon:'🥈' },
-    { id:'gold_tier', name:'골드 진입', desc:'ELO 1400 도달', icon:'🥇' },
-    { id:'platinum_tier', name:'플래티넘 진입', desc:'ELO 1600 도달', icon:'💎' },
-    { id:'diamond_tier', name:'다이아몬드 진입', desc:'ELO 1800 도달', icon:'💠' },
-    { id:'first_friend', name:'첫 친구', desc:'친구 추가 첫 성공', icon:'👥' },
+    // 게임 첫 경험
+    { id:'first_win',     name:'환영합니다 챔피언',  desc:'첫 게임에서 승리. 시작이 반!',          icon:'🏆', cat:'시작' },
+    { id:'first_omok',    name:'5목 짜릿하지?',     desc:'5목으로 첫 승리',                       icon:'⭕', cat:'시작' },
+    { id:'first_mate',    name:'체크메이트 빠빠빠',  desc:'체크메이트로 첫 승리',                  icon:'♔', cat:'시작' },
+    { id:'first_friend',  name:'혼자보다 둘',       desc:'친구 첫 추가 성공',                     icon:'🤝', cat:'시작' },
+    // 누적 승수
+    { id:'five_wins',     name:'5의 마법',          desc:'누적 5승',                              icon:'✋', cat:'승수' },
+    { id:'ten_wins',      name:'두 자릿수 클라이머', desc:'누적 10승',                             icon:'🔟', cat:'승수' },
+    { id:'fifty_wins',    name:'이젠 진짜 베테랑',   desc:'누적 50승',                             icon:'🎖', cat:'승수' },
+    { id:'hundred_wins',  name:'100승의 영웅',      desc:'누적 100승',                            icon:'👑', cat:'승수' },
+    // AI 격파
+    { id:'ai_easy',       name:'식은 죽 먹기',      desc:'AI 쉬움 난이도 격파',                   icon:'🤖', cat:'AI' },
+    { id:'ai_normal',     name:'보통은 무난히',     desc:'AI 보통 난이도 격파',                   icon:'🤖', cat:'AI' },
+    { id:'ai_hard',       name:'어려운 거 깼다',    desc:'AI 어려움 난이도 격파',                 icon:'🔥', cat:'AI' },
+    // 티어
+    { id:'silver_tier',   name:'은빛 새벽',         desc:'실버 티어 진입 (ELO 1200)',             icon:'🥈', cat:'티어' },
+    { id:'gold_tier',     name:'찬란한 황금기',     desc:'골드 티어 진입 (ELO 1400)',             icon:'🥇', cat:'티어' },
+    { id:'platinum_tier', name:'백금의 인내',       desc:'플래티넘 티어 진입 (ELO 1600)',         icon:'💎', cat:'티어' },
+    { id:'diamond_tier',  name:'다이아몬드 핸드',   desc:'다이아 티어 진입 (ELO 1800)',           icon:'💠', cat:'티어' },
+    // 데일리 스트릭 (잔디 시리즈 — 깃허브 밈)
+    { id:'streak_3',      name:'잔디를 만져요',     desc:'3일 연속 접속',                         icon:'🌱', cat:'데일리' },
+    { id:'streak_7',      name:'잔디 정원사',       desc:'7일 연속 접속',                         icon:'🌿', cat:'데일리' },
+    { id:'streak_30',     name:'한 달의 잔디',      desc:'30일 연속 접속',                        icon:'🍀', cat:'데일리' },
+    { id:'streak_100',    name:'100일의 잔디',      desc:'100일 연속 접속',                       icon:'🌳', cat:'데일리' },
+    { id:'streak_365',    name:'1년의 정원사',      desc:'365일 연속 접속. 진심으로 대단해요.',   icon:'🏞', cat:'데일리' },
+    // 일일 퀘스트
+    { id:'quest_first',   name:'오늘의 첫 걸음',    desc:'일일 퀘스트 1개 완료',                  icon:'📋', cat:'데일리' },
+    { id:'quest_all',     name:'오늘 다 깬 사람',   desc:'하루 만에 일일 퀘스트 3개 모두 완료',   icon:'🎯', cat:'데일리' },
+    { id:'quest_streak_7',name:'주말도 일하는 사람', desc:'7일 연속 일일 퀘스트 1개 이상 완료',    icon:'⚡', cat:'데일리' },
   ];
+
+  // ===== 일일 퀘스트 + 데일리스트릭 =====
+  const QUEST_POOL = [
+    { id:'play_1',      name:'한 판은 하고 가자',   desc:'게임 1판 플레이',          target:1, type:'play' },
+    { id:'play_3',      name:'세 판 더',           desc:'게임 3판 플레이',          target:3, type:'play' },
+    { id:'win_1',       name:'오늘의 승리',         desc:'게임 1판 승리',            target:1, type:'win' },
+    { id:'ai_1',        name:'기계와 한 판',        desc:'AI와 1판 플레이',          target:1, type:'ai' },
+    { id:'mate_1',      name:'체크메이트 한 번',    desc:'체크메이트로 1번 승리',    target:1, type:'mate_win' },
+    { id:'omok_1',      name:'5목 한 번',          desc:'5목으로 1번 승리',         target:1, type:'omok_win' },
+    { id:'potion_1',    name:'물약 한 모금',        desc:'물약 모드 1판 플레이',     target:1, type:'potion_play' },
+    { id:'local_1',     name:'옆 사람과 한 판',     desc:'로컬 2인 1판 플레이',      target:1, type:'local' },
+    { id:'replay_1',    name:'추억 회상',           desc:'리플레이 1개 보기',        target:1, type:'replay' },
+    { id:'spec_1',      name:'옆에서 구경',         desc:'온라인 방 1번 관전',       target:1, type:'spectate' },
+  ];
+
+  function getTodayDateStr(){
+    // KST 기준
+    const d = new Date(Date.now() + 9 * 3600 * 1000);
+    return d.toISOString().slice(0, 10);
+  }
+  function getYesterdayDateStr(){
+    const d = new Date(Date.now() + 9 * 3600 * 1000 - 86400000);
+    return d.toISOString().slice(0, 10);
+  }
+
+  // 데일리스트릭 초기화/갱신
+  function updateDailyStreak(){
+    let data;
+    try { data = JSON.parse(localStorage.getItem('frontier_streak') || 'null'); } catch(_){}
+    if(!data) data = { current:0, last:null, longest:0 };
+    const today = getTodayDateStr();
+    const yesterday = getYesterdayDateStr();
+    if(data.last === today){
+      // 오늘 이미 방문
+    } else if(data.last === yesterday){
+      // 연속!
+      data.current = (data.current || 0) + 1;
+      data.last = today;
+    } else {
+      // streak 깨짐 (또는 첫 방문)
+      data.current = 1;
+      data.last = today;
+    }
+    if(data.current > (data.longest||0)) data.longest = data.current;
+    try { localStorage.setItem('frontier_streak', JSON.stringify(data)); } catch(_){}
+    // 업적 트리거
+    if(MY_UID && _fbDb){
+      if(data.current >= 3) _fbDb.ref(`users/${MY_UID}/achievements/streak_3`).set({unlockedAt:Date.now()}).catch(()=>{});
+      if(data.current >= 7) _fbDb.ref(`users/${MY_UID}/achievements/streak_7`).set({unlockedAt:Date.now()}).catch(()=>{});
+      if(data.current >= 30) _fbDb.ref(`users/${MY_UID}/achievements/streak_30`).set({unlockedAt:Date.now()}).catch(()=>{});
+      if(data.current >= 100) _fbDb.ref(`users/${MY_UID}/achievements/streak_100`).set({unlockedAt:Date.now()}).catch(()=>{});
+      if(data.current >= 365) _fbDb.ref(`users/${MY_UID}/achievements/streak_365`).set({unlockedAt:Date.now()}).catch(()=>{});
+    }
+    return data;
+  }
+
+  // 일일 퀘스트 생성/조회
+  function getDailyQuests(){
+    let data;
+    try { data = JSON.parse(localStorage.getItem('frontier_quests') || 'null'); } catch(_){}
+    const today = getTodayDateStr();
+    if(!data || data.date !== today){
+      // 새 퀘스트 3개 랜덤 선정
+      const shuffled = [...QUEST_POOL].sort(() => Math.random() - 0.5);
+      const picks = shuffled.slice(0, 3).map(q => ({...q, progress:0, completed:false}));
+      data = { date: today, quests: picks };
+      try { localStorage.setItem('frontier_quests', JSON.stringify(data)); } catch(_){}
+    }
+    return data;
+  }
+
+  // 퀘스트 진행 추적 (게임 종료 후 호출)
+  window.trackQuestProgress = function(eventType, payload){
+    const data = getDailyQuests();
+    let anyChange = false;
+    let anyCompleted = 0;
+    data.quests.forEach(q => {
+      if(q.completed) return;
+      let inc = 0;
+      // 타입별 매칭
+      if(eventType === 'game_end'){
+        const {mode, win, winType, isPotion} = payload || {};
+        if(q.type === 'play') inc = 1;
+        if(q.type === 'win' && win) inc = 1;
+        if(q.type === 'ai' && mode === 'ai') inc = 1;
+        if(q.type === 'mate_win' && win && winType === 'mate') inc = 1;
+        if(q.type === 'omok_win' && win && winType === 'omok') inc = 1;
+        if(q.type === 'potion_play' && isPotion) inc = 1;
+        if(q.type === 'local' && mode === 'local') inc = 1;
+      } else if(eventType === 'replay_view'){
+        if(q.type === 'replay') inc = 1;
+      } else if(eventType === 'spectate'){
+        if(q.type === 'spectate') inc = 1;
+      }
+      if(inc > 0){
+        q.progress = Math.min(q.target, q.progress + inc);
+        if(q.progress >= q.target && !q.completed){
+          q.completed = true;
+          anyCompleted++;
+        }
+        anyChange = true;
+      }
+    });
+    if(anyChange){
+      try { localStorage.setItem('frontier_quests', JSON.stringify(data)); } catch(_){}
+      // 업적: 첫 퀘스트 완료, 3개 모두 완료
+      if(MY_UID && _fbDb){
+        const completedCount = data.quests.filter(q => q.completed).length;
+        if(completedCount >= 1) _fbDb.ref(`users/${MY_UID}/achievements/quest_first`).set({unlockedAt:Date.now()}).catch(()=>{});
+        if(completedCount >= 3) _fbDb.ref(`users/${MY_UID}/achievements/quest_all`).set({unlockedAt:Date.now()}).catch(()=>{});
+      }
+      // 7일 연속 quest streak (간이 추적)
+      if(anyCompleted > 0) trackQuestStreak();
+    }
+    return data;
+  };
+
+  function trackQuestStreak(){
+    let s;
+    try { s = JSON.parse(localStorage.getItem('frontier_quest_streak') || 'null'); } catch(_){}
+    if(!s) s = { current:0, last:null };
+    const today = getTodayDateStr();
+    const yesterday = getYesterdayDateStr();
+    if(s.last === today) return; // 오늘 이미 카운트
+    if(s.last === yesterday) s.current = (s.current||0) + 1;
+    else s.current = 1;
+    s.last = today;
+    try { localStorage.setItem('frontier_quest_streak', JSON.stringify(s)); } catch(_){}
+    if(s.current >= 7 && MY_UID && _fbDb){
+      _fbDb.ref(`users/${MY_UID}/achievements/quest_streak_7`).set({unlockedAt:Date.now()}).catch(()=>{});
+    }
+  }
+
+  // ===== 일일 퀘스트 모달 =====
+  window.openDailyQuestModal = function(){
+    document.getElementById('dailyQuestModal').classList.add('show');
+    renderDailyQuestModal();
+  };
+  window.closeDailyQuestModal = function(){
+    document.getElementById('dailyQuestModal').classList.remove('show');
+  };
+  function renderDailyQuestModal(){
+    const quests = getDailyQuests().quests;
+    const streak = getStreak();
+    const today = getTodayDateStr();
+    const list = document.getElementById('questList');
+    if(!list) return;
+    list.innerHTML = quests.map(q => `
+      <div class="quest-item ${q.completed?'completed':''}">
+        <div class="quest-name">${q.completed ? '✅' : '⬜'} ${escapeAttr(q.name)}</div>
+        <div class="quest-desc">${escapeAttr(q.desc)}</div>
+        <div class="quest-progress">
+          <div class="quest-bar"><div class="quest-fill" style="width:${(q.progress/q.target)*100}%"></div></div>
+          <span class="quest-pct">${q.progress}/${q.target}</span>
+        </div>
+      </div>
+    `).join('');
+    const streakEl = document.getElementById('streakDisplay');
+    if(streakEl){
+      streakEl.innerHTML = `
+        <div class="streak-current">🔥 <b>${streak.current||0}</b>일 연속</div>
+        <div class="streak-longest" style="font-size:11px;color:var(--muted);margin-top:2px">최장: ${streak.longest||0}일</div>
+      `;
+    }
+  }
+  function getStreak(){
+    try { return JSON.parse(localStorage.getItem('frontier_streak')||'null') || {current:0,longest:0}; }
+    catch(_){ return {current:0,longest:0}; }
+  }
+
+  function renderQuestCardBadge(){
+    const data = getDailyQuests();
+    const incomplete = data.quests.filter(q => !q.completed).length;
+    const badge = document.getElementById('questBadge');
+    if(badge){
+      if(incomplete > 0){
+        badge.textContent = incomplete;
+        badge.style.display = '';
+      } else {
+        badge.style.display = 'none';
+      }
+    }
+    // 큰 프로필의 스트릭 뱃지 갱신
+    const streak = getStreak();
+    const sc = document.getElementById('streakCount');
+    if(sc) sc.textContent = streak.current || 0;
+  }
 
   let _myAchievements = {};
   async function loadAchievements(){
@@ -2227,6 +2503,11 @@ window.startTutorial = function(){
       startFriendRequestListener();
       startFriendAcceptedListener();
       watchRooms();
+      // 데일리스트릭 갱신 + 일일 퀘스트 뱃지
+      try {
+        updateDailyStreak();
+        renderQuestCardBadge();
+      } catch(e){ console.warn('[Daily] init 실패:', e); }
     } catch(e){
       clearTimeout(authTimeout);
       setOfflineMode('사용자 정보 로드 실패: ' + (e.message||e));
@@ -2556,6 +2837,7 @@ window.startTutorial = function(){
       uid:MY_UID, nick:MY_NICK, tag:MY_TAG||'', elo:MY_ELO,
       hand:r.hand||'K1Q1R2B2N2P8SH0SN0JP0'
     });
+    if(r.potion) params.set('potion','1');
     location.href = 'FRONTIER.html?'+params.toString();
   };
 
@@ -2567,6 +2849,7 @@ window.startTutorial = function(){
       nick:MY_NICK||'관전자', tag:MY_TAG||'', elo:MY_ELO||1200,
       hand:r.hand||'K1Q1R2B2N2P8SH0SN0JP0'
     });
+    if(r.potion) params.set('potion','1');
     location.href = 'FRONTIER.html?'+params.toString();
   };
 
@@ -2668,6 +2951,10 @@ window.startTutorial = function(){
   <button class="bn-btn" data-tab="mypage" onclick="switchLobbyTab('mypage')">
     <div class="bn-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></div>
     <div class="bn-label">내 페이지</div>
+  </button>
+  <button class="bn-btn" data-tab="quest" onclick="switchLobbyTab('quest')">
+    <div class="bn-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg></div>
+    <div class="bn-label">퀘스트</div>
   </button>
   <button class="bn-btn" data-tab="misc" onclick="switchLobbyTab('misc')">
     <div class="bn-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/></svg></div>
