@@ -272,7 +272,7 @@ input{font-family:inherit;outline:none}
     justify-content:center;
     align-items:flex-start;
     gap:16px;
-    max-width:1500px;
+    max-width:1700px;
     margin:24px auto 0;
     padding:0 12px
   }
@@ -282,16 +282,16 @@ input{font-family:inherit;outline:none}
     border-radius:14px;
     padding:18px 16px;
     margin-top:0;
-    /* 4개 패널 균등 분배 — 콘텐츠 압력 무시 + 너무 넓어지지 않게 */
+    /* 화면 폭 무관하게 4개 한 줄 유지 (basis 0) — 가용 폭만큼 균등 분배 */
     flex:1 1 0;
     min-width:0;
-    max-width:360px
+    max-width:400px
   }
   /* 접힌 패널: 동일 너비 (콘텐츠만 숨김) */
   .tab-panel.collapsed{
     flex:1 1 0;
     min-width:0;
-    max-width:360px
+    max-width:400px
   }
   /* 데스크탑: 한 컬럼 안에선 버튼 세로 스택 */
   .tab-panel .modes{
@@ -666,17 +666,8 @@ input{font-family:inherit;outline:none}
         </div>
       </div>
 
-      <!-- 받은 친구 요청 카드 (modes) -->
-      <div class="modes">
-        <button class="mode mode-friend-req" onclick="openFriendReqList()">
-          <div class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg></div>
-          <div class="mt">받은 친구 요청 <span class="badge" id="friendReqCount" style="display:none">0</span></div>
-          <div class="md">친구 요청 수락 또는 거절</div>
-        </button>
-      </div>
-
-      <!-- 차단 섹션 (접힘, 여백 있음) -->
-      <details class="social-section blocked-details" style="margin-top:24px">
+      <!-- 차단 섹션 (접힘) -->
+      <details class="social-section blocked-details">
         <summary class="section-title">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/></svg>
           차단 목록 <span class="cnt" id="blockedCount">0</span>
@@ -685,6 +676,15 @@ input{font-family:inherit;outline:none}
           <div class="empty-small">차단한 사용자 없음</div>
         </div>
       </details>
+
+      <!-- 받은 친구 요청 카드 (맨 아래, 위 섹션과 여백) -->
+      <div class="modes" style="margin-top:24px">
+        <button class="mode mode-friend-req" onclick="openFriendReqList()">
+          <div class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg></div>
+          <div class="mt">받은 친구 요청 <span class="badge" id="friendReqCount" style="display:none">0</span></div>
+          <div class="md">친구 요청 수락 또는 거절</div>
+        </button>
+      </div>
     </div>
 
     <!-- 기타 탭 -->
