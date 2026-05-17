@@ -490,6 +490,13 @@ input{font-family:inherit;outline:none}
 .mode.mode-daily .icon svg{color:#fff;filter:drop-shadow(0 1px 2px rgba(0,0,0,.3))}
 .mode.mode-daily .badge{background:var(--green);color:#fff}
 
+/* 모드 카드 — 물약 모드 (보라색) */
+.mode.mode-potion{border-color:rgba(191,90,242,.45);background:linear-gradient(135deg, var(--panel), rgba(191,90,242,.08))}
+.mode.mode-potion:hover{border-color:#bf5af2;box-shadow:0 0 0 1px #bf5af2, 0 0 14px rgba(191,90,242,.25)}
+.mode.mode-potion .mt{color:#d68fff}
+.mode.mode-potion .icon{background:linear-gradient(135deg,#bf5af2,#7c2bce)}
+.mode.mode-potion .icon svg{color:#fff;filter:drop-shadow(0 1px 2px rgba(0,0,0,.3))}
+
 /* 방 목록 모달 */
 .room-list-modal{max-width:720px;width:92%;max-height:80vh;overflow-y:auto}
 .rlm-head{display:flex;justify-content:space-between;align-items:center;
@@ -633,6 +640,11 @@ input{font-family:inherit;outline:none}
           <div class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="16" height="16" rx="2"/><rect x="9" y="9" width="6" height="6"/><path d="M15 2v2M9 2v2M15 20v2M9 20v2M20 9h2M20 15h2M2 9h2M2 15h2"/></svg></div>
           <div class="mt">AI 대전</div>
           <div class="md">AI와 대전</div>
+        </button>
+        <button class="mode mode-potion" onclick="openPotionStartModal()">
+          <div class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 2v7.527a2 2 0 0 1-.211.896L4.72 20.55a1 1 0 0 0 .9 1.45h12.76a1 1 0 0 0 .9-1.45l-5.069-10.127A2 2 0 0 1 14 9.527V2"/><path d="M8.5 2h7"/><path d="M7 16h10"/></svg></div>
+          <div class="mt">물약 모드</div>
+          <div class="md">5종 물약으로 즐기는 변형 모드</div>
         </button>
       </div>
     </div>
@@ -873,6 +885,34 @@ input{font-family:inherit;outline:none}
       </div>
       <div class="actions" style="justify-content:center">
         <button class="btn btn-ghost" onclick="closeFriendReqList()">닫기</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 물약 모드 시작 (모드 선택) -->
+  <div class="modal" id="potionStartModal" onclick="if(event.target.id==='potionStartModal') closePotionStartModal()">
+    <div class="modal-card" style="max-width:420px;width:92%">
+      <h3 style="text-align:center;display:flex;align-items:center;justify-content:center;gap:8px;margin-bottom:8px">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#bf5af2" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 2v7.527a2 2 0 0 1-.211.896L4.72 20.55a1 1 0 0 0 .9 1.45h12.76a1 1 0 0 0 .9-1.45l-5.069-10.127A2 2 0 0 1 14 9.527V2"/><path d="M8.5 2h7"/><path d="M7 16h10"/></svg>
+        물약 모드 시작
+      </h3>
+      <p style="font-size:13px;color:var(--muted);text-align:center;margin-bottom:14px">어떤 모드로 플레이할까요?</p>
+      <div class="opts">
+        <div class="opt" onclick="startPotionMode('ai')">
+          <b>vs AI</b>
+          <span>컴퓨터와 물약 모드</span>
+        </div>
+        <div class="opt" onclick="startPotionMode('local')">
+          <b>로컬 2인</b>
+          <span>한 기기에서 두 명이 번갈아</span>
+        </div>
+        <div class="opt" onclick="startPotionMode('online')">
+          <b>온라인 방 만들기</b>
+          <span>온라인 친구한테 비공개 방 초대</span>
+        </div>
+      </div>
+      <div class="actions" style="justify-content:center">
+        <button class="btn btn-ghost" onclick="closePotionStartModal()">취소</button>
       </div>
     </div>
   </div>
@@ -1319,6 +1359,36 @@ window.startAiVaiGame = function(){
 
 // 호환용 — 기존 직접 goAi 호출 경로가 있다면
 window.goAi = function(d){ window._aiDiff = d || 'normal'; window.startAiGame(); };
+
+// ===== 물약 모드 시작 =====
+window.openPotionStartModal = function(){
+  document.getElementById('potionStartModal').classList.add('show');
+};
+window.closePotionStartModal = function(){
+  document.getElementById('potionStartModal').classList.remove('show');
+};
+window.startPotionMode = function(mode){
+  closePotionStartModal();
+  if(mode === 'ai'){
+    // AI 모달 열고 물약 체크박스 자동 활성화
+    openAiModal();
+    setTimeout(()=>{
+      const cb = document.getElementById('aiPotion');
+      if(cb) cb.checked = true;
+    }, 50);
+  } else if(mode === 'local'){
+    openLocalModal();
+    setTimeout(()=>{
+      const cb = document.getElementById('localPotion');
+      if(cb) cb.checked = true;
+    }, 50);
+  } else if(mode === 'online'){
+    // 온라인 방 만들기 페이지로 + potion 자동 활성 플래그
+    if(!MY_UID){ alert('로그인이 완료되지 않았습니다. 잠시 후 다시 시도하세요.'); return; }
+    const params = new URLSearchParams({uid:MY_UID, nick:MY_NICK, tag:MY_TAG||'', elo:MY_ELO, potion:'1'});
+    location.href = 'create-room.html?' + params.toString();
+  }
+};
 
 // 호환용 (이전 코드가 goLocal을 부르는 경우 대비)
 window.goLocal = window.openLocalModal;
