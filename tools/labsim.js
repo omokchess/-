@@ -1,47 +1,29 @@
-const fs = require('fs'), path = require('path'), vm = require('vm');
-const dir = path.join(__dirname, '..', 'src');
-const files = ['core.js', 'engine.js', 'chars.js', 'enemies.js', 'world.js', 'game.js'];
-const store = {};
-const ctx = { console, Math, JSON, Object, Array, Set, Map, Date, Error, String, Number, Boolean, btoa: s => Buffer.from(s, 'binary').toString('base64'), atob: s => Buffer.from(s, 'base64').toString('binary'), unescape, escape, encodeURIComponent, decodeURIComponent,
-  localStorage: { getItem: k => store[k] || null, setItem: (k, v) => { store[k] = v; } } };
-vm.createContext(ctx);
-vm.runInContext(files.map(f => fs.readFileSync(path.join(dir, f), 'utf8')).join('\n;\n') + '\n;globalThis.__x={Game,Battle,CHAPTERS,CHAR_ORDER,LAB_EVENTS,RELICS,newProg};', ctx);
-const { Game, Battle, CHAR_ORDER, LAB_EVENTS, RELICS } = ctx.__x;
-const PL = +process.argv[3] || 60, M = +process.argv[4] || 5;
-Game.reset();
-for (const c of CHAR_ORDER) Game.s.chars[c] = { lvl: PL, xp: 0, asc: Math.min(4, Math.floor((PL - 1) / 10)), m: [M, M, M, M] };
-for (let i = 1; i <= 12; i++) Game.s.story.boss[i] = true;
-Game.s.slots = 5;
-const depths = (process.argv[2] || '1,5,10,15').split(',').map(Number);
-const api = run => ({ relicChoice(t) { run.pendingRelic = t; }, hurtAll(f) { for (const c of run.team) run.hp[c] = Math.max(0.05, run.hp[c] - f); }, healAll(f) { for (const c of run.team) run.hp[c] = Math.min(1, run.hp[c] + f); }, metaShards(n) { Game.s.shards += n; }, metaCrystals(n) { Game.s.crystals += n; } });
-for (const d of depths) {
-  let cleared = 0, floors = 0; const N = +process.argv[5] || 4;
-  for (let r = 0; r < N; r++) {
-    Game.setParty(CHAR_ORDER.slice().sort(() => Math.random() - 0.5).slice(0, 5));
-    const run = Game.startRun(d);
-    { const ids = Game.labRelicChoices(run, 1); if (ids.length) Game.labTakeRelic(run, ids[0]); run.pendingGift = false; }
-    let ok = true, guard = 0;
-    while (ok && guard++ < 60) {
-      const nd = run.offer[Math.floor(Math.random() * run.offer.length)];
-      if (['battle', 'elite', 'boss'].includes(nd.type)) {
-        const cfg = Game.labBattleCfg(run, nd);
-        const b = new Battle(cfg); let t = 0;
-        while (!b.over && t < 60) { b.startTurn(); b.autoAll(); b.resolve(); t++; }
-        if (!b.over) b.over = 'lose';
-        const res = Game.labAfterBattle(run, b, nd);
-        if (!res.win) { if (process.env.DBG) console.log('  lost at', run.floor + '-' + run.step, nd.type, 'turns', t, 'enemies', b.enemies.map(e => e.eid + (e.alive ? '' : 'x')).join(','), 'hp', JSON.stringify(run.hp)); Game.labEnd(run, false); ok = false; break; }
-        if (nd.type !== 'battle' || Math.random() < 0.3) { const ids = Game.labRelicChoices(run, nd.type === 'boss' ? 2 : 1); if (ids.length) Game.labTakeRelic(run, ids[0]); }
-        if (nd.type === 'boss') { floors++; if (run.floor >= 5) { Game.labEnd(run, true); cleared++; ok = false; break; } Game.labNextFloor(run); continue; }
-      } else if (nd.type === 'event') {
-        const ev = LAB_EVENTS[Math.floor(Math.random() * LAB_EVENTS.length)];
-        ev.ch[Math.floor(Math.random() * ev.ch.length)].fx(run, api(run));
-        if (run.pendingRelic) { const ids = Game.labRelicChoices(run, run.pendingRelic); if (ids.length) Game.labTakeRelic(run, ids[0]); run.pendingRelic = 0; }
-      } else if (nd.type === 'shop') {
-        const sh = Game.shopStock(run); for (const it of sh.items) if (run.gold >= it.price) { run.gold -= it.price; it.sold = true; Game.labTakeRelic(run, it.id); }
-      } else if (nd.type === 'rest') { for (const c of run.team) run.hp[c] = Math.min(1, run.hp[c] + run.mods.rest); }
-      Game.labOffer(run);
-    }
+// 미궁 자동 진행.  node tools/labsim.js [cls] [lvl] [runs]
+const X = require('./load')(['core.js', 'data_cls.js', 'data_foes.js', 'battle.js', 'world.js', 'game.js']);
+global.localStorage = { getItem: () => null, setItem: () => {} };
+const G = X.Game, { Battle, LAB_EVENTS } = X;
+const cls = process.argv[2] || 'hemoblade', L = +process.argv[3] || 30, RUNS = +process.argv[4] || 10;
+G.root = { v: 2, cur: 0, slots: [null, null, null], settings: {}, savedAt: 0 };
+G.createSlot(0, cls); const s = G.s; s.lvl = L;
+for (const k of ['weapon', 'armor', 'charm']) { s.gear[k] = X.rollGear(k, L, 1); s.gear[k].plus = Math.min(10, Math.floor(L / 8)); }
+const depths = [];
+for (let run = 0; run < RUNS; run++) {
+  const r = G.labStart(); let guard = 0, end = null;
+  while (!end && guard++ < 80) {
+    const pref = ['elite', 'battle', 'rest', 'shop', 'event', 'boss'];
+    const n = r.nodes.slice().sort((a, b) => (r.hp < r.mhp * 0.45 ? (a.t === 'rest' ? -1 : 1) : pref.indexOf(a.t) - pref.indexOf(b.t)))[0];
+    if (['battle', 'elite', 'boss'].includes(n.t)) {
+      const Lb = G.labBattle(r, n.t); const B = new Battle(Lb.cfg); B.start(); let g = 0;
+      while (!B.result && g++ < 600) { if (B.phase === 'p') B.act(B.autoChoice()); else { const q = B.peek(); B.step(B.autoDef(q && q.kind === 'attack' ? q : null)); } }
+      if (B.r._phoenix) r.relics = r.relics.filter(k => k !== 'phoenix');
+      if (!B.result.win) { r.hp = 0; end = G.labEnd(r, false); break; }
+      const res = G.labAfterBattle(r, B, n.t);
+      if (res.relicPick && res.relicPick.length) G.labTakeRelic(r, res.relicPick[0]);
+    } else if (n.t === 'rest') { r.hp = Math.min(r.mhp, r.hp + r.mhp * 0.3); G.labAdvance(r); }
+    else if (n.t === 'shop') { const sh = G.labShop(r); for (const x of sh.relics) if (r.tok >= x.price) { r.tok -= x.price; G.labTakeRelic(r, x.k); } r.shop = null; G.labAdvance(r); }
+    else { const E = LAB_EVENTS[Math.floor(Math.random() * LAB_EVENTS.length)]; const o = E.o.find(o => !o.fight && (!o.need || o.need(r))); if (o) o.f(r, G); G.labAdvance(r); }
+    if (r.depth > 30) { end = G.labEnd(r, true); }
   }
-  console.log(`depth ${d} (party L${PL} M${M}): cleared ${cleared}/${N}, floors avg ${(floors / N).toFixed(1)}`);
+  depths.push(end ? end.depth : r.depth);
 }
-console.log('relics seen', Object.keys(Game.s.relicSeen).length, '/', RELICS.length);
+console.log(cls, 'L' + L, 'depths', depths.join(','), 'best', s.lab.best, '💠', s.shards, 'lvl', s.lvl);

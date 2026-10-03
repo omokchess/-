@@ -1,20 +1,21 @@
 'use strict';
 /* ===== 잔향선 · 시작 ===== */
 (function boot() {
-  const hot = window.claude && window.claude.hot;
-  const start = data => {
-    if (data && data.save) { Game.s = Game.migrate(data.save); Game.save(); }
-    else Game.load();
-    if (hot && hot.snapshot) hot.snapshot(() => ({ save: Game.s }));
-    UI.init();
-    if (data && data.save) { UI.screen = 'hub'; UI.render(); }
+  const start = () => {
+    Game.load();
+    Tip.init();
+    FX.init();
+    if (Game.root.cur != null && Game.s) { UI.screen = 'title'; }
+    Screens.render();
     Cloud.init(remote => {
-      const localAt = Game.s ? (Game.s.savedAt || 0) : -1;
+      const localAt = Game.root ? (Game.root.savedAt || 0) : -1;
       if (UI.screen !== 'title' || !(remote.at > localAt)) return;
-      try { Game.s = Game.migrate(JSON.parse(remote.json)); localStorage.setItem(SAVE_KEY, remote.json); } catch (e) { /* 저장소를 쓸 수 없어도 메모리 저장으로 계속한다 */ }
-      UI.render(); UI.toast('계정에 저장된 진행을 불러왔습니다.');
+      try { Game.root = Game.migrate(JSON.parse(remote.json)); localStorage.setItem(SAVE_KEY, remote.json); } catch (e) { /* 저장소를 쓸 수 없어도 메모리 저장으로 계속한다 */ }
+      Screens.render(); toast('계정에 저장된 진행을 불러왔습니다.');
     });
-    document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') Cloud.push(); });
+    let last = Date.now();
+    setInterval(() => { const n = Date.now(); if (document.visibilityState === 'visible') Game.tick(Math.round((n - last) / 1000)); last = n; if (Game.s && UI.screen !== 'battle') Game.save(); }, 30000);
+    document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') { Game.save(); Cloud.push(); } });
   };
-  if (hot && hot.ready) hot.ready(start); else start(hot && hot.data ? hot.data : {});
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start); else start();
 })();

@@ -1,16 +1,12 @@
-const { X } = require('./sim');
-const party = (process.argv[3] || 'serin,mujin,haram,yeon,sion').split(',');
-const L = +process.argv[2] || 64;
-const allies = party.map(c => X.makeAlly(c, { lvl: 60, asc: 4, m: [5,5,5,5], imp: [true, true] }));
-const waves = [['memeater','attendant','reflection'], ['shade','memeater','attendant','mirrorarmor']].map(w => w.map(id => X.makeEnemy(id, L, { nightmare: true, hpMul: 1.1 })));
-const b = new X.Battle({ allies, waves });
-let t = 0;
-while (!b.over && t < 30) {
-  b.startTurn(); b.autoAll(); const ev = b.resolve(); t++;
-  const hits = ev.filter(e => e.type === 'hit');
-  const toA = hits.filter(e => allies.some(a => a.uid === e.t)).reduce((s, e) => s + e.d, 0);
-  const toE = hits.filter(e => !allies.some(a => a.uid === e.t)).reduce((s, e) => s + e.d, 0);
-  const dots = ev.filter(e => e.type === 'dot' && allies.some(a => a.uid === e.t)).reduce((s, e) => s + (e.d || 0), 0);
-  console.log(`T${t} dmg→적 ${toE} dmg→아군 ${toA} (+dot ${dots}) | 아군 ${allies.map(a => a.hp + '/' + a.maxHp + (a.alive ? '' : 'x') + ' sp' + a.sp).join(' ')} | 적 ${b.enemies.filter(e => e.alive).map(e => e.name + ' ' + e.hp).join(', ')} | clashW ${b.stats.clashWin} L ${b.stats.clashLose}`);
+// 한 전투의 사건 기록.  node tools/trace.js cls foe lv [seed]
+const { heroStats, heroSkills, X } = require('./sim.js');
+const { Battle } = X;
+const [cls, foe, lv, seed] = [process.argv[2] || 'duelist', process.argv[3] || 'clockwarden', +process.argv[4] || 4, +process.argv[5] || 1];
+const B = new Battle({ seed, hero: { cls, lv, stats: heroStats(cls, lv), skills: heroSkills(cls, lv), items: { potion: 2 } }, foes: foe.split(',').map(id => ({ id, lv })) });
+const pr = ev => { for (const e of ev) { if (['act', 'hit', 'log', 'dot', 'win', 'lose', 'stagger', 'phase', 'charge', 'kill', 'enter', 'burst', 'cheat'].includes(e.type)) { const s = e.snap; const o = Object.assign({}, e); delete o.snap; console.log(`T${B.turn} p${s.p.hp}/${s.p.mhp} sp${s.p.sp} en${s.p.en} | f${s.f ? s.f.hp + '/' + s.f.mhp + ' stg' + s.f.stg + '/' + s.f.stgMax : ''}`, JSON.stringify(o)); } } };
+pr(B.start()); let g = 0;
+const { run } = require('./sim.js');
+while (!B.result && g++ < 300) {
+  if (B.phase === 'p') pr(B.act(B.autoChoice()));
+  else { const q = B.peek(); pr(B.step(B.autoDef(q && q.kind === 'attack' ? q : null))); }
 }
-console.log(b.over);
