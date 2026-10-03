@@ -49,6 +49,9 @@ const D = process.env.SHOT_DIR;
   await page.screenshot({ path: D + '/24-lab-select.png' });
   await page.click('[data-a=labStart]');
   await page.waitForTimeout(300);
+  await page.screenshot({ path: D + '/24b-lab-gift.png' });
+  await page.click('#modal .relic-card >> nth=0');
+  await page.waitForTimeout(300);
   await page.screenshot({ path: D + '/25-lab-map.png' });
   // 이벤트/상점/휴식 노드가 있으면 하나 열어 본다
   const nodes = await page.$$eval('.node', ns => ns.map(n => n.className));

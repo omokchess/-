@@ -614,7 +614,7 @@ class Battle {
           const pool = this.units().filter(x => x.alive && x !== u);
           a.target = pick(pool, this.rng); a.tAct = null;
           this.msg(`${u.name}의 각인이 잠식되었다! 폭주하여 무작위 대상을 공격한다.`, 'warn');
-        } else this.emit('imp', { u: u.uid, s: s.name });
+        } else this.emit('imp', { u: u.uid, s: s.name, e: s.emo });
       }
       allyActs.push(a);
     }
@@ -820,6 +820,7 @@ class Battle {
     }
     if (s.after && u.alive) s.after(this.ctx(a, { n }));
     this.fire('attackEnd', { u, act: a, s });
+    this.emit('atkEnd', { u: u.uid });
   }
 
   levelFactor(u, t) { const d = u.lvl - t.lvl; return d / (Math.abs(d) + 25); }

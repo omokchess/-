@@ -15,6 +15,8 @@ const NODE_INFO = {
 };
 
 function charColor(cid) { return CHARS[cid] ? CHARS[cid].color : '#888'; }
+function bust(cid, cls = '') { return `<div class="bust ${cls}" style="--c:${charColor(cid)}">${ART.bust(ART.char(cid))}</div>`; }
+const PV_STATUS = { serin: 'bleed', doyun: 'burn', haram: 'tremor', eve: 'poise', mujin: '', roa: '', yeon: 'sinking', kai: '', viola: 'rupture', sion: '' };
 function ava(name, color, cls = '', attrs = '') { return `<div class="mono-ava ${cls}" style="--c:${color}" ${attrs}>${esc(name[0])}</div>`; }
 function unitColor(u) { return u.color || (u.side === 'A' ? charColor(u.cid) : '#8f8270'); }
 function skillNums(s) {
@@ -97,8 +99,10 @@ const UI = {
       const draw = () => {
         const [who, txt] = lines[i];
         const sp = CHARS[who] ? { n: CHARS[who].name, c: CHARS[who].color } : SPEAKER[who] || (who === '?' ? { n: '???', c: '#d8cfc0' } : null);
+        const por = CHARS[who] ? ART.char(who) : who === '?' && head && head.boss ? ART.enemy(head.boss) : who === 'voice' ? ART.voice() : who === 'me' ? ART.conductor() : '';
         el.innerHTML = `<div class="story-box">
           ${head ? `<div class="chap">${esc(head.eyebrow)}<b>${esc(head.title)}</b></div>` : ''}
+          <div class="story-por ${who === 'voice' ? 'voice' : ''} ${who === '?' ? 'boss' : ''}" ${por ? '' : 'hidden'}>${por ? `<div class="fig" style="--emo:${sp ? sp.c : '#888'}">${por}</div>` : ''}</div>
           <div class="line">${sp ? `<div class="who" style="color:${sp.c}">${esc(sp.n)}</div>` : ''}<div class="txt ${sp ? '' : 'narr'}">${esc(txt)}</div></div>
           <div class="row-btns"><button class="btn ghost sm" data-s="skip">건너뛰기</button><span class="faint mono">${i + 1} / ${lines.length}</span><button class="btn pri" data-s="next">${i < lines.length - 1 ? '다음' : '닫기'}</button></div>
         </div>`;
@@ -144,7 +148,7 @@ const UI = {
     selCh(d) { this.selCh = +d.ch; this.render(); },
     nm(d) { this.nm = d.v === '1'; this.render(); },
     async stage(d) { await this.launchStage(+d.ch, +d.k, this.nm); },
-    async replay(d) { const ch = CHAPTERS[+d.ch - 1]; const lines = [...ch.intro, ...ch.mid, ...ch.bossIntro, ...(Game.s.story.boss[ch.id] ? ch.outro : [])]; await this.story(lines, { eyebrow: `${ch.id}장`, title: ch.title, color: ch.color }); },
+    async replay(d) { const ch = CHAPTERS[+d.ch - 1]; const lines = [...ch.intro, ...ch.mid, ...ch.bossIntro, ...(Game.s.story.boss[ch.id] ? ch.outro : [])]; await this.story(lines, { eyebrow: `${ch.id}장`, title: ch.title, color: ch.color, boss: ch.boss }); },
     selChar(d) { this.selChar = d.c; this.render(); },
     mast(d) { if (Game.upgradeMastery(this.selChar, +d.i)) this.toast('숙련도가 올랐습니다.'); else this.toast('기억 파편이 모자랍니다.'); this.render(); },
     asc() { if (Game.ascend(this.selChar)) this.toast('돌파했습니다. 레벨 상한이 올랐습니다.'); this.render(); },
@@ -209,6 +213,78 @@ const UI = {
     retreatAsk() { this.modal(`<h2>후퇴</h2><p class="muted">후퇴하면 이번 전투는 패배로 처리됩니다.</p><div class="row-btns"><button class="btn danger" data-a="retreat">후퇴</button><button class="btn" data-a="close">계속 싸운다</button></div>`); },
     retreat() { this.closeModal(); const bt = this.bt; if (!bt) return; bt.b.over = 'lose'; bt.playing = false; bt.skip = true; this.endBattle(); },
     resultOk() { this.closeModal(); if (this._afterResult) { const f = this._afterResult; this._afterResult = null; f(); } },
+    pv(d) { this.preview(d.m); },
+    beast(d) { this.beastModal(d.id); },
+  },
+
+  /* ---------- 승객 모션 미리보기 ---------- */
+  preview(m) {
+    const box = $('#pv'); if (!box) return;
+    if (!this.pvfx || !this.pvfx.alive() || this.pvfx.host !== box) this.pvfx = new FXLayer(box);
+    const fx = this.pvfx; fx.speed = 1;
+    const A = box.querySelector('.pv-a'), B = box.querySelector('.pv-b');
+    const fa = A.querySelector('.fig'), fb = B.querySelector('.fig');
+    const R = box.getBoundingClientRect();
+    const at = el => { const r = el.getBoundingClientRect(); return { x: r.left - R.left + r.width / 2, y: r.top - R.top + r.height * 0.55 }; };
+    const pulse = (el, cls, ms) => { el.classList.remove(cls); void el.offsetWidth; el.classList.add(cls); setTimeout(() => el.classList.remove(cls), ms); };
+    const pop = (el, text, cls = '') => { const p = at(el); const f = document.createElement('div'); f.className = 'float ' + cls; f.textContent = text; f.style.left = p.x + 'px'; f.style.top = (p.y - 50) + 'px'; box.appendChild(f); setTimeout(() => f.remove(), 1100); };
+    const cid = box.dataset.cid, d = CHARS[cid];
+    if (m === 's1' || m === 's2' || m === 's3') {
+      const s = d.sk[m], col = EMO[s.emo].c, n = typeof s.coins === 'number' ? s.coins : 3;
+      const dx = (at(fb).x - at(fa).x) * 0.55;
+      A.style.transform = `translateX(${dx}px)`; pulse(fa, 'atk', 700);
+      for (let i = 0; i < n; i++) setTimeout(() => {
+        const p = at(fb), q = at(fa);
+        const crit = m === 's3' && i === n - 1;
+        fx.hit(s.dt, p.x, p.y, col, q.x, q.y, { crit });
+        pulse(fb, 'hurt', 320); pop(fb, String(Math.round((skBase(s) + skCp(s) * (i + 1)) * (crit ? 1.2 : 1))), crit ? 'crit' : '');
+      }, 220 + i * 240);
+      setTimeout(() => { A.style.transform = ''; const k = PV_STATUS[cid]; if (k) { const p = at(fb); fx.status(k, p.x, p.y, true); pop(fb, ST[k].n, 'st'); } }, 300 + n * 240);
+    } else if (m === 'def') {
+      const s = d.sk.def, p = at(fa);
+      if (s.kind === 'guard') { pulse(fa, 'guard', 900); fx.shieldHit(p.x, p.y); pop(fa, '방어', 'heal'); }
+      else { pulse(fa, 'dodge', 420); fx.whoosh(p.x, p.y, 1); pop(fa, s.kind === 'evade' ? '회피' : '반격', 'big'); if (s.kind === 'counter') setTimeout(() => { const q = at(fb); fx.pierce(q.x, q.y, EMO[s.emo].c, p.x, p.y); pulse(fb, 'hurt', 300); }, 300); }
+    } else if (m === 'imp') {
+      const im = d.imps[0], col = EMO[im.emo].c;
+      pulse(fa, 'cast', 1500);
+      cutIn(box, { art: ART.char(cid), color: col, label: '각인', title: im.name, sub: d.name });
+      setTimeout(() => { fx.flash(col, 0.3, 400); const p = at(fb), q = at(fa); for (let i = 0; i < 3; i++) setTimeout(() => { fx.hit(im.dt, p.x, p.y, col, q.x, q.y, { crit: i === 2 }); pulse(fb, 'hurt', 300); }, i * 200); }, 1050);
+    } else if (m === 'hurt') {
+      const p = at(fa); fx.slash(p.x, p.y, '#c4473a', false); pulse(fa, 'hurt', 360); pop(fa, '12');
+    } else if (m === 'stag') {
+      const p = at(fa); fa.classList.add('stag'); fx.stagger(p.x, p.y); pop(fa, '흐트러짐', 'big');
+      clearTimeout(fa._stg); fa._stg = setTimeout(() => fa.classList.remove('stag'), 1800);
+    } else if (m === 'status') {
+      ['bleed', 'burn', 'tremor', 'rupture', 'sinking', 'poise'].forEach((k, i) => setTimeout(() => { const p = at(fb); fx.status(k, p.x, p.y, true); pop(fb, ST[k].n, 'st'); if (k !== 'poise') pulse(fb, 'hurt', 260); }, i * 420));
+    }
+  },
+
+  /* ---------- 잔향 도감 ---------- */
+  bestiaryIds() {
+    const out = [];
+    for (const ch of CHAPTERS) { out.push(...ch.set, ch.elite, ch.boss); if (ch.boss === 'moon_silver') out.push('moon_black'); }
+    return out;
+  },
+  bestiaryHtml() {
+    const seen = Game.s.seen || {};
+    const ids = this.bestiaryIds();
+    const n = ids.filter(id => id in seen).length;
+    const tiles = ids.map(id => {
+      const e = ENEMIES[id], ok = id in seen, boss = !!e.boss;
+      return `<button class="beast ${ok ? '' : 'unseen'} ${boss ? 'boss' : e.elite ? 'elite' : ''}" data-a="beast" data-id="${id}" ${ok ? '' : 'disabled'}><div class="fig" style="--d:${(-(id.length % 7) * 0.5).toFixed(1)}s">${ART.enemy(id, { copy: 'serin' })}</div><b>${ok ? esc(e.name) : '???'}</b><small>${boss ? '잔향체' : e.elite ? '정예' : '잔향'}${ok && seen[id] ? ` · 처치 ${seen[id]}` : ''}</small></button>`;
+    }).join('');
+    return `<div class="panel"><h3 style="margin-bottom:10px">잔향 도감 <span class="faint" style="font-size:13px;font-family:var(--f-body)">${n}/${ids.length}</span></h3><div class="bestiary">${tiles}</div></div>`;
+  },
+  beastModal(id) {
+    const e = ENEMIES[id]; if (!e || !(id in (Game.s.seen || {}))) return;
+    const res = Object.entries(Object.assign({ slash: 1, pierce: 1, blunt: 1 }, e.res)).map(([k, r]) => `<span class="res-chip ${resClass(r)}">${DT[k].n} ×${r} ${resLabel(r)}</span>`).join(' ');
+    const sk = (e.skills || []).map(s => `<div class="skill-line" style="--emo:${EMO[s.emo].c};grid-template-columns:70px minmax(0,1fr)"><div class="slot">${kindLabel(s)}<b>${skillNums(Object.assign({ m: 1 }, s))}</b></div><div><h4>${esc(s.name)}<span class="meta">${EMO[s.emo].n}${tgtLabel(s)}</span></h4>${s.d ? `<p>${esc(s.d)}</p>` : ''}</div></div>`).join('');
+    this.modal(`<div class="cd-head"><div class="insp-fig fig ${e.boss ? 'wide' : ''}">${ART.enemy(id, { copy: 'serin' })}</div><div><div class="cap">${e.boss ? '잔향체' : e.elite ? '정예' : '잔향'}</div><h2>${esc(e.name)}</h2><div class="muted" style="font-size:13px">처치 ${Game.s.seen[id] || 0}회</div></div></div>
+      ${e.desc ? `<p class="muted" style="margin:0">${esc(e.desc)}</p>` : ''}
+      <div>${res}</div>
+      ${(e.mech || []).length ? `<div class="mech-list">${e.mech.map(m => `<div class="mech"><b>${esc(m.n)}</b><p>${esc(m.d)}</p></div>`).join('')}</div>` : ''}
+      ${sk ? `<div class="sec" style="margin-top:0"><h3>기술</h3>${sk}</div>` : ''}
+      <div class="row-btns"><button class="btn" data-a="close">닫기</button></div>`);
   },
 
   /* =========================== 타이틀 =========================== */
@@ -224,6 +300,7 @@ const UI = {
           <button class="btn ${has ? '' : 'pri'}" data-a="newgame">새로 시작</button>
           <button class="btn ghost" data-a="importOpen">저장 코드 불러오기</button>
         </div>
+        <div class="lineup" aria-hidden="true">${['eve', 'serin', 'mujin', 'doyun', 'haram'].map((c, i) => `<div class="fig" style="--d:${-i * 0.7}s">${ART.char(c)}</div>`).join('')}</div>
         <div class="ticket-stub"><span>12개 역</span><span>잔향체 12</span><span>승객 10</span></div>
       </div></div>`;
     this.rain();
@@ -335,9 +412,9 @@ const UI = {
     const joinAt = {}; CHAPTERS.forEach(ch => { if (ch.recruit) joinAt[ch.recruit] = ch.id; });
     const grid = CHAR_ORDER.map(cid => {
       const d = CHARS[cid], own = Game.owned(cid);
-      if (!own) return `<div class="char-tile locked">${ava('?', '#333', 'q')}<div><b>???</b><small>${joinAt[cid]}장 이후 합류</small></div></div>`;
+      if (!own) return `<div class="char-tile locked"><div class="bust unseen" style="--c:#333">${ART.bust(ART.char(cid))}</div><div><b>???</b><small>${joinAt[cid]}장 이후 합류</small></div></div>`;
       const p = s.chars[cid];
-      return `<button class="char-tile ${this.selChar === cid ? 'sel' : ''}" data-a="selChar" data-c="${cid}">${ava(d.name, d.color)}<div><b>${d.name}</b><small>${d.cls} · Lv ${p.lvl}${p.asc ? ` · ${'◆'.repeat(p.asc)}` : ''}</small></div></button>`;
+      return `<button class="char-tile ${this.selChar === cid ? 'sel' : ''}" data-a="selChar" data-c="${cid}">${bust(cid)}<div><b>${d.name}</b><small>${d.cls} · Lv ${p.lvl}${p.asc ? ` · ${'◆'.repeat(p.asc)}` : ''}</small></div></button>`;
     }).join('');
     return `<div class="split"><div class="panel"><div class="char-grid">${grid}</div></div><div class="panel">${this.charDetail(this.selChar)}</div></div>`;
   },
@@ -362,7 +439,9 @@ const UI = {
       <div><h4>${esc(im.name)} <span class="meta">${EMO[im.emo].n} · ${DT[im.dt].n}${tgtLabel(im)}</span></h4><p>${esc(im.d)}</p><div class="meta" style="margin-top:4px">비용 ${costText(im.cost)} · 정신력 −${im.spc}${p.asc >= 4 ? ' · 돌파4: 비용 −1' : ''}</div></div>
       <div class="faint mono" style="font-size:11px">${unl[i] ? '해방' : `${im.boss}장 잔향체`}</div></div>`).join('');
     const tals = d.tal.map((t, i) => `<div class="tal ${p.asc >= (i === 0 ? 1 : 3) ? '' : 'locked'}"><span class="a">돌파${i === 0 ? 1 : 3}</span><div><b>${esc(t.n)}</b><div class="muted" style="font-size:13px">${esc(t.d)}</div></div></div>`).join('');
-    return `<div class="cd-head">${ava(d.name, d.color, 'lg')}<div><div class="cap">${esc(d.cls)}</div><h2>${esc(d.name)}</h2><div class="quote">“${esc(d.quote)}”</div></div></div>
+    return `<div class="pv" id="pv" data-cid="${cid}" style="--c:${d.color}"><div class="pv-u pv-a"><div class="fig" style="--emo:${d.color}">${ART.char(cid)}</div></div><div class="pv-u pv-b"><div class="fig">${ART.dummy()}</div></div></div>
+      <div class="row-btns pv-btns" role="group" aria-label="모션 미리보기">${['s1', 's2', 's3'].map(k => `<button class="btn sm" data-a="pv" data-m="${k}">${SKILL_LABEL[k]} ${esc(u.sk[k].name)}</button>`).join('')}<button class="btn sm" data-a="pv" data-m="def">${esc(u.sk.def.name)}</button><button class="btn sm" data-a="pv" data-m="imp">각인</button><button class="btn sm" data-a="pv" data-m="hurt">피격</button><button class="btn sm" data-a="pv" data-m="stag">흐트러짐</button><button class="btn sm" data-a="pv" data-m="status">상태 효과</button></div>
+      <div class="cd-head" style="margin-top:12px"><div><div class="cap">${esc(d.cls)}</div><h2>${esc(d.name)}</h2><div class="quote">“${esc(d.quote)}”</div></div></div>
       <p class="muted" style="margin:12px 0 0">${esc(d.bio)}</p>
       <div class="stat-row"><span>레벨 <b>${p.lvl}</b> / ${cap}</span><span>체력 <b>${u.maxHp}</b></span><span>속도 <b>${u.spd[0]}–${u.spd[1]}</b></span><span>돌파 <b>${p.asc}</b>/4</span><span class="res-chips">${res}</span></div>
       <div class="xpbar" title="경험치"><i style="width:${p.lvl >= cap ? 100 : Math.round(p.xp / need * 100)}%"></i></div>
@@ -381,12 +460,12 @@ const UI = {
       const cid = s.party[i];
       if (!cid) return `<div class="slot-card"><span></span><span class="faint">빈 자리</span></div>`;
       const d = CHARS[cid];
-      return `<button class="slot-card filled" data-a="partyToggle" data-c="${cid}" style="text-align:left">${ava(d.name, d.color)}<div><b style="font-family:var(--f-display)">${d.name}</b><div class="faint" style="font-size:12px">${d.cls} · Lv ${s.chars[cid].lvl} · 빼기</div></div></button>`;
+      return `<button class="slot-card filled" data-a="partyToggle" data-c="${cid}" style="text-align:left">${bust(cid)}<div><b style="font-family:var(--f-display)">${d.name}</b><div class="faint" style="font-size:12px">${d.cls} · Lv ${s.chars[cid].lvl} · 빼기</div></div></button>`;
     }).join('');
     const pool = Game.ownedList().map(cid => {
       const d = CHARS[cid], on = s.party.includes(cid);
       const emos = [...new Set(['s1', 's2', 's3'].map(k => d.sk[k].emo))].map(e => `<span class="emo-dot" style="--c:${EMO[e].c}" title="${EMO[e].n}"></span>`).join(' ');
-      return `<button class="char-tile ${on ? 'sel' : ''}" data-a="partyToggle" data-c="${cid}">${ava(d.name, d.color)}<div><b>${d.name}</b><small>${d.cls} · ${DT[d.sk.s1.dt].n} · Lv ${s.chars[cid].lvl}</small><div>${emos}</div></div></button>`;
+      return `<button class="char-tile ${on ? 'sel' : ''}" data-a="partyToggle" data-c="${cid}">${bust(cid)}<div><b>${d.name}</b><small>${d.cls} · ${DT[d.sk.s1.dt].n} · Lv ${s.chars[cid].lvl}</small><div>${emos}</div></div></button>`;
     }).join('');
     const cnt = {}; s.party.forEach(c => ['s1', 's2', 's3'].forEach(k => { const e = CHARS[c].sk[k].emo; cnt[e] = (cnt[e] || 0) + 1; }));
     const dts = {}; s.party.forEach(c => { const t = CHARS[c].sk.s1.dt; dts[t] = (dts[t] || 0) + 1; });
@@ -434,6 +513,7 @@ const UI = {
         <div><span>출혈 부여</span><b>${fmt(st.infl.bleed || 0)}</b></div><div><span>화상 부여</span><b>${fmt(st.infl.burn || 0)}</b></div><div><span>진동 부여</span><b>${fmt(st.infl.tremor || 0)}</b></div>
       </div></div>
       <div class="panel"><h3 style="margin-bottom:10px">업적 <span class="faint" style="font-size:13px;font-family:var(--f-body)">${got}/${ACHS.length}</span></h3><div class="grid2">${achs}</div></div>
+      ${this.bestiaryHtml()}
       <div class="panel"><h3 style="margin-bottom:10px">유물 도감 <span class="faint" style="font-size:13px;font-family:var(--f-body)">${Object.keys(s.relicSeen).length}/${RELICS.length}</span></h3><div class="grid2">${relics}</div></div>
     </div>`;
   },
@@ -473,7 +553,7 @@ const UI = {
     const ch = CHAPTERS[chId - 1];
     const st = chapterStages(ch)[k - 1];
     const seen = Game.s.story.seen;
-    const head = { eyebrow: `${ch.id}장`, title: ch.title, color: ch.color };
+    const head = { eyebrow: `${ch.id}장`, title: ch.title, color: ch.color, boss: ch.boss };
     if (!nm) {
       if (k === 1 && !seen['i' + chId]) { await this.story(ch.intro, head); seen['i' + chId] = 1; }
       if (st.elite && !seen['m' + chId]) { await this.story(ch.mid, head); seen['m' + chId] = 1; }
@@ -563,55 +643,158 @@ const UI = {
     }
   },
 
+  /* ---------- 모션 · 이펙트 ---------- */
+  card(uid) { return $(`.ucard[data-uid="${uid}"]`); },
+  figEl(uid) { return $(`.ucard[data-uid="${uid}"] .uc-fig`); },
+  actor(uid) { return $(`.ucard[data-uid="${uid}"] .uc-actor`); },
+  pos(uid) {
+    const el = this.actor(uid), root = $('#bt');
+    if (!el || !root) return null;
+    const r = el.getBoundingClientRect(), R = root.getBoundingClientRect();
+    return { x: r.left - R.left + r.width / 2, y: r.top - R.top + r.height * 0.56, h: r.height };
+  },
+  reduced() { return !!(window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches); },
+  lunge(uid, tuid, frac) {
+    if (this.reduced()) return;
+    const a = this.actor(uid), b = this.actor(tuid);
+    if (!a || !b || a === b) return;
+    const ra = a.getBoundingClientRect(), rb = b.getBoundingClientRect();
+    const ax = ra.left + ra.width / 2 - (a._tx || 0), ay = ra.top + ra.height / 2 - (a._ty || 0);
+    const bx = rb.left + rb.width / 2 - (b._tx || 0), by = rb.top + rb.height / 2 - (b._ty || 0);
+    a._tx = (bx - ax) * frac; a._ty = (by - ay) * frac;
+    a.style.transform = `translate(${a._tx.toFixed(1)}px, ${a._ty.toFixed(1)}px)`;
+    a.closest('.ucard').classList.add('moving');
+  },
+  home(uid) {
+    const a = this.actor(uid);
+    if (!a || (!a._tx && !a._ty)) return;
+    a._tx = a._ty = 0; a.style.transform = '';
+    const c = a.closest('.ucard');
+    setTimeout(() => { if (!a._tx && !a._ty && c) c.classList.remove('moving'); }, 280);
+  },
+  homeAll() { $$('.uc-actor').forEach(a => { a._tx = a._ty = 0; a.style.transform = ''; }); $$('.ucard.moving').forEach(c => c.classList.remove('moving')); },
+  figFx(uid, cls, ms = 380) {
+    const f = this.figEl(uid); if (!f) return;
+    f.classList.remove(cls); void f.offsetWidth; f.classList.add(cls);
+    clearTimeout(f['_t' + cls]);
+    f['_t' + cls] = setTimeout(() => f.classList.remove(cls), ms / Math.max(1, this.bt && this.bt.speed ? this.bt.speed * 0.75 : 1));
+  },
+  screenShake(strong) {
+    if (this.reduced()) return;
+    const root = $('#bt'); if (!root) return;
+    root.classList.remove('shake', 'shake2'); void root.offsetWidth; root.classList.add(strong ? 'shake2' : 'shake');
+    clearTimeout(root._sh); root._sh = setTimeout(() => root.classList.remove('shake', 'shake2'), 420);
+  },
   floatAt(uid, text, cls = '') {
-    const bt = $('#bt'), card = $(`.ucard[data-uid="${uid}"]`), fx = $('#fx');
-    if (!bt || !card || !fx) return;
-    const br = bt.getBoundingClientRect(), cr = card.getBoundingClientRect();
+    const fx = $('#fx'), p = this.pos(uid);
+    if (!fx || !p) return;
     const el = document.createElement('div');
     el.className = 'float ' + cls; el.textContent = text;
-    el.style.left = (cr.left - br.left + cr.width / 2 + (Math.random() * 30 - 15)) + 'px';
-    el.style.top = (cr.top - br.top + cr.height * 0.35) + 'px';
+    el.style.left = (p.x + (Math.random() * 28 - 14)) + 'px';
+    el.style.top = (p.y - p.h * 0.42) + 'px';
     fx.appendChild(el);
-    setTimeout(() => el.remove(), 1000);
+    setTimeout(() => el.remove(), 1100);
   },
-  shake(uid) { const c = $(`.ucard[data-uid="${uid}"]`); if (c) { c.classList.remove('hitshake'); void c.offsetWidth; c.classList.add('hitshake'); } },
+  fxAt(uid, fn) { const p = this.pos(uid); if (p && this.fx) fn(this.fx, p); },
 
   async animate(e) {
-    const bt = this.bt;
+    const bt = this.bt, b = bt.b, fx = this.fx;
+    if (fx) fx.speed = bt.speed || 1;
     const D = ms => sleep(this.delay(ms));
-    const sideL = uid => { const u = bt.b.byUid(uid); return u && u.side === 'A'; };
+    const unit = uid => b.byUid(uid);
+    const sideL = uid => { const u = unit(uid); return u && u.side === 'A'; };
     switch (e.type) {
-      case 'turn': bt.ticker = `<span class="t-main">${e.n}턴</span>`; this.renderStage(); this.renderHead(); this.renderUnits(); return D(200);
+      case 'turn': this.homeAll(); bt.ticker = `<span class="t-main">${e.n}턴</span>`; this.renderStage(); this.renderHead(); this.renderUnits(); return D(200);
       case 'msg': bt.ticker = `<span class="${e.cls}">${esc(e.text)}</span>`; bt.cv = null; bt.av = null; this.renderStage(); this.renderUnits(); this.renderHead(); return D(e.cls ? 750 : 550);
       case 'clash': {
         const swap = !sideL(e.a) && sideL(e.o);
         bt.cv = { swap, L: swap ? e.o : e.a, R: swap ? e.a : e.o, Ls: swap ? e.os : e.as, Rs: swap ? e.as : e.os, Le: swap ? e.oe : e.ae, Re: swap ? e.ae : e.oe, Lp: '', Rp: '', Lf: [], Rf: [], Lc: 0, Rc: 0, w: null };
-        bt.av = null; this.renderStage(); return D(260);
+        bt.av = null; this.renderStage();
+        this.lunge(e.a, e.o, 0.3); this.lunge(e.o, e.a, 0.3);
+        return D(320);
       }
       case 'round': {
         const cv = bt.cv; if (!cv) return;
         const a = cv.swap ? e.o : e.a, o = cv.swap ? e.a : e.o;
         cv.Lp = a.p; cv.Rp = o.p; cv.Lf = a.f; cv.Rf = o.f; cv.Lc = cv.swap ? e.oc : e.ac; cv.Rc = cv.swap ? e.ac : e.oc;
         cv.rw = e.w === 't' ? 't' : ((e.w === 'a') !== cv.swap ? 'L' : 'R');
-        this.renderStage(true); return D(480);
+        this.renderStage(true);
+        const pa = this.pos(cv.L), pb = this.pos(cv.R);
+        if (pa && pb && fx) fx.spark((pa.x + pb.x) / 2, (pa.y + pb.y) / 2, cv.rw === 't');
+        if (cv.rw === 'L') this.figFx(cv.R, 'clang', 220); else if (cv.rw === 'R') this.figFx(cv.L, 'clang', 220);
+        return D(480);
       }
-      case 'clashEnd': { const cv = bt.cv; if (cv) { cv.w = e.w === cv.L ? 'L' : e.w === cv.R ? 'R' : null; cv.n = e.n; this.renderStage(); } this.renderUnits(); return D(380); }
-      case 'atk': bt.cv = null; bt.av = { u: e.u, s: e.s, t: e.t, f: [], p: '', e: e.e }; this.renderStage(); return D(200);
+      case 'clashEnd': {
+        const cv = bt.cv; if (cv) { cv.w = e.w === cv.L ? 'L' : e.w === cv.R ? 'R' : null; cv.n = e.n; this.renderStage(); }
+        if (e.l) { this.figFx(e.l, 'hurt', 360); this.home(e.l); }
+        if (e.w) { this.figFx(e.w, 'win', 520); this.fxAt(e.w, (f, p) => f.ripple(p.x, p.y, '#e8c060')); }
+        if (!e.w) { if (cv) { this.home(cv.L); this.home(cv.R); } }
+        this.renderUnits(); return D(380);
+      }
+      case 'atk': {
+        bt.cv = null; bt.av = { u: e.u, s: e.s, t: e.t, f: [], p: '', e: e.e };
+        bt.curEmo = EMO[e.e] ? EMO[e.e].c : '#fff';
+        this.renderStage();
+        if (e.t.length) this.lunge(e.u, e.t[0], 0.52);
+        this.figFx(e.u, 'atk', 520);
+        const att = unit(e.u);
+        if (att && att.boss && e.t.length >= 3 && bt.speed) await cutIn(document.body, { warn: true, label: att.name, title: e.s, sub: '전체 공격' }, bt.speed);
+        return D(200);
+      }
       case 'coin': if (bt.av) { bt.av.f.push(e.h ? 1 : 0); bt.av.p = e.p; bt.av.total = e.total; this.renderStage(true); } return D(150);
-      case 'hit': this.renderUnits(); this.shake(e.t); if (e.d > 0 || !e.ab) this.floatAt(e.t, (e.d > 0 ? e.d : '0') + (e.live ? ' 실탄!' : ''), e.crit ? 'crit' : ''); if (e.ab) this.floatAt(e.t, `막음 ${e.ab}`, 'sp'); this.renderHead(); return D(230);
-      case 'dot': this.renderUnits(); this.floatAt(e.t, `${e.label || (ST[e.k] ? ST[e.k].n : '')} ${e.sp ? '정신 −' + e.sp : e.d}`, 'st'); return D(200);
-      case 'st': this.renderUnits(); return D(50);
-      case 'buf': case 'sp': case 'shield': case 'calm': case 'recover': case 'redirect': this.renderUnits(); if (e.type === 'shield') this.floatAt(e.t, `보호막 ${e.d}`, 'heal'); return D(e.type === 'shield' ? 150 : 25);
-      case 'heal': this.renderUnits(); this.floatAt(e.t, '+' + e.d, 'heal'); return D(150);
-      case 'guard': this.renderUnits(); this.floatAt(e.t, `방어 ${e.d}`, 'heal'); return D(220);
-      case 'evade': this.renderUnits(); this.floatAt(e.t, '회피', 'big'); return D(260);
-      case 'burst': this.renderUnits(); this.floatAt(e.t, '진동 폭발', 'big'); return D(280);
-      case 'stag': this.renderUnits(); this.floatAt(e.t, '흐트러짐', 'big'); return D(420);
-      case 'panic': this.renderUnits(); this.floatAt(e.t, '공황', 'big'); return D(380);
-      case 'die': this.renderUnits(); return D(380);
-      case 'spawn': case 'revive': this.renderUnits(); return D(300);
-      case 'imp': bt.ticker = `<span class="gold">✦ ${esc(this.nameOf(e.u))}의 각인 「${esc(e.s)}」</span>`; this.renderStage(); return D(500);
-      case 'reso': bt.ticker = `<span class="gold">공명 · ${e.list.map(([k, c]) => `${EMO[k].n}×${c}`).join(' · ')}</span>`; this.renderStage(); this.renderHead(); return D(420);
+      case 'hit': {
+        this.renderUnits();
+        const from = this.pos(e.u);
+        this.fxAt(e.t, (f, p) => {
+          if (e.d > 0) f.hit(e.dt || 'blunt', p.x, p.y, bt.curEmo || '#fff', from ? from.x : p.x, from ? from.y : p.y + 80, { crit: e.crit, weak: e.rc === 'r-weak' });
+          if (e.ab) f.shieldHit(p.x, p.y);
+        });
+        if (e.d > 0) this.figFx(e.t, 'hurt', 340);
+        const tu = unit(e.t);
+        if (e.crit || (tu && e.d > tu.maxHp * 0.16)) this.screenShake(e.crit);
+        if (e.d > 0 || !e.ab) this.floatAt(e.t, (e.d > 0 ? e.d : '0') + (e.live ? ' 실탄!' : ''), (e.crit ? 'crit ' : '') + (e.rc || ''));
+        if (e.ab) this.floatAt(e.t, `막음 ${e.ab}`, 'sp');
+        this.renderHead();
+        return D(260);
+      }
+      case 'atkEnd': this.home(e.u); if (bt.cv) { this.home(bt.cv.L); this.home(bt.cv.R); } return D(90);
+      case 'dot': {
+        this.renderUnits();
+        const boom = e.k === 'fx' && /폭발|폭풍/.test(e.label || '');
+        this.fxAt(e.t, (f, p) => (boom ? f.explode(p.x, p.y) : f.status(e.k === 'fx' ? 'fx' : e.k, p.x, p.y, true)));
+        if (e.d > 0) this.figFx(e.t, 'hurt', 300);
+        if (boom) this.screenShake(true);
+        this.floatAt(e.t, `${e.label || (ST[e.k] ? ST[e.k].n : '')} ${e.sp ? '정신 −' + e.sp : e.d}`, 'st');
+        return D(240);
+      }
+      case 'st': this.renderUnits(); if ((e.p > 0 || e.c > 0) && ST[e.k]) this.fxAt(e.t, (f, p) => f.status(e.k, p.x, p.y, false)); return D(70);
+      case 'buf': { this.renderUnits(); const d = BF[e.k]; if (d) this.fxAt(e.t, (f, p) => f.buff(p.x, p.y, d.good)); return D(30); }
+      case 'sp': case 'calm': case 'recover': case 'redirect': this.renderUnits(); return D(25);
+      case 'shield': this.renderUnits(); this.fxAt(e.t, (f, p) => f.shieldHit(p.x, p.y)); this.floatAt(e.t, `보호막 ${e.d}`, 'heal'); return D(160);
+      case 'heal': this.renderUnits(); this.fxAt(e.t, (f, p) => f.heal(p.x, p.y)); this.floatAt(e.t, '+' + e.d, 'heal'); return D(170);
+      case 'guard': this.renderUnits(); this.figFx(e.t, 'guard', 600); this.fxAt(e.t, (f, p) => f.shieldHit(p.x, p.y)); this.floatAt(e.t, `방어 ${e.d}`, 'heal'); return D(230);
+      case 'evade': { this.renderUnits(); this.figFx(e.t, 'dodge', 420); const u = unit(e.t); this.fxAt(e.t, (f, p) => f.whoosh(p.x, p.y, u && u.side === 'A' ? 1 : -1)); this.floatAt(e.t, '회피', 'big'); return D(280); }
+      case 'burst': this.renderUnits(); this.fxAt(e.t, (f, p) => f.burst(p.x, p.y)); this.figFx(e.t, 'hurt', 300); this.screenShake(false); this.floatAt(e.t, '진동 폭발', 'big'); return D(300);
+      case 'stag': this.renderUnits(); this.fxAt(e.t, (f, p) => f.stagger(p.x, p.y)); this.screenShake(true); this.floatAt(e.t, '흐트러짐', 'big'); return D(450);
+      case 'panic': this.renderUnits(); this.fxAt(e.t, (f, p) => f.panic(p.x, p.y)); this.floatAt(e.t, '공황', 'big'); return D(400);
+      case 'die': this.fxAt(e.t, (f, p) => f.death(p.x, p.y)); this.home(e.t); this.renderUnits(); return D(420);
+      case 'spawn': this.renderUnits(); this.figFx(e.t, 'appear', 650); this.fxAt(e.t, (f, p) => f.ripple(p.x, p.y, '#b0aa98')); return D(320);
+      case 'revive': this.renderUnits(); this.figFx(e.t, 'appear', 650); this.fxAt(e.t, (f, p) => f.pillar(p.x, p.y)); return D(450);
+      case 'imp': {
+        const u = unit(e.u), col = EMO[e.e] ? EMO[e.e].c : '#c9a45c';
+        bt.ticker = `<span class="gold">✦ ${esc(this.nameOf(e.u))}의 각인 「${esc(e.s)}」</span>`; this.renderStage();
+        this.figFx(e.u, 'cast', 1600);
+        if (fx) fx.flash(col, 0.25, 400);
+        if (bt.speed) await cutIn(document.body, { art: u && u.side === 'A' ? ART.char(u.cid) : '', color: col, label: '각인', title: e.s, sub: u ? u.name : '' }, bt.speed);
+        return D(80);
+      }
+      case 'reso': {
+        bt.ticker = `<span class="gold">공명 · ${e.list.map(([k, c]) => `${EMO[k].n}×${c}`).join(' · ')}</span>`; this.renderStage(); this.renderHead();
+        const col = EMO[e.list[0][0]].c;
+        for (const u of b.livingAllies()) this.fxAt(u.uid, (f, p) => f.ripple(p.x, p.y, col));
+        return D(420);
+      }
+      case 'end': this.homeAll(); return;
       default: return;
     }
   },
@@ -638,7 +821,9 @@ const UI = {
         <svg class="lines" id="lines" aria-hidden="true"></svg>
         <div class="fx" id="fx"></div>
       </div>`;
+      this.fx = new FXLayer($('#bt'));
     }
+    $('#bt').style.setProperty('--mt', (this.bt.speed ? 190 / this.bt.speed : 0) + 'ms');
     this.renderHead(); this.renderUnits(); this.renderStage(); this.renderDock(); this.renderLog();
     requestAnimationFrame(() => this.drawLines());
   },
@@ -690,11 +875,14 @@ const UI = {
     const planning = !bt.playing;
     const pendU = bt.pending ? b.byUid(bt.pending.uid) : null;
     const claimed = new Set(b.livingAllies().filter(u => u.plan && u.plan.tAct).map(u => u.plan.tAct));
-    // 적
-    ee.innerHTML = b.enemies.map(u => {
-      const v = this.view(u); if (!v) return '';
-      if (!v.alive && !planning && !bt.snap) return '';
-      if (!v.alive && planning) return '';
+    const cnt = planning ? b.resonance() : {};
+    const gs = bt.gsnap || b.gauges;
+    const clock = (gs.find(g => g.id === 'clock') || {}).v;
+    const eList = [], aList = [];
+    for (const u of b.enemies) { const v = this.view(u); if (!v || (!v.alive && planning)) continue; eList.push([u, v]); }
+    for (const u of b.allies) { const v = this.view(u); if (v) aList.push([u, v]); }
+
+    const enemyInfo = (u, v) => {
       const tags = (u.boss ? '<span class="badge boss">잔향체</span>' : u.elite ? '<span class="badge elite">정예</span>' : u.part ? '<span class="badge part">부위</span>' : '');
       const spdTxt = u.spdVals.length ? u.spdVals.join('·') : '–';
       const res = Object.entries(u.res).map(([k, r]) => `<span class="res-chip ${resClass(r)}" data-tip="<b>${DT[k].n}</b> 받는 피해 ×${r}">${DT[k].s}${r === 1 ? '' : ' ' + resLabel(r)}</span>`).join('');
@@ -717,19 +905,14 @@ const UI = {
         if (!intents && (u.stag || b.isPanicked(u))) intents = `<div class="faint" style="font-size:12px">${u.stag ? '흐트러져 행동하지 못한다' : '공황'}</div>`;
       }
       const mult = pendU && planning ? b.dmgPreview(pendU, u, b.optSkill(pendU, bt.pending.opt)) : null;
-      return `<div class="ucard enemy ${v.alive ? '' : 'dead'} ${v.stag ? 'stag' : ''} ${pendU && v.alive ? 'tgt' : ''}" data-uid="${u.uid}" data-a="tunit">
-        <div class="uc-top">${ava(u.name, unitColor(u), '', `data-a="inspect" data-uid="${u.uid}" title="정보"`)}<div class="uc-name"><b>${esc(u.name)}${tags}</b><small>Lv ${u.lvl}${mult != null ? ` · 예상 피해 ×${mult.toFixed(2)}` : ''}</small></div><div class="spd ${u.spdVals.length > 1 ? 'multi' : ''}" title="속도">${spdTxt}</div></div>
+      return `<div class="uc-top"><div class="uc-name"><b>${esc(u.name)}${tags}</b><small>Lv ${u.lvl}${mult != null ? ` · 예상 피해 ×${mult.toFixed(2)}` : ''}</small></div><div class="spd ${u.spdVals.length > 1 ? 'multi' : ''}" title="속도">${spdTxt}</div><button class="ibtn" data-a="inspect" data-uid="${u.uid}" title="정보" aria-label="${esc(u.name)} 정보">i</button></div>
         ${this.hpBar(u, v)}
         <div class="hp-txt"><span>${fmt(v.hp)} / ${fmt(v.maxHp)}</span><span>${u.hasSP ? `정신 ${v.sp > 0 ? '+' : ''}${v.sp}` : ''}${v.stag ? ' · 흐트러짐' : ''}${v.panic && v.panic <= b.turn ? ' · 공황' : ''}</span></div>
         ${u.hasSP ? this.spBar(v) : ''}
         <div class="chips"><span class="res-chips">${res}</span>${this.chipsFor(v)}</div>
-        ${intents ? `<div class="intents">${intents}</div>` : ''}
-      </div>`;
-    }).join('');
-    // 아군
-    const cnt = planning ? b.resonance() : {};
-    ae.innerHTML = b.allies.map(u => {
-      const v = this.view(u); if (!v) return '';
+        ${intents ? `<div class="intents">${intents}</div>` : ''}`;
+    };
+    const allyInfo = (u, v) => {
       const d = CHARS[u.cid];
       const charmed = u.flags.charmed && u.flags.charmed >= b.turn;
       const rd = d.rdisp ? d.rdisp(Object.assign({}, u, { r: v.r, sp: v.sp, maxHp: v.maxHp })) : [];
@@ -747,16 +930,52 @@ const UI = {
           plan = `<div class="plan-line"><span class="emo-dot" style="--c:${EMO[s.emo].c}"></span><b>${esc(s.name)}</b>${t ? `→ ${esc(t.name)}` : ''} ${cl}${r ? ` <span class="gold" style="color:var(--brass)">공명+${r}</span>` : ''}</div>`;
         } else plan = '<div class="plan-line faint">미지정</div>';
       }
-      return `<div class="ucard ally ${bt.sel === u.uid && planning ? 'sel' : ''} ${u.plan && planning ? 'planned' : ''} ${v.alive ? '' : 'dead'} ${v.stag ? 'stag' : ''} ${v.panic && v.panic <= b.turn ? 'panic' : ''}" data-uid="${u.uid}" data-a="sel">
-        <div class="uc-top">${ava(u.name, u.color, '', `data-a="inspect" data-uid="${u.uid}" title="정보"`)}<div class="uc-name"><b>${esc(u.name)}</b><small>${esc(u.cls)} · Lv ${u.lvl}</small></div><div class="spd" title="속도">${u.spdVals[0] || '–'}</div></div>
+      return `<div class="uc-top"><div class="uc-name"><b>${esc(u.name)}</b><small>${esc(u.cls)} · Lv ${u.lvl}</small></div><div class="spd" title="속도">${u.spdVals[0] || '–'}</div><button class="ibtn" data-a="inspect" data-uid="${u.uid}" title="정보" aria-label="${esc(u.name)} 정보">i</button></div>
         ${this.hpBar(u, v)}
         <div class="hp-txt"><span>${fmt(v.hp)} / ${fmt(v.maxHp)}</span><span>정신 ${v.sp > 0 ? '+' : ''}${v.sp}</span></div>
         ${this.spBar(v)}
         ${rdisp ? `<div class="rdisp">${rdisp}</div>` : ''}
         <div class="chips">${this.chipsFor(v)}</div>
-        ${plan}
-      </div>`;
-    }).join('');
+        ${plan}`;
+    };
+    const sync = (box, list, side) => {
+      const have = new Map();
+      for (const el of box.children) have.set(+el.dataset.uid, el);
+      const want = [];
+      for (const [u, v] of list) {
+        let el = have.get(u.uid);
+        const artKey = side + ':' + (u.eid || u.cid) + ':' + (u.copyOf || '');
+        if (!el || el._art !== artKey) {
+          if (el) el.remove();
+          el = document.createElement('div');
+          el.dataset.uid = u.uid;
+          const size = u.boss ? 'big' : u.part ? 'small' : '';
+          el.innerHTML = `<div class="uc-fig fig ${size}" style="--d:${(-(u.uid % 9) * 0.41).toFixed(2)}s;--emo:${unitColor(u)}"><span class="uc-floor"></span><div class="uc-actor">${ART.unit(u)}</div></div><div class="uc-info"></div>`;
+          el._art = artKey;
+        }
+        const charmed = side === 'A' && u.flags.charmed && u.flags.charmed >= b.turn;
+        const panic = v.panic && v.panic <= b.turn;
+        el.className = side === 'A'
+          ? `ucard ally ${bt.sel === u.uid && planning ? 'sel' : ''} ${u.plan && planning ? 'planned' : ''} ${v.alive ? '' : 'dead'} ${v.stag ? 'stag' : ''} ${panic ? 'panic' : ''} ${el.classList.contains('moving') ? 'moving' : ''}`
+          : `ucard enemy ${v.alive ? '' : 'dead'} ${v.stag ? 'stag' : ''} ${pendU && v.alive ? 'tgt' : ''} ${el.classList.contains('moving') ? 'moving' : ''}`;
+        el.dataset.a = side === 'A' ? 'sel' : 'tunit';
+        const fig = el.firstElementChild;
+        fig.classList.toggle('dead', !v.alive);
+        fig.classList.toggle('stag', !!v.stag && v.alive);
+        fig.classList.toggle('panic', !!panic && v.alive);
+        fig.classList.toggle('charmed', !!charmed);
+        fig.classList.toggle('ready', side === 'A' && planning && bt.sel === u.uid);
+        if (u.eid === 'masque') { fig.classList.remove('mask-0', 'mask-1', 'mask-2'); fig.classList.add('mask-' + (b.vars.mask || 0)); }
+        if (u.eid === 'clockwarden' && clock != null) fig.style.setProperty('--cw', (clock * 30) + 'deg');
+        el.lastElementChild.innerHTML = side === 'A' ? allyInfo(u, v) : enemyInfo(u, v);
+        want.push(el);
+      }
+      for (const el of have.values()) if (!want.includes(el)) el.remove();
+      const kids = box.children;
+      if (kids.length !== want.length || want.some((el, i) => kids[i] !== el)) want.forEach(el => box.appendChild(el));
+    };
+    sync(ee, eList, 'E');
+    sync(ae, aList, 'A');
   },
   renderStage(flip) {
     const bt = this.bt, el = $('#stage'); if (!el) return;
@@ -764,10 +983,11 @@ const UI = {
       const cv = bt.cv;
       const coins = (f, c) => { const arr = []; for (let i = 0; i < c; i++) arr.push(`<span class="coin ${f[i] === 1 ? 'h' : f[i] === 0 ? 't' : ''} ${flip ? 'flip' : ''}"></span>`); return arr.join(''); };
       const sideCls = s => cv.w ? (cv.w === s ? 'win' : 'lose') : (cv.rw === s ? 'win' : cv.rw && cv.rw !== 't' ? 'lose' : '');
+      const bz = uid => { const u = bt.b.byUid(uid); return u ? `<div class="cv-bust" style="--c:${unitColor(u)}">${ART.bust(ART.unit(u), u.boss)}</div>` : ''; };
       el.innerHTML = `<div class="clashview">
-        <div class="cv-side ${sideCls('L')}"><span class="who" style="color:${EMO[cv.Le].c}">${esc(this.nameOf(cv.L))}</span><span class="sk">${esc(cv.Ls)}</span><div class="coins">${coins(cv.Lf, cv.Lc)}</div><span class="cv-pow">${cv.Lp === '' ? '·' : cv.Lp}</span></div>
+        <div class="cv-side ${sideCls('L')}">${bz(cv.L)}<span class="who" style="color:${EMO[cv.Le].c}">${esc(this.nameOf(cv.L))}</span><span class="sk">${esc(cv.Ls)}</span><div class="coins">${coins(cv.Lf, cv.Lc)}</div><span class="cv-pow">${cv.Lp === '' ? '·' : cv.Lp}</span></div>
         <div class="cv-mid">${cv.w ? `${cv.n}판<br>${cv.w === 'L' ? '◀ 승' : '승 ▶'}` : '합'}</div>
-        <div class="cv-side r ${sideCls('R')}"><span class="who" style="color:${EMO[cv.Re].c}">${esc(this.nameOf(cv.R))}</span><span class="sk">${esc(cv.Rs)}</span><div class="coins">${coins(cv.Rf, cv.Rc)}</div><span class="cv-pow">${cv.Rp === '' ? '·' : cv.Rp}</span></div>
+        <div class="cv-side r ${sideCls('R')}">${bz(cv.R)}<span class="who" style="color:${EMO[cv.Re].c}">${esc(this.nameOf(cv.R))}</span><span class="sk">${esc(cv.Rs)}</span><div class="coins">${coins(cv.Rf, cv.Rc)}</div><span class="cv-pow">${cv.Rp === '' ? '·' : cv.Rp}</span></div>
       </div>`;
     } else if (bt.av) {
       const av = bt.av;
@@ -860,7 +1080,7 @@ const UI = {
       const d = CHARS[u.cid];
       body = `<div class="mech"><b>${esc(d.passive.n)}</b><p>${esc(d.passive.d)}</p></div>`;
     }
-    this.modal(`<div class="cd-head">${ava(u.name, unitColor(u), 'lg')}<div><div class="cap">${u.side === 'A' ? esc(u.cls) : (u.boss ? '잔향체' : u.elite ? '정예' : u.part ? '부위' : '잔향')} · Lv ${u.lvl}</div><h2>${esc(u.name)}</h2></div></div>
+    this.modal(`<div class="cd-head"><div class="insp-fig fig" style="--emo:${unitColor(u)}">${ART.unit(u)}</div><div><div class="cap">${u.side === 'A' ? esc(u.cls) : (u.boss ? '잔향체' : u.elite ? '정예' : u.part ? '부위' : '잔향')} · Lv ${u.lvl}</div><h2>${esc(u.name)}</h2></div></div>
       <div class="stat-row"><span>체력 <b>${fmt(u.hp)}/${fmt(u.maxHp)}</b></span>${u.hasSP ? `<span>정신력 <b>${u.sp}</b></span>` : '<span class="faint">정신력 없음</span>'}<span>속도 <b>${u.spd[0]}–${u.spd[1]}</b>${u.slots > 1 ? ` · 행동 ${u.slots}회` : ''}</span><span>흐트러짐 문턱 <b>${u.th.slice(u.thIdx).map(v => fmt(v)).join(', ') || '없음'}</b></span></div>
       <div>${res} ${emoRes}</div>
       ${st ? `<div class="mech-list">${st}</div>` : ''}
@@ -880,7 +1100,7 @@ const UI = {
       this.bt = null;
       const ch = CHAPTERS[info.ch - 1];
       if (res.win && info.stage.boss && !info.nm && !Game.s.story.seen['o' + info.ch]) {
-        await this.story(ch.outro, { eyebrow: `${ch.id}장 · 종료`, title: ch.title, color: ch.color });
+        await this.story(ch.outro, { eyebrow: `${ch.id}장 · 종료`, title: ch.title, color: ch.color, boss: ch.boss });
         Game.s.story.seen['o' + info.ch] = 1; Game.save();
         if (info.ch < 12) this.selCh = info.ch + 1;
       }
@@ -922,7 +1142,7 @@ const UI = {
     const track = Array.from({ length: 5 }, (_, i) => `<i class="${i + 1 < run.floor ? 'done' : i + 1 === run.floor ? 'cur' : ''}"></i>`).join('');
     const team = run.team.map(cid => {
       const d = CHARS[cid], f = run.hp[cid] == null ? 1 : run.hp[cid];
-      return `<div class="m">${ava(d.name, d.color)}<div><b style="font-family:var(--f-display)">${d.name}</b> <span class="faint mono" style="font-size:11px">Lv ${s.chars[cid].lvl}</span><div class="bar" style="margin-top:4px"><span class="fill" style="width:${f * 100}%;background:linear-gradient(90deg,#4f9a6f,#6bc08e)"></span></div></div></div>`;
+      return `<div class="m">${bust(cid, 'sm')}<div><b style="font-family:var(--f-display)">${d.name}</b> <span class="faint mono" style="font-size:11px">Lv ${s.chars[cid].lvl}</span><div class="bar" style="margin-top:4px"><span class="fill" style="width:${f * 100}%;background:linear-gradient(90deg,#4f9a6f,#6bc08e)"></span></div></div></div>`;
     }).join('');
     const tagCnt = {}; run.relics.forEach(id => { const t = RELIC[id].tag; tagCnt[t] = (tagCnt[t] || 0) + 1; });
     const relics = run.relics.map(id => { const r = RELIC[id]; return `<span class="relic-tag t${r.t}" data-tip="<b>${esc(r.n)}</b> · ${RELIC_TAGS[r.tag].n}<br>${esc(r.d)}">${esc(r.n)}</span>`; }).join('') || '<span class="faint">아직 유물이 없습니다.</span>';

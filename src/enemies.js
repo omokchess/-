@@ -191,7 +191,7 @@ const ENEMIES = {
     mech: [{ n: '도플갱어', d: '전투 시작 시 아군 하나의 모습과 내성, 기술을 그대로 베낀다.' }],
     init(u, b) {
       const t = pick(b.allies, b.rng); if (!t) return;
-      u.name = '또 다른 ' + t.name; u.res = Object.assign({}, t.res); u.color = t.color;
+      u.name = '또 다른 ' + t.name; u.res = Object.assign({}, t.res); u.color = t.color; u.copyOf = t.cid;
       u.skills = ['s1', 's2', 's3'].map(k => { const s = t.sk[k]; return S(s.name, s.dt, s.emo, s.base, s.cp, typeof s.coins === 'function' ? 2 : s.coins, { tgt: s.tgt }); });
     } },
 

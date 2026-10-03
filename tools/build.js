@@ -2,7 +2,7 @@
 const fs = require('fs'), path = require('path');
 const root = path.join(__dirname, '..');
 const src = f => fs.readFileSync(path.join(root, 'src', f), 'utf8');
-const order = ['core.js', 'engine.js', 'chars.js', 'enemies.js', 'world.js', 'game.js', 'ui.js', 'main.js'];
+const order = ['core.js', 'engine.js', 'chars.js', 'enemies.js', 'world.js', 'game.js', 'art.js', 'fx.js', 'ui.js', 'main.js'];
 const js = order.map(f => `/* ---- ${f} ---- */\n` + src(f)).join('\n');
 const css = src('style.css');
 const fonts = '<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Hahmlet:wght@400;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans+KR:wght@400;500;600&display=swap">';

@@ -19,7 +19,7 @@ function newSave() {
     story: { stage: {}, boss: {}, nm: {}, nmBoss: {}, seen: {} },
     shards: 0, crystals: 0,
     lab: { best: 0, runs: 0, run: null },
-    ach: {}, relicSeen: {},
+    ach: {}, relicSeen: {}, seen: {},
     stats: { wins: 0, losses: 0, clashWin: 0, maxHit: 0, maxClash: 0, infl: {}, jackpots: 0, imps: 0, staggers: 0, kills: 0, bursts: 0 },
     settings: { speed: 2, auto: false, lines: true },
   };
@@ -176,6 +176,7 @@ const Game = {
     }
     return { xp: Math.round(xp), sh: Math.round(sh), cr, first };
   },
+  markSeen(b) { for (const e of b.enemies) this.s.seen[e.eid] = (this.s.seen[e.eid] || 0) + (e.alive ? 0 : 1); },
   mergeStats(bs) {
     const s = this.s.stats;
     s.clashWin += bs.clashWin; s.maxHit = Math.max(s.maxHit, bs.maxHit); s.maxClash = Math.max(s.maxClash, bs.maxClash);
@@ -186,6 +187,7 @@ const Game = {
   finishBattle(b, info) {
     const res = { win: b.over === 'win', xp: 0, sh: 0, cr: 0, ups: {}, unlocks: [], ach: [] };
     this.mergeStats(b.stats);
+    this.markSeen(b);
     if (res.win) {
       this.s.stats.wins++;
       const rw = this.rewardFor(b, info);
@@ -317,6 +319,7 @@ const Game = {
   labAfterBattle(run, b, node) {
     const res = { win: b.over === 'win', xp: 0, sh: 0, cr: 0, gold: 0, ups: {}, unlocks: [], ach: [] };
     this.mergeStats(b.stats);
+    this.markSeen(b);
     for (const a of b.allies) run.hp[a.cid] = a.alive ? a.hp / a.maxHp : 0;
     if (!res.win) { this.s.stats.losses++; res.ach = this.checkAch(); this.save(); return res; }
     this.s.stats.wins++;
