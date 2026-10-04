@@ -1,41 +1,48 @@
-const load = require('./load');
-const X = load(['core.js', 'engine.js', 'chars.js', 'enemies.js']);
-function run(party, lvl, waves, opts = {}) {
-  const allies = party.map(c => X.makeAlly(c, { lvl, asc: opts.asc || 0, m: opts.m || [1,1,1,1], imp: [true, !!opts.imp2] }));
-  const b = new X.Battle({ allies, waves: waves.map(w => w.map(([id, l]) => X.makeEnemy(id, l, { nightmare: opts.nm }))) });
-  let turns = 0;
-  while (!b.over && turns < 40) {
-    b.startTurn();
-    b.autoAll();
-    b.resolve();
-    turns++;
-  }
-  return { over: b.over || 'timeout', turns, stats: b.stats, hp: allies.map(a => Math.round(a.hp / a.maxHp * 100)) };
+// 직업 × 적 자동 전투 시뮬레이션.  node tools/sim.js [n]
+const X = require('./load')();
+const { CLASSES, CLASS_ORDER, FOES, Battle, lvG } = X;
+function heroStats(cls, L, gear = 1.25) { const c = CLASSES[cls].stat, g = lvG(L); return { mhp: 220 * g * c.hp * gear, atk: 10 * g * c.atk * gear, def: 10 * g * c.def * gear, spd: 20 + L * 0.6, crit: 5, critDmg: 1.5 }; }
+function heroSkills(cls, L) { return CLASSES[cls].skills.filter(s => s.unlock <= L).map(s => ({ id: s.id, rank: 1 + Math.floor(L / 15) })); }
+function ai(B) {
+  const us = B.usable().filter(u => u.ok);
+  const p = B.p;
+  if (p.hp < p.mhp * 0.3 && B.items.potion > 0 && B.itemUsed === 0) return { k: 'item', id: 'potion' };
+  // 부위: 살아 있는 부위가 있으면 가끔 노린다
+  if (B.f.parts && B.f.parts.some(q => q.alive) && !B.f.parts.some(q => q.core) && B.tgt === -1 && B.rng() < 0.6) return { k: 'target', i: B.f.parts.findIndex(q => q.alive) };
+  if (B.f.parts && B.f.parts.some(q => q.core)) { const i = B.f.parts.findIndex(q => q.alive); if (B.tgt !== i && i >= 0 && !B.f.parts[B.tgt]?.alive) return { k: 'target', i }; }
+  const ult = us.find(u => u.sk.ult); if (ult) return { k: 'skill', id: ult.id };
+  const atk = us.filter(u => !u.sk.basic).sort((a, b) => b.cost - a.cost);
+  if (atk.length && B.rng() < 0.85) return { k: 'skill', id: atk[0].id };
+  if (p.en < 2 && p.hp < p.mhp * 0.5 && B.rng() < 0.4) return { k: 'focus' };
+  return { k: 'skill', id: us.find(u => u.sk.basic)?.id || us[0].id };
 }
-module.exports = { run, X };
+function run(cls, foes, L, seed, opt = {}) {
+  const B = new Battle({ seed, hero: { cls, lv: L, stats: heroStats(cls, L, opt.gear), skills: heroSkills(cls, L), tal: opt.tal || [], items: { potion: 2, tonic: 1 } }, foes: foes.map(id => ({ id, lv: opt.flv || L })) });
+  B.start();
+  let guard = 0;
+  while (!B.result && guard++ < 400) {
+    if (B.phase === 'p') { B.act(opt.dumb ? ai(B) : B.autoChoice()); }
+    else if (B.phase === 'f') { const q = B.peek(); B.step(B.autoDef(q && q.kind === 'attack' ? q : null)); }
+    else break;
+  }
+  return { win: B.result ? B.result.win : false, turns: B.turn, hp: B.p.hp / B.p.mhp, stats: B.stats };
+}
+module.exports = { run, heroStats, heroSkills, X };
 if (require.main === module) {
-  const party = ['serin', 'mujin', 'doyun', 'eve'];
-  const tests = [
-    ['ch1 normal', 2, [[['vagrant', 2], ['clockrat', 2], ['luggage', 2]]]],
-    ['ch1 elite', 4, [[['inspector', 4], ['vagrant', 3]]]],
-    ['ch1 boss', 5, [[['clockwarden', 5]]]],
-    ['ch2 boss', 10, [[['butcher', 10]]]],
-    ['ch3 boss', 15, [[['librarian', 15]]]],
-    ['ch4 boss', 20, [[['diva', 20]]]],
-    ['ch5 boss', 25, [[['masque', 25]]]],
-    ['ch6 boss', 30, [[['express', 30]]]],
-    ['ch7 boss', 35, [[['grin', 35]]]],
-    ['ch8 boss', 40, [[['colossus', 40]]]],
-    ['ch9 boss', 45, [[['seamstress', 45]]]],
-    ['ch10 boss', 50, [[['moon_silver', 50]]]],
-    ['ch11 boss', 55, [[['mirror', 55]]]],
-    ['ch12 boss', 60, [[['lethe', 60]]]],
-  ];
-  for (const [n, l, w] of tests) {
-    const res = [];
-    for (let i = 0; i < 6; i++) res.push(run(party, l, w));
-    const wins = res.filter(r => r.over === 'win').length;
-    const avgT = (res.reduce((s, r) => s + r.turns, 0) / res.length).toFixed(1);
-    console.log(n.padEnd(12), "win", wins + "/6", "turns", avgT, "hp", res.map(r => r.hp.join(",")).slice(0,3).join(" | "), res.map(r => r.over[0] + r.turns).join(" "));
+  const N = +process.argv[2] || 30;
+  const lvOf = ch => 1 + (ch - 1) * 5;
+  const bosses = Object.values(FOES).filter(f => f.boss).sort((a, b) => a.ch - b.ch);
+  console.log('보스별 승률/평균 턴 (직업 평균, 레벨 = 장 기준 +3)');
+  for (const b of bosses) {
+    const row = [];
+    for (const cls of CLASS_ORDER) { let w = 0, t = 0; for (let i = 0; i < N; i++) { const r = run(cls, [b.id], lvOf(b.ch) + 3, i * 7 + 1); w += r.win; t += r.turns; } row.push(`${cls.slice(0, 4)} ${Math.round(w / N * 100)}%/${(t / N).toFixed(0)}`); }
+    console.log(b.id.padEnd(12), row.join(' '));
+  }
+  console.log('\n일반 적 (레벨 = 장 기준), 승률/턴/남은체력');
+  for (let ch = 1; ch <= 12; ch++) {
+    const ids = Object.values(FOES).filter(f => f.ch === ch && !f.boss).map(f => f.id);
+    let w = 0, t = 0, hp = 0, n = 0;
+    for (const id of ids) for (const cls of CLASS_ORDER) for (let i = 0; i < 4; i++) { const r = run(cls, [id], lvOf(ch) + (FOES[id].elite ? 2 : 0), i + 3); w += r.win; t += r.turns; hp += r.hp; n++; }
+    console.log(`ch${ch}`, `${Math.round(w / n * 100)}%`, (t / n).toFixed(1), (hp / n).toFixed(2));
   }
 }
