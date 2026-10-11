@@ -1,0 +1,7 @@
+# 개인 설정과 캡처 이미지는 게임 화면마다 다르므로 올리지 않음
+config.json
+config.json.tmp
+macro.log
+templates/*.png
+__pycache__/
+.pytest_cache/
